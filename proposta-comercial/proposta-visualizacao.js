@@ -8,7 +8,7 @@ const planosSocialMedia = {
             'Linha editorial e manual de comunicação',
             'Até 8 artes/mês (feed + stories)',
             'Copywriting (legendas e chamadas)',
-            'Organização via plataforma (Notion/Monday)',
+            'Organização via plataforma (Notion/Monday
             'Análise de Concorrentes'
         ]
     },
@@ -370,7 +370,7 @@ function exportarPDF() {
         filename: nomeArquivo,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // <-- AGORA HORIZONTAL
     };
     
     // Gerar PDF
