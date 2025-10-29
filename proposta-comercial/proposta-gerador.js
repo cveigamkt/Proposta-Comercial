@@ -370,14 +370,15 @@ document.getElementById('propostaForm').addEventListener('submit', function(e) {
         servicoSocialMedia: socialMedia,
         servicoTrafegoPago: trafegoPago,
         investimentoMidia: document.getElementById('investimentoMidia').value,
-        recorrencia: document.getElementById('recorrencia').value,
+        descontoDescricao: document.getElementById('descontoDescricao').value,
+        descontoTipo: document.getElementById('descontoTipo').value,
+        descontoValor: document.getElementById('descontoValor').value,
         observacoes: document.getElementById('observacoes').value
     };
     
     // Criar URL com parâmetros
     const params = new URLSearchParams(dados);
-    const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', 'proposta-visualizacao.html');
-    const linkCompleto = `${baseUrl}?${params.toString()}`;
+    const linkCompleto = `${gerarURLVisualizacao()}?${params.toString()}`;
     
     // Mostrar modal com o link
     document.getElementById('linkGerado').value = linkCompleto;
@@ -434,8 +435,7 @@ function previewProposta() {
     };
     
     const params = new URLSearchParams(dados);
-    const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', 'proposta-visualizacao.html');
-    const linkCompleto = `${baseUrl}?${params.toString()}`;
+    const linkCompleto = `${gerarURLVisualizacao()}?${params.toString()}`;
     
     window.open(linkCompleto, '_blank');
 }
@@ -452,5 +452,74 @@ document.getElementById('descontoDescricao').addEventListener('input', calcularV
 document.getElementById('descontoTipo').addEventListener('change', calcularValores);
 document.getElementById('descontoValor').addEventListener('input', calcularValores);
 
-// Inicializar valores
-calcularValores();
+// Função utilitária para gerar URL de visualização
+function gerarURLVisualizacao() {
+    const origem = window.location.origin;
+    const caminhoAtual = window.location.pathname;
+    
+    // Lidar com diferentes formatos de caminho
+    if (caminhoAtual.includes('proposta-gerador.html')) {
+        // Formato: /proposta-gerador.html
+        return origem + caminhoAtual.replace('proposta-gerador.html', 'proposta-visualizacao.html');
+    } else if (caminhoAtual.endsWith('/gerador')) {
+        // Formato: /gerador (via redirect do Netlify)
+        return origem + caminhoAtual.replace('/gerador', '/proposta-visualizacao.html');
+    } else if (caminhoAtual.endsWith('/proposta-gerador')) {
+        // Formato: /proposta-gerador (sem extensão)
+        return origem + caminhoAtual.replace('/proposta-gerador', '/proposta-visualizacao.html');
+    } else if (caminhoAtual === '/' || caminhoAtual.endsWith('/')) {
+        // Formato: raiz ou diretório
+        return origem + caminhoAtual + 'proposta-visualizacao.html';
+    } else {
+        // Fallback: assumir que estamos no diretório correto
+        const diretorio = caminhoAtual.substring(0, caminhoAtual.lastIndexOf('/') + 1);
+        return origem + diretorio + 'proposta-visualizacao.html';
+    }
+}
+
+// Carregar parâmetros da URL se existirem
+function carregarParametrosDaURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Se há parâmetros na URL, preencher os campos
+    if (urlParams.toString()) {
+        // Campos de texto
+        const campos = [
+            'nomeCliente', 'empresaCliente', 'emailCliente', 
+            'investimentoMidia', 'descontoDescricao', 'descontoValor', 
+            'observacoes'
+        ];
+        
+        campos.forEach(campo => {
+            const valor = urlParams.get(campo);
+            const elemento = document.getElementById(campo);
+            if (valor && elemento) {
+                elemento.value = valor;
+            }
+        });
+        
+        // Campos select
+        const camposSelect = [
+            'servicoSocialMedia', 'servicoTrafegoPago', 'descontoTipo'
+        ];
+        
+        camposSelect.forEach(campo => {
+            const valor = urlParams.get(campo);
+            const elemento = document.getElementById(campo);
+            if (valor && elemento) {
+                elemento.value = valor;
+                // Disparar evento change para atualizar a interface
+                elemento.dispatchEvent(new Event('change'));
+            }
+        });
+        
+        // Recalcular valores após carregar os dados
+        calcularValores();
+    }
+}
+
+// Inicializar valores e carregar parâmetros da URL
+document.addEventListener('DOMContentLoaded', function() {
+    carregarParametrosDaURL();
+    calcularValores();
+});
