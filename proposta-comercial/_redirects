@@ -1,6 +1,8 @@
-# Redirects for Netlify - Preserving query parameters
+# Redirects para Netlify - Corrigido para visualização funcionar SEMPRE
 /gerador                /proposta-gerador.html              200
 /proposta               /proposta-visualizacao.html         200
+/proposta-visualizacao  /proposta-visualizacao.html         200
+/proposta-visualizacao.html  /proposta-visualizacao.html    200
 
-# SPA fallback - important for client-side routing
+# SPA fallback - importante para client-side routing
 /*                      /index.html                         200
