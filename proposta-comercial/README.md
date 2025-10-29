@@ -191,5 +191,8 @@ VOCÊ                          CLIENTE
 ### Deploy no Netlify:
 - ✅ Agora funciona perfeitamente no Netlify
 - ✅ Página inicial (`index.html`) criada
+- ✅ Arquivo `netlify.toml` configurado com diretório de publicação
 - ✅ Arquivo `_redirects` para otimização de rotas
 - ✅ URLs amigáveis: `/gerador` e `/proposta`
+- ✅ Otimizações automáticas de CSS/JS habilitadas
+- ✅ Cache configurado para melhor performance

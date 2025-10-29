@@ -1,0 +1,55 @@
+[build]
+  # Diretório onde estão os arquivos da aplicação
+  publish = "proposta-comercial"
+
+[build.environment]
+  # Configurações de ambiente (opcional)
+  NODE_VERSION = "18"
+
+[[redirects]]
+  # Redirect para URLs amigáveis
+  from = "/gerador"
+  to = "/proposta-gerador.html"
+  status = 200
+
+[[redirects]]
+  from = "/proposta"
+  to = "/proposta-visualizacao.html"
+  status = 200
+
+[[redirects]]
+  # Fallback para SPA (Single Page Application)
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.processing]
+  # Otimizações automáticas do Netlify
+  skip_processing = false
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
+
+[build.processing.html]
+  pretty_urls = true
+
+[[headers]]
+  # Configurações de cache para melhor performance
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
