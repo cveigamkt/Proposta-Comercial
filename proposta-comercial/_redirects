@@ -1,0 +1,6 @@
+# Redirects for Netlify
+/gerador   /proposta-gerador.html   200
+/proposta  /proposta-visualizacao.html   200
+
+# Fallback for SPA
+/*    /index.html   200

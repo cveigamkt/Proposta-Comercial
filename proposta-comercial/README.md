@@ -182,4 +182,14 @@ VOCÊ                          CLIENTE
 
 ---
 
-**Acesso:** [proposta-gerador.html](./proposta-gerador.html)
+## 🌐 Deploy e Acesso
+
+### Acesso Local:
+- **[index.html](./index.html)** - Página inicial com navegação
+- **[proposta-gerador.html](./proposta-gerador.html)** - Gerador direto
+
+### Deploy no Netlify:
+- ✅ Agora funciona perfeitamente no Netlify
+- ✅ Página inicial (`index.html`) criada
+- ✅ Arquivo `_redirects` para otimização de rotas
+- ✅ URLs amigáveis: `/gerador` e `/proposta`
