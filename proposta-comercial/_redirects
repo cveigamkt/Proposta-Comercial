@@ -1,15 +1,6 @@
-# Redirects for Netlify
-/gerador                        /proposta-gerador.html              200
-/proposta                       /proposta-visualizacao.html         200
-/proposta-gerador               /proposta-gerador.html              200
-/proposta-visualizacao          /proposta-visualizacao.html         200
+# Redirects for Netlify - Preserving query parameters
+/gerador                /proposta-gerador.html              200
+/proposta               /proposta-visualizacao.html         200
 
-# Specific files should be served directly (no fallback)
-/proposta-gerador.html          /proposta-gerador.html              200
-/proposta-visualizacao.html     /proposta-visualizacao.html         200
-/index.html                     /index.html                         200
-
-# Assets
-/proposta-styles.css            /proposta-styles.css                200
-/proposta-gerador.js            /proposta-gerador.js                200
-/proposta-visualizacao.js       /proposta-visualizacao.js           200
+# SPA fallback - important for client-side routing
+/*                      /index.html                         200

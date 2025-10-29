@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Netlify - Sistema Proposta</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .debug-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #000;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff00;
+        }
+        .info-block {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #00ff00;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            background: #00ff00;
+            color: #000;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #00aa00;
+        }
+        #log {
+            background: #000;
+            border: 1px solid #00ff00;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔍 DEBUG NETLIFY - Sistema de Proposta</h1>
+        
+        <div class="info-block">
+            <h3>📍 Informações da URL:</h3>
+            <p><strong>URL Completa:</strong> <span id="fullUrl"></span></p>
+            <p><strong>Origem:</strong> <span id="origin"></span></p>
+            <p><strong>Caminho:</strong> <span id="pathname"></span></p>
+            <p><strong>Parâmetros:</strong> <span id="search"></span></p>
+            <p><strong>Hash:</strong> <span id="hash"></span></p>
+        </div>
+        
+        <div class="info-block">
+            <h3>🌐 Detecção de Ambiente:</h3>
+            <p><strong>É Netlify?</strong> <span id="isNetlify"></span></p>
+            <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        </div>
+        
+        <div class="info-block">
+            <h3>🧪 Testes de Funcionalidade:</h3>
+            <button class="btn" onclick="testarGeracaoURL()">Testar Geração de URL</button>
+            <button class="btn" onclick="testarParametros()">Testar Parâmetros</button>
+            <button class="btn" onclick="limparLog()">Limpar Log</button>
+        </div>
+        
+        <div class="info-block">
+            <h3>📋 Log de Debug:</h3>
+            <div id="log"></div>
+        </div>
+        
+        <div class="info-block">
+            <h3>🔗 Links de Teste:</h3>
+            <a href="proposta-gerador.html" class="btn">Gerador Direto (.html)</a>
+            <a href="/gerador" class="btn">Gerador via Redirect (/gerador)</a>
+            <a href="proposta-gerador.html?nomeCliente=Teste&empresaCliente=Debug&servicoSocialMedia=scale" class="btn">
+                Gerador com Parâmetros
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Preencher informações da URL
+        document.getElementById('fullUrl').textContent = window.location.href;
+        document.getElementById('origin').textContent = window.location.origin;
+        document.getElementById('pathname').textContent = window.location.pathname;
+        document.getElementById('search').textContent = window.location.search || '(nenhum)';
+        document.getElementById('hash').textContent = window.location.hash || '(nenhum)';
+        
+        // Detectar Netlify
+        const isNetlify = window.location.origin.includes('netlify.app') || window.location.origin.includes('netlify.com');
+        document.getElementById('isNetlify').textContent = isNetlify ? 'SIM' : 'NÃO';
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        
+        // Função de log
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logEl.innerHTML += `[${time}] ${message}<br>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(message);
+        }
+        
+        function limparLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // Teste de geração de URL
+        function testarGeracaoURL() {
+            log('=== TESTE DE GERAÇÃO DE URL ===');
+            log('Origem: ' + window.location.origin);
+            log('Caminho atual: ' + window.location.pathname);
+            
+            // Simular a função do gerador
+            function gerarURLVisualizacao() {
+                const origem = window.location.origin;
+                const caminhoAtual = window.location.pathname;
+                
+                let urlVisualizacao;
+                
+                if (origem.includes('netlify.app') || origem.includes('netlify.com')) {
+                    urlVisualizacao = origem + '/proposta-visualizacao.html';
+                    log('Detectado Netlify, usando URL direta: ' + urlVisualizacao);
+                } else {
+                    if (caminhoAtual.includes('debug-netlify.html')) {
+                        urlVisualizacao = origem + caminhoAtual.replace('debug-netlify.html', 'proposta-visualizacao.html');
+                    } else {
+                        urlVisualizacao = origem + '/proposta-visualizacao.html';
+                    }
+                    log('Local/Outro, URL gerada: ' + urlVisualizacao);
+                }
+                
+                return urlVisualizacao;
+            }
+            
+            const urlGerada = gerarURLVisualizacao();
+            log('URL final gerada: ' + urlGerada);
+            
+            // Testar se a URL funciona
+            fetch(urlGerada, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ URL é válida e acessível');
+                    } else {
+                        log('❌ URL retornou erro: ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    log('❌ Erro ao testar URL: ' + error.message);
+                });
+        }
+        
+        // Teste de parâmetros
+        function testarParametros() {
+            log('=== TESTE DE PARÂMETROS ===');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            log('String de parâmetros: ' + urlParams.toString());
+            
+            if (urlParams.toString()) {
+                log('Parâmetros encontrados:');
+                for (let [key, value] of urlParams) {
+                    log(`  ${key} = ${value}`);
+                }
+            } else {
+                log('Nenhum parâmetro encontrado');
+            }
+            
+            // Criar URL de teste com parâmetros
+            const dadosTeste = {
+                nomeCliente: 'João Silva',
+                empresaCliente: 'Debug Corp',
+                servicoSocialMedia: 'scale',
+                servicoTrafegoPago: 'foco'
+            };
+            
+            const paramsTest = new URLSearchParams(dadosTeste);
+            const urlComParametros = window.location.origin + '/proposta-visualizacao.html?' + paramsTest.toString();
+            log('URL de teste gerada: ' + urlComParametros);
+        }
+        
+        // Log inicial
+        log('Debug página carregada');
+        log('Ambiente: ' + (isNetlify ? 'NETLIFY' : 'LOCAL/OUTROS'));
+    </script>
+</body>
+</html>
