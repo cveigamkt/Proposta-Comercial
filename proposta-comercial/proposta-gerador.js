@@ -468,133 +468,28 @@ document.getElementById('descontoDescricao').addEventListener('input', calcularV
 document.getElementById('descontoTipo').addEventListener('change', calcularValores);
 document.getElementById('descontoValor').addEventListener('input', calcularValores);
 
-// Função utilitária para gerar URL de visualização (otimizada para Netlify)
+// Função utilitária para gerar URL de visualização (sempre absoluta)
 function gerarURLVisualizacao() {
-    const origem = window.location.origin;
-    const caminhoAtual = window.location.pathname;
-    
-    console.log('Gerando URL de visualização...');
-    console.log('Origem:', origem);
-    console.log('Caminho atual:', caminhoAtual);
-    
-    let urlVisualizacao;
-    
-    // Primeiro, tentar a abordagem mais simples para o Netlify
-    if (origem.includes('netlify.app') || origem.includes('netlify.com')) {
-        // No Netlify, usar sempre a URL direta
-        urlVisualizacao = origem + '/proposta-visualizacao.html';
-        console.log('Detectado Netlify, usando URL direta:', urlVisualizacao);
-    } else {
-        // Local: lidar com diferentes formatos de caminho
-        if (caminhoAtual.includes('proposta-gerador.html')) {
-            // Formato: /proposta-gerador.html
-            urlVisualizacao = origem + caminhoAtual.replace('proposta-gerador.html', 'proposta-visualizacao.html');
-        } else if (caminhoAtual.endsWith('/gerador')) {
-            // Formato: /gerador (via redirect do Netlify)
-            urlVisualizacao = origem + caminhoAtual.replace('/gerador', '/proposta-visualizacao.html');
-        } else if (caminhoAtual.endsWith('/proposta-gerador')) {
-            // Formato: /proposta-gerador (sem extensão)
-            urlVisualizacao = origem + caminhoAtual.replace('/proposta-gerador', '/proposta-visualizacao.html');
-        } else if (caminhoAtual === '/' || caminhoAtual.endsWith('/')) {
-            // Formato: raiz ou diretório
-            urlVisualizacao = origem + caminhoAtual + 'proposta-visualizacao.html';
-        } else {
-            // Fallback: assumir que estamos no diretório correto
-            const diretorio = caminhoAtual.substring(0, caminhoAtual.lastIndexOf('/') + 1);
-            urlVisualizacao = origem + diretorio + 'proposta-visualizacao.html';
-        }
-        console.log('Local/Outro servidor, URL gerada:', urlVisualizacao);
-    }
-    
-    return urlVisualizacao;
+    return window.location.origin + '/proposta-visualizacao.html';
 }
 
-// Carregar parâmetros da URL se existirem
-function carregarParametrosDaURL() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        console.log('Parâmetros encontrados:', urlParams.toString());
-        
-        // Se há parâmetros na URL, preencher os campos
-        if (urlParams.toString()) {
-            console.log('Preenchendo campos com parâmetros da URL...');
-            
-            // Campos de texto
-            const campos = [
-                'nomeCliente', 'empresaCliente', 'emailCliente', 
-                'investimentoMidia', 'descontoDescricao', 'descontoValor', 
-                'observacoes'
-            ];
-            
-            campos.forEach(campo => {
-                const valor = urlParams.get(campo);
-                const elemento = document.getElementById(campo);
-                if (valor && elemento) {
-                    elemento.value = decodeURIComponent(valor);
-                    console.log(`Campo ${campo} preenchido com: ${valor}`);
-                }
-            });
-            
-            // Campos select
-            const camposSelect = [
-                'servicoSocialMedia', 'servicoTrafegoPago', 'descontoTipo'
-            ];
-            
-            camposSelect.forEach(campo => {
-                const valor = urlParams.get(campo);
-                const elemento = document.getElementById(campo);
-                if (valor && elemento) {
-                    elemento.value = valor;
-                    console.log(`Select ${campo} definido para: ${valor}`);
-                    
-                    // Disparar evento change para atualizar a interface
-                    const changeEvent = new Event('change', { bubbles: true });
-                    elemento.dispatchEvent(changeEvent);
-                    
-                    // Trigger personalizado para campos específicos
-                    if (campo === 'servicoSocialMedia') {
-                        mostrarEntregaveisSocialMedia();
-                    } else if (campo === 'servicoTrafegoPago') {
-                        mostrarEntregaveisTrafegoPago();
-                    }
-                }
-            });
-            
-            // Aguardar um pouco e recalcular valores
-            setTimeout(() => {
-                calcularValores();
-                console.log('Valores recalculados após carregar parâmetros');
-            }, 100);
-        } else {
-            console.log('Nenhum parâmetro encontrado na URL');
-        }
-    } catch (error) {
-        console.error('Erro ao carregar parâmetros da URL:', error);
-    }
-}
-
-// Função de inicialização que funciona tanto local quanto no Netlify
+// Função de inicialização que redireciona automaticamente se houver parâmetros na URL
 function inicializarSistema() {
-    console.log('Inicializando sistema...');
-    console.log('URL atual:', window.location.href);
-    console.log('Parâmetros da URL:', window.location.search);
-    
-    carregarParametrosDaURL();
+    const urlParams = window.location.search;
+    if (urlParams && urlParams.length > 1) {
+        // Se houver parâmetros, redireciona para a visualização
+        window.location.href = gerarURLVisualizacao() + urlParams;
+        return;
+    }
     calcularValores();
-    
     console.log('Sistema inicializado!');
 }
 
-// Múltiplas formas de garantir que a inicialização aconteça
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarSistema);
 } else {
-    // DOM já carregado
     inicializarSistema();
 }
-
-// Fallback adicional para Netlify
 window.addEventListener('load', function() {
-    // Se ainda não foi inicializado, inicializar novamente
     setTimeout(inicializarSistema, 100);
 });

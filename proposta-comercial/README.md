@@ -188,11 +188,17 @@ VOCÊ                          CLIENTE
 - **[index.html](./index.html)** - Página inicial com navegação
 - **[proposta-gerador.html](./proposta-gerador.html)** - Gerador direto
 
-### Deploy no Netlify:
-- ✅ Agora funciona perfeitamente no Netlify
-- ✅ Página inicial (`index.html`) criada
-- ✅ Arquivo `netlify.toml` configurado com diretório de publicação
-- ✅ Arquivo `_redirects` para otimização de rotas
-- ✅ URLs amigáveis: `/gerador` e `/proposta`
-- ✅ Otimizações automáticas de CSS/JS habilitadas
-- ✅ Cache configurado para melhor performance
+### Deploy na Vercel:
+- Suba todos os arquivos da pasta `proposta-comercial` para um repositório GitHub, GitLab ou Bitbucket.
+- No Vercel, clique em "Add New Project" e selecione o repositório.
+- Defina o diretório de publicação como `proposta-comercial`.
+- O arquivo `vercel.json` já está configurado para rotas amigáveis.
+- Clique em "Deploy" e acesse sua URL do Vercel.
+
+## Rotas amigáveis
+- `/` → página inicial
+- `/gerador` → gerador de propostas
+- `/proposta` → visualização da proposta
+
+## Observação
+Se quiser usar outra hospedagem, basta garantir que os arquivos HTML, JS e CSS estejam juntos e ajustar as rotas conforme a documentação da plataforma.

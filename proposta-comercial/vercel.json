@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/gerador", "destination": "/proposta-gerador.html" },
+    { "source": "/proposta", "destination": "/proposta-visualizacao.html" },
+    { "source": "/proposta-visualizacao", "destination": "/proposta-visualizacao.html" },
+    { "source": "/proposta-gerador", "destination": "/proposta-gerador.html" }
+  ]
+}
