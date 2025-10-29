@@ -212,8 +212,8 @@
                 <a href="proposta-gerador.html" class="btn btn-primary">
                     🔥 Criar Nova Proposta
                 </a>
-                <a href="proposta-visualizacao.html" class="btn btn-secondary">
-                    👁️ Visualizar Proposta
+                <a href="javascript:void(0)" onclick="mostrarExemplo()" class="btn btn-secondary">
+                    👁️ Ver Exemplo de Proposta
                 </a>
             </div>
             
@@ -241,5 +241,28 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function mostrarExemplo() {
+            // Dados de exemplo para demonstração
+            const dadosExemplo = {
+                nomeCliente: 'João Silva',
+                empresaCliente: 'Silva Comércio Digital',
+                emailCliente: 'joao@silvacomercio.com.br',
+                servicoSocialMedia: 'scale',
+                servicoTrafegoPago: 'foco',
+                investimentoMidia: 'R$ 3.000,00',
+                descontoDescricao: 'Primeira Contratação',
+                descontoTipo: 'percentual',
+                descontoValor: '10',
+                observacoes: 'Proposta de exemplo - demonstração do sistema'
+            };
+            
+            const params = new URLSearchParams(dadosExemplo);
+            const linkExemplo = `proposta-visualizacao.html?${params.toString()}`;
+            
+            window.open(linkExemplo, '_blank');
+        }
+    </script>
 </body>
 </html>
