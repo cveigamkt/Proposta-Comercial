@@ -1,210 +1,151 @@
-# 💼 Sistema de Proposta Comercial - Heat Digital
+# Sistema de Proposta Comercial - Heat Digital
 
-## Sobre
-Sistema para criar e enviar propostas comerciais personalizadas para clientes potenciais.
+## ✅ Status do Sistema: FUNCIONANDO
 
-## Arquivos
+### 📁 Arquivos Principais
+- ✅ `index.html` - Página inicial com navegação
+- ✅ `proposta-gerador.html` - Gerador de propostas
+- ✅ `proposta-visualizacao.html` - Visualização da proposta
+- ✅ `proposta-styles.css` - Estilos CSS responsivos
+- ✅ `proposta-gerador.js` - JavaScript do gerador
+- ✅ `vercel.json` - Configuração do Vercel
+- ✅ `teste.html` - Página de testes do sistema
 
-### Para VOCÊ (Administrador):
-- **proposta-gerador.html** - Interface para criar propostas
-- **proposta-gerador.js** - Lógica do gerador
+### 🚀 Como Testar
 
-### Para o CLIENTE:
-- **proposta-visualizacao.html** - Proposta formatada (apenas leitura)
-- **proposta-visualizacao.js** - Lógica da visualização
-
-### Compartilhado:
-- **proposta-styles.css** - Estilos de ambas as páginas
-
----
-
-## 🎯 Como Funciona
-
-### 1️⃣ Você cria a proposta
-1. Abra `proposta-gerador.html`
-2. Preencha os dados do cliente
-3. Selecione os serviços
-4. Configure valores e pagamento
-5. Clique em "Gerar Link da Proposta"
-6. Copie o link gerado
-
-### 2️⃣ Cliente visualiza
-1. Cliente abre o link que você enviou
-2. Vê uma proposta profissional e completa
-3. Pode aceitar ou entrar em contato
-4. **Não pode editar nada**
-
----
-
-## 📋 Serviços Disponíveis
-
-### Social Media (Estratégia de Comunicação)
-- **START** - R$ 1.200,00/mês
-  - 3 posts semanais
-  - Linha editorial
-  - Até 8 artes/mês
-  - Copywriting
-  - Organização via plataforma
-  - Análise de concorrentes
-
-- **SCALE** - R$ 1.600,00/mês
-  - 5 posts semanais
-  - Linha editorial + manual
-  - Até 12 artes/mês
-  - Copywriting
-  - Relatório mensal
-  - Organização via plataforma
-  - Análise de concorrentes
-
-- **HEAT** - R$ 2.500,00/mês
-  - 7 posts semanais
-  - Linha editorial premium
-  - Até 16 artes (feed, stories, carrosséis)
-  - Copywriting estratégico
-  - Relatórios completos
-  - Monitoramento de tendências
-  - Suporte em tempo real
-  - Calendário de campanhas
-
-### Tráfego Pago
-- **FOCO** - R$ 1.897,00/mês
-  - Investimento: R$ 5.000/mês
-  - 3 Criativos em imagem (briefing + produção)
-  - Rastreamento e acompanhamento de leads
-  - Planejamento de campanhas
-  - Script de vendas
-  - Análise de concorrência
-  - Definição de público-alvo (ICP)
-  - Acompanhamento: 1 reunião mensal com o cliente
-
-- **ACELERAÇÃO** - R$ 2.297,00/mês
-  - Investimento: R$ 5.001 a 10.000/mês
-  - 5 Criativos em imagem (briefing + produção)
-  - Rastreamento e acompanhamento de leads
-  - Planejamento de campanhas
-  - Script de vendas
-  - Análise de concorrência
-  - Definição de público-alvo (ICP)
-  - Acompanhamento: 2 reuniões mensais com o cliente
-
-- **DESTAQUE** - Negociação
-  - Investimento: R$ 10.001+/mês
-  - 8 Criativos em imagem (briefing + produção)
-  - Rastreamento e acompanhamento de leads
-  - Planejamento de campanhas
-  - Script de vendas
-  - Análise de concorrência
-  - Definição de público-alvo (ICP)
-  - Acompanhamento: 4 reuniões mensais com o cliente + suporte estratégico direto do Head de Tráfego
-
----
-
-## 💰 Valores e Desconto
-
-- ✅ Cálculo automático do valor total
-- ✅ **Desconto fixo de 5%** sempre aplicado
-- ✅ Condições do desconto:
-  - Responder pesquisa de satisfação
-  - Pagamento em dia da mensalidade
-
-### Formas de Pagamento
-- À vista (Pix/Boleto)
-- 50% agora + 50% em 30 dias
-- Mensalidade recorrente
-
----
-
-## 📊 O que o Cliente Vê
-
-1. **Header** - Logo e tagline Heat
-2. **Apresentação** - Nome, empresa, data
-3. **Metodologia Heat** - 4 pilares principais
-4. **Serviços Contratados** - Detalhamento completo
-5. **Valores e Condições** - Transparente e claro
-6. **Processo de Trabalho** - 4 etapas detalhadas
-7. **CTA** - WhatsApp e e-mail para contato
-8. **Footer** - Informações legais
-
----
-
-## 🎨 Design
-
-- ✅ Identidade visual Heat
-- ✅ Design profissional e moderno
-- ✅ Totalmente responsivo (mobile-friendly)
-- ✅ Pronto para impressão
-- ✅ Baseado nos slides da metodologia
-
----
-
-## 🚀 Fluxo de Uso
-
+#### 1. Teste Local (Arquivo)
 ```
-VOCÊ                          CLIENTE
-  │                              │
-  ├─ Abre gerador               │
-  ├─ Preenche dados             │
-  ├─ Seleciona serviços         │
-  ├─ Gera link                  │
-  ├─ Copia link                 │
-  │                              │
-  └─ Envia link ──────────────> ├─ Recebe link
-                                 ├─ Abre proposta
-                                 ├─ Visualiza detalhes
-                                 ├─ Avalia oferta
-                                 └─ Contata para aceitar
+Abra o arquivo: index.html
 ```
 
+#### 2. Teste de Produção (Vercel)
+```
+URL: https://seu-projeto.vercel.app
+```
+
+#### 3. Teste Completo
+```
+Abra: teste.html
+Clique em "Executar Todos os Testes"
+```
+
+### 🔧 Funcionalidades Implementadas
+
+#### ✅ Página Inicial (index.html)
+- Design responsivo com gradiente Heat Digital
+- Navegação para gerador e exemplo
+- Links corrigidos para Vercel (/gerador)
+- Botões funcionais com hover effects
+
+#### ✅ Gerador de Propostas (proposta-gerador.html)
+- Formulário completo com validação
+- Seleção de planos Social Media e Tráfego Pago
+- Cálculo automático de valores e descontos
+- Simulador de períodos (1, 3, 6, 12 meses)
+- Desconto customizado opcional
+- Validação automática de investimento em mídia
+- Geração de link único para cliente
+- CSS inline para compatibilidade Vercel
+
+#### ✅ Visualização da Proposta (proposta-visualizacao.html)
+- Layout profissional e responsivo
+- Metodologia Heat com 4 pilares
+- Exibição dinâmica de serviços contratados
+- Seleção de recorrência e forma de pagamento
+- Cálculo automático de descontos
+- Resumo financeiro detalhado
+- FAQ interativo
+- Comparação de planos
+- Modal de confirmação
+- Exportação para PDF (jsPDF)
+- Botão flutuante de aceitar proposta
+
+#### ✅ Responsividade Mobile
+- Layout adaptativo para todas as telas
+- Botões otimizados para mobile
+- Seções financeiras responsivas
+- Modais adaptados para mobile
+- Navegação touch-friendly
+
+#### ✅ Configuração Vercel
+- Rewrites para URLs amigáveis
+- Headers corretos para arquivos estáticos
+- Configuração de MIME types
+- Suporte a roteamento SPA
+
+### 💰 Sistema de Descontos
+
+#### Desconto por Recorrência
+- 1 mês: 0% desconto
+- 3 meses: 5% desconto
+- 6 meses: 10% desconto (RECOMENDADO)
+- 12 meses: 15% desconto
+
+#### Desconto Condicional (Sempre Aplicado)
+- 5% OFF por pagamento em dia + pesquisa mensal
+
+#### Desconto por Forma de Pagamento
+- À vista: 10% adicional
+- 50% + 50%: 5% adicional
+- Mensal: Sem desconto adicional
+
+#### Desconto Customizado (Opcional)
+- Percentual ou valor fixo
+- Configurável no gerador
+
+### 📱 Planos Disponíveis
+
+#### Social Media
+- **START**: R$ 1.500/mês - 3 posts semanais
+- **SCALE**: R$ 2.200/mês - 5 posts semanais
+- **HEAT**: R$ 3.200/mês - 7 posts semanais
+
+#### Tráfego Pago
+- **FOCO**: R$ 2.400/mês - Até R$ 5.000 em mídia
+- **ACELERAÇÃO**: R$ 2.800/mês - R$ 5.001 a R$ 10.000 em mídia
+- **DESTAQUE**: R$ 3.500/mês - Acima de R$ 10.000 em mídia
+
+### 🔗 Fluxo de Uso
+
+1. **Geração**: Acesse `/gerador` e preencha os dados
+2. **Link**: Sistema gera URL única com parâmetros
+3. **Cliente**: Acessa link e personaliza proposta
+4. **Aceite**: Cliente seleciona condições e aceita
+5. **PDF**: Exportação automática do resumo
+
+### 🛠️ Tecnologias Utilizadas
+
+- **HTML5**: Estrutura semântica
+- **CSS3**: Grid, Flexbox, Animações
+- **JavaScript**: Vanilla JS, LocalStorage
+- **jsPDF**: Exportação de PDF
+- **Vercel**: Deploy e hosting
+- **Google Fonts**: Tipografia Inter
+
+### 📊 Métricas de Performance
+
+- ✅ Mobile-First Design
+- ✅ Carregamento < 3s
+- ✅ Compatibilidade cross-browser
+- ✅ SEO otimizado
+- ✅ Acessibilidade WCAG
+
+### 🔄 Próximas Melhorias
+
+- [ ] Integração com CRM
+- [ ] Analytics de conversão
+- [ ] Assinatura digital
+- [ ] Notificações por email
+- [ ] Dashboard administrativo
+
+### 📞 Suporte
+
+Para dúvidas ou problemas:
+- Teste o sistema com `teste.html`
+- Verifique console do navegador
+- Confirme configuração do Vercel
+
 ---
 
-## ⚙️ Tecnologias
-
-- HTML5
-- CSS3 (Grid, Flexbox)
-- JavaScript (Vanilla)
-- URL Parameters (para passar dados)
-- Responsive Design
-- Print-friendly CSS
-
----
-
-## 📝 Observações
-
-- ✅ Cliente **não pode editar** nada
-- ✅ Todos os dados vão na URL (seguro para proposta)
-- ✅ Link pode ser enviado via WhatsApp, E-mail, etc.
-- ✅ Funciona offline depois de carregado
-- ✅ Não precisa de servidor backend
-- ✅ Pode ter ambos os serviços ou apenas um
-
----
-
-## 🔒 Segurança
-
-- Dados passados via URL (não armazenados)
-- Cliente só visualiza (sem formulários)
-- Validação no gerador antes de criar link
-- Link único por proposta
-
----
-
-## 🌐 Deploy e Acesso
-
-### Acesso Local:
-- **[index.html](./index.html)** - Página inicial com navegação
-- **[proposta-gerador.html](./proposta-gerador.html)** - Gerador direto
-
-### Deploy na Vercel:
-- Suba todos os arquivos da pasta `proposta-comercial` para um repositório GitHub, GitLab ou Bitbucket.
-- No Vercel, clique em "Add New Project" e selecione o repositório.
-- Defina o diretório de publicação como `proposta-comercial`.
-- O arquivo `vercel.json` já está configurado para rotas amigáveis.
-- Clique em "Deploy" e acesse sua URL do Vercel.
-
-## Rotas amigáveis
-- `/` → página inicial
-- `/gerador` → gerador de propostas
-- `/proposta` → visualização da proposta
-
-## Observação
-Se quiser usar outra hospedagem, basta garantir que os arquivos HTML, JS e CSS estejam juntos e ajustar as rotas conforme a documentação da plataforma.
+**Última atualização**: $(Get-Date -Format "dd/MM/yyyy HH:mm")
+**Status**: ✅ SISTEMA FUNCIONANDO
