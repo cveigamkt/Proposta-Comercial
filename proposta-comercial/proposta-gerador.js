@@ -1,4 +1,4 @@
-// Dados dos Planos de Social Media
+﻿// Dados dos Planos de Social Media
 const planosSocialMedia = {
     'start': {
         nome: 'START',
@@ -506,3 +506,4 @@ if (document.readyState === 'loading') {
 window.addEventListener('load', function() {
     setTimeout(inicializarSistema, 100);
 });
+

@@ -1,437 +1,1776 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Proposta Comercial - Heat Digital</title>
-  <link rel="stylesheet" href="proposta-styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta Comercial - Heat Digital</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1E5942 0%, #267356 100%);
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .header .tagline {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .client-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        /* Section */
+        .section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 50px;
+            font-size: 1.1rem;
+        }
+
+        /* Metodologia */
+        .metodologia {
+            background: #111;
+        }
+
+        .metodologia-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .metodologia-card {
+            background: #1a1a1a;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+
+        .metodologia-card:hover {
+            transform: translateY(-10px);
+            border-color: #1E5942;
+            box-shadow: 0 20px 40px rgba(30,89,66,0.2);
+        }
+
+        .metodologia-card .icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .metodologia-card h3 {
+            color: #1E5942;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        /* Serviços */
+        .servicos {
+            background: #0a0a0a;
+        }
+
+        .servico-card {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 2px solid #1E5942;
+            position: relative;
+        }
+
+        .servico-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .servico-header h3 {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .servico-badge {
+            background: #1E5942;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .entregaveis {
+            margin-bottom: 30px;
+        }
+
+        .entregaveis h4 {
+            color: #1E5942;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .entregaveis ul {
+            list-style: none;
+        }
+
+        .entregaveis li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            border-bottom: 1px solid #333;
+        }
+
+        .entregaveis li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #1E5942;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .valor-mensal {
+            background: rgba(30,89,66,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #1E5942;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .valor-mensal .valor {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1E5942;
+            white-space: nowrap;
+        }
+
+        /* Seleção de Pagamento */
+        .selecao-pagamento {
+            background: #111;
+        }
+
+        .payment-section {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid #333;
+        }
+
+        .payment-section h3 {
+            color: #1E5942;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .recorrencia-options, .pagamento-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .option-card {
+            background: #222;
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 25px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .option-card:hover {
+            border-color: #1E5942;
+            transform: translateY(-5px);
+        }
+
+        .option-card.selected {
+            border-color: #00E388;
+            background: rgba(0,227,136,0.1);
+        }
+
+        .option-card input {
+            display: none;
+        }
+
+        .option-card .title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .option-card .discount {
+            color: #00E388;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .badge-recomendado {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #FFD700;
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        /* Resumo Financeiro */
+        .resumo-financeiro {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 40px;
+            border: 2px solid #1E5942;
+        }
+
+        .resumo-financeiro h3 {
+            color: #1E5942;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.8rem;
+        }
+
+        .valor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 15px 0;
+            border-bottom: 1px solid #333;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .valor-row:last-child {
+            border-bottom: none;
+        }
+
+        .valor-row.total {
+            background: rgba(30,89,66,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 2px solid #1E5942;
+        }
+
+        .valor-row .valor {
+            font-weight: 700;
+            color: #00E388;
+            white-space: nowrap;
+            text-align: right;
+            min-width: fit-content;
+        }
+
+        .valor-row.total .valor {
+            font-size: 1.5rem;
+            color: #1E5942;
+        }
+
+        .valor-row > span:first-child {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Depoimentos */
+        .depoimentos {
+            background: #0a0a0a;
+        }
+
+        .depoimentos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .depoimento-card {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid #333;
+        }
+
+        .depoimento-card .stars {
+            color: #FFD700;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .depoimento-card .texto {
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        .depoimento-card .autor {
+            font-weight: 600;
+            color: #1E5942;
+        }
+
+        /* FAQ */
+        .faq {
+            background: #111;
+        }
+
+        .faq-item {
+            background: #1a1a1a;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+
+        .faq-question:hover {
+            background: #222;
+        }
+
+        .faq-answer {
+            padding: 0 25px 25px;
+            color: #ccc;
+            display: none;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        /* Resumo Final */
+        .resumo-final {
+            background: #1a1a1a;
+            border-radius: 20px;
+            padding: 40px;
+            border: 2px solid #1E5942;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .resumo-final h3 {
+            color: #1E5942;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .resumo-servico {
+            margin-bottom: 20px;
+            padding: 15px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .resumo-servico:last-of-type {
+            border-bottom: none;
+        }
+
+        .resumo-servico strong {
+            color: #00E388;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .resumo-servico ul {
+            list-style: none;
+            margin-left: 20px;
+        }
+
+        .resumo-servico li {
+            padding: 5px 0;
+            color: #ccc;
+            position: relative;
+        }
+        
+        .resumo-servico li::before {
+            content: '•';
+            color: #1E5942;
+            position: absolute;
+            left: -15px;
+        }
+        
+        /* Estilos para PDF */
+        @media print {
+            .resumo-final {
+                background: #ffffff !important;
+                color: #000000 !important;
+                border: 2px solid #1E5942 !important;
+                box-shadow: none !important;
+            }
+            
+            .resumo-final * {
+                color: #000000 !important;
+            }
+            
+            .resumo-final h3 {
+                color: #1E5942 !important;
+            }
+            
+            .resumo-servico strong {
+                color: #1E5942 !important;
+            }
+            
+            .resumo-servico li::before {
+                color: #1E5942 !important;
+            }
+        }
+
+        /* CTA Final */
+        .cta-final {
+            background: linear-gradient(135deg, #1E5942 0%, #267356 100%);
+            text-align: center;
+            padding: 80px 0;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: #00E388;
+            color: #0a0a0a;
+        }
+
+        .btn-primary:hover {
+            background: #00c777;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,227,136,0.4);
+        }
+
+        .btn-secondary {
+            background: #25D366;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #20BA5A;
+            transform: translateY(-3px);
+        }
+
+        .btn-export {
+            background: #333;
+            color: white;
+            margin-top: 20px;
+        }
+
+        .btn-export:hover {
+            background: #555;
+        }
+
+        .comparacao-table {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .plano-comparacao {
+            background: #1a1a1a;
+            border-radius: 15px;
+            padding: 30px 20px;
+            border: 2px solid #333;
+            text-align: center;
+        }
+
+        .plano-comparacao.destaque {
+            border-color: #1E5942;
+            transform: scale(1.05);
+        }
+
+        .plano-comparacao h4 {
+            color: #1E5942;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .plano-comparacao .preco {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #00E388;
+            margin-bottom: 20px;
+        }
+
+        .plano-comparacao ul {
+            list-style: none;
+            text-align: left;
+        }
+
+        .plano-comparacao li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            border-bottom: 1px solid #333;
+            font-size: 0.9rem;
+        }
+
+        .plano-comparacao li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #1E5942;
+            font-weight: 700;
+        }
+
+        .comparacao-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            margin: 5% auto;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            border: 2px solid #1E5942;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: white;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-buttons .btn {
+            flex: 1;
+            min-width: 140px;
+            max-width: 200px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-align: center;
+            justify-content: center;
+        }
+
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+            
+            .servico-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .valor-mensal {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .valor-mensal .valor {
+                font-size: 1.8rem;
+            }
+            
+            .resumo-financeiro {
+                padding: 25px 20px;
+            }
+            
+            .resumo-financeiro h3 {
+                font-size: 1.5rem;
+            }
+            
+            .valor-row {
+                flex-direction: column;
+                gap: 8px;
+                text-align: left;
+            }
+            
+            .valor-row .valor {
+                text-align: left;
+                font-size: 1.1rem;
+            }
+            
+            .valor-row.total .valor {
+                font-size: 1.3rem;
+            }
+            
+            .valor-row > span:first-child {
+                font-size: 0.95rem;
+                line-height: 1.4;
+            }
+            
+            .resumo-final {
+                padding: 25px 20px;
+            }
+            
+            .resumo-final h3 {
+                font-size: 1.5rem;
+            }
+            
+            .resumo-final p {
+                font-size: 0.95rem;
+                margin-bottom: 10px;
+            }
+            
+            .resumo-final span[style*="font-size: 1.5rem"] {
+                font-size: 1.3rem !important;
+            }
+            
+            .resumo-final span[style*="font-size: 1.3rem"] {
+                font-size: 1.1rem !important;
+            }
+            
+            .recorrencia-options, .pagamento-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .option-card {
+                padding: 20px 15px;
+            }
+            
+            .option-card .title {
+                font-size: 1rem;
+            }
+            
+            .option-card .discount {
+                font-size: 0.85rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 0 15px;
+            }
+            
+            .section {
+                padding: 50px 0;
+            }
+            
+            .servico-card {
+                padding: 25px 20px;
+            }
+            
+            .payment-section {
+                padding: 25px 20px;
+            }
+            
+            .resumo-financeiro {
+                padding: 20px 15px;
+            }
+            
+            .valor-row {
+                padding: 12px 0;
+            }
+            
+            .valor-row.total {
+                padding: 15px;
+            }
+            
+            .resumo-final {
+                padding: 20px 15px;
+            }
+            
+            .modal-content {
+                margin: 10px;
+                padding: 25px 20px;
+                width: calc(100% - 20px);
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .modal-buttons .btn {
+                width: 100%;
+                max-width: none;
+                padding: 16px 20px;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
 </head>
-<body class="proposta-page">
-  <div class="proposta-container">
+<body>
     <!-- Header -->
-    <header class="proposta-header">
-      <div class="header-content">
-        <h1 class="heat-logo">HEAT DIGITAL</h1>
-        <p class="header-tagline">Performance Inteligente para Crescimento Real</p>
-      </div>
-      <div class="cliente-mini">
-        <span id="nomeClienteView"></span> • <span id="empresaClienteView"></span>
-      </div>
-    </header>
+    <section class="header">
+        <div class="container">
+            <h1>HEAT DIGITAL</h1>
+            <p class="tagline">Performance Inteligente para Crescimento Real</p>
+            <div class="client-info">
+                <span id="nomeCliente"></span> • <span id="empresaCliente"></span> • <span id="dataProposta"></span>
+            </div>
+        </div>
+    </section>
 
     <!-- Metodologia Heat -->
-    <section class="metodologia-section">
-      <h2 class="section-title">METODOLOGIA HEAT</h2>
-      <p class="section-subtitle">Performance inteligente através de 4 pilares fundamentais</p>
-      <div class="metodologia-grid">
-        <div class="metodologia-card">
-          <div class="card-icon">🧠</div>
-          <h3>Máquina de Conteúdo</h3>
-          <p>Criamos uma rotina estratégica de conteúdo, garantindo presença digital alinhada ao posicionamento da marca. Conteúdo que conecta e converte.</p>
+    <section class="section metodologia">
+        <div class="container">
+            <h2 class="section-title">METODOLOGIA HEAT</h2>
+            <p class="section-subtitle">Performance inteligente através de 4 pilares fundamentais</p>
+            <div class="metodologia-grid">
+                <div class="metodologia-card">
+                    <div class="icon">🧰</div>
+                    <h3>Máquina de Conteúdo</h3>
+                    <p>Criamos uma rotina estratégica de conteúdo, garantindo presença digital alinhada ao posicionamento da marca.</p>
+                </div>
+                <div class="metodologia-card">
+                    <div class="icon">🧲</div>
+                    <h3>Funil de Aquisição</h3>
+                    <p>Tráfego pago e canal direto para gerar reconhecimento de marca e oportunidades reais de negócio.</p>
+                </div>
+                <div class="metodologia-card">
+                    <div class="icon">🤝</div>
+                    <h3>Integração Comercial</h3>
+                    <p>Unimos marketing e vendas para acompanhar cada oportunidade do primeiro contato até o fechamento.</p>
+                </div>
+                <div class="metodologia-card">
+                    <div class="icon">🎯</div>
+                    <h3>Estratégia de Marca</h3>
+                    <p>Ajustamos como sua marca se apresenta e definimos sua linha de comunicação única.</p>
+                </div>
+            </div>
         </div>
-        <div class="metodologia-card">
-          <div class="card-icon">📈</div>
-          <h3>Funil de Aquisição</h3>
-          <p>Tráfego pago e canal direto para gerar reconhecimento de marca e oportunidades reais de negócio. Dados e performance em cada campanha.</p>
-        </div>
-        <div class="metodologia-card">
-          <div class="card-icon">🤝</div>
-          <h3>Integração Comercial</h3>
-          <p>Unimos marketing e vendas para acompanhar cada oportunidade do primeiro contato até o fechamento. Leads qualificados que convertem em vendas.</p>
-        </div>
-        <div class="metodologia-card">
-          <div class="card-icon">🎯</div>
-          <h3>Estratégia de Marca</h3>
-          <p>Ajustamos como sua marca se apresenta, destacamos o que a torna única e definimos sua linha de comunicação. Posicionamento que diferencia no mercado.</p>
-        </div>
-      </div>
     </section>
 
     <!-- Serviços Contratados -->
-    <section class="servicos-section" id="servicosSection">
-      <h2 class="section-title">SERVIÇOS CONTRATADOS</h2>
-
-      <!-- Social Media -->
-      <div class="servico-card" id="socialMediaCard" style="display:none;">
-        <div class="servico-header">
-          <h3>ESTRATÉGIA DE COMUNICAÇÃO</h3>
-          <span class="servico-badge" id="badgeSocialMedia"></span>
+    <section class="section servicos">
+        <div class="container">
+            <h2 class="section-title">SERVIÇOS CONTRATADOS</h2>
+            <div id="servicosContainer"></div>
         </div>
-        <div class="servico-body">
-          <h4>Entregáveis:</h4>
-          <ul class="entregaveis-list" id="listaSocialMedia">
-            <li>5 posts semanais (até 20/mês)</li>
-            <li>Linha editorial + manual de comunicação</li>
-            <li>Até 12 artes/mês</li>
-            <li>Copywriting (legendas e chamadas)</li>
-            <li>Relatório mensal</li>
-            <li>Organização via plataforma (Notion/Monday)</li>
-            <li>Análise de Concorrentes</li>
-          </ul>
-          <div class="servico-valor">
-            <span class="valor-label">Valor Mensal:</span>
-            <span class="valor-amount" id="valorSocialMedia"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tráfego Pago -->
-      <div class="servico-card" id="trafegoPagoCard" style="display:none;">
-        <div class="servico-header">
-          <h3>TRÁFEGO PAGO</h3>
-          <span class="servico-badge" id="badgeTrafegoPago"></span>
-        </div>
-        <div class="servico-body">
-          <h4>Entregáveis:</h4>
-          <ul class="entregaveis-list" id="listaTrafegoPago">
-            <li>Criação, Estruturação e Otimização Diária de Campanhas</li>
-            <li>Alocação Inteligente de Orçamento</li>
-            <li>Monitoramento Ativo da Saúde da Conta</li>
-            <li>Desenvolvimento e Refinamento Contínuo de Audiências-Alvo</li>
-            <li>Criação de Públicos Semelhantes (Lookalikes)</li>
-            <li>Estruturação de Funis de Retargeting</li>
-            <li>Criação de Artes e Copy para Anúncios</li>
-            <li>Implementação de Testes A/B</li>
-            <li>Relatório Semanal de Desempenho</li>
-            <li>Reunião Mensal de Performance e Estratégia</li>
-          </ul>
-
-          <div class="investimento-nota-discreta" id="investimentoMidiaView" style="display:none;">
-            <p>IMPORTANTE: O valor de investimento em mídia é pago diretamente às plataformas e não está incluso no valor mensal dos serviços.</p>
-          </div>
-
-          <div class="servico-valor">
-            <span class="valor-label">Fee de Gestão Mensal:</span>
-            <span class="valor-amount" id="valorTrafegoPago"></span>
-          </div>
-        </div>
-      </div>
-</section>
-
-    <!-- Comparação de Serviços -->
-    <section class="comparacao-section">
-      <h2 class="section-title">COMPARE OS PLANOS</h2>
-      <p class="section-subtitle">Veja as diferenças e escolha a melhor opção</p>
-      <div class="comparacao-actions" style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:24px;">
-        <button id="btnCompararSocialMedia" class="btn btn-secondary" style="display:none;" onclick="abrirModalComparacaoSocial()">Comparar Social Media</button>
-        <button id="btnCompararTrafego" class="btn btn-secondary" style="display:none;" onclick="abrirModalComparacaoTrafego()">Comparar Tráfego Pago</button>
-      </div>
     </section>
 
-    <!-- Modal: Comparação Social Media -->
-    <div id="modalComparacaoSocial" class="modal" style="display:none;">
-      <div class="modal-content">
-        <h2>Comparar Planos — Social Media</h2>
-        <table class="comparacao-tabela" style="width:100%; border-collapse:collapse;">
-          <thead>
-            <tr>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Plano</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Frequência</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Artes</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Destaques</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding:8px;">START</td>
-              <td style="padding:8px;">3 posts/semana</td>
-              <td style="padding:8px;">Até 8/mês</td>
-              <td style="padding:8px;">Linha editorial, copy e organização</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;">SCALE</td>
-              <td style="padding:8px;">5 posts/semana</td>
-              <td style="padding:8px;">Até 12/mês</td>
-              <td style="padding:8px;">+ Relatório mensal e suporte</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;">HEAT</td>
-              <td style="padding:8px;">7 posts/semana</td>
-              <td style="padding:8px;">Até 16/mês</td>
-              <td style="padding:8px;">Engajamento avançado, análises e calendário</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="modal-actions" style="margin-top:16px;">
-          <button class="btn btn-ghost" onclick="fecharModalComparacaoSocial()">Fechar</button>
-        </div>
-      </div>
-    </div>
+    <!-- Seleção de Pagamento e Recorrência -->
+    <section class="section selecao-pagamento">
+        <div class="container">
+            <h2 class="section-title">PERSONALIZE SUA PROPOSTA</h2>
+            <p class="section-subtitle">Escolha a recorrência e forma de pagamento. Os descontos são aplicados automaticamente.</p>
+            
+            <!-- Recorrência -->
+            <div class="payment-section">
+                <h3>🗓️ Recorrência do Contrato</h3>
+                <div class="recorrencia-options">
+                    <label class="option-card">
+                        <input type="radio" name="recorrencia" value="1">
+                        <div class="title">Mensal</div>
+                        <div class="discount">0% desconto</div>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="recorrencia" value="3">
+                        <div class="title">Trimestral</div>
+                        <div class="discount">5% desconto</div>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="recorrencia" value="6" checked>
+                        <div class="title">Semestral</div>
+                        <div class="discount">10% desconto</div>
+                        <div class="badge-recomendado">RECOMENDADO</div>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="recorrencia" value="12">
+                        <div class="title">Anual</div>
+                        <div class="discount">15% desconto</div>
+                    </label>
+                </div>
+            </div>
 
-    <!-- Modal: Comparação Tráfego Pago -->
-    <div id="modalComparacaoTrafego" class="modal" style="display:none;">
-      <div class="modal-content">
-        <h2>Comparar Planos – Tráfego Pago</h2>
-        <table class="comparacao-tabela" style="width:100%; border-collapse:collapse;">
-          <thead>
-            <tr>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Plano</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Investimento em Mídia</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Entregas Principais</th>
-              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Acompanhamento</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding:8px;">FOCO</td>
-              <td style="padding:8px;">R$ 5.000/mês</td>
-              <td style="padding:8px;">3 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
-              <td style="padding:8px;">1 reunião mensal com o cliente</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;">ACELERAÇÃO</td>
-              <td style="padding:8px;">R$ 5.001 a 10.000/mês</td>
-              <td style="padding:8px;">5 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
-              <td style="padding:8px;">2 reuniões mensais com o cliente</td>
-            </tr>
-            <tr>
-              <td style="padding:8px;">DESTAQUE</td>
-              <td style="padding:8px;">R$ 10.001+/mês</td>
-              <td style="padding:8px;">8 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
-              <td style="padding:8px;">4 reuniões mensais com o cliente + suporte estratégico do Head de Tráfego</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="modal-actions" style="margin-top:16px;">
-          <button class="btn btn-ghost" onclick="fecharModalComparacaoTrafego()">Fechar</button>
-        </div>
-      </div>
-    </div>
+            <!-- Forma de Pagamento -->
+            <div class="payment-section">
+                <h3>💳 Forma de Pagamento</h3>
+                <div class="pagamento-options" id="pagamentoOptions">
+                    <label class="option-card" id="opcao-avista">
+                        <input type="radio" name="pagamento" value="avista">
+                        <div class="title">À Vista</div>
+                        <div class="discount" id="desconto-avista">10% desconto adicional</div>
+                    </label>
+                    <label class="option-card" id="opcao-parcelado">
+                        <input type="radio" name="pagamento" value="parcelado">
+                        <div class="title">50% + 50%</div>
+                        <div class="discount" id="desconto-parcelado">5% desconto adicional</div>
+                    </label>
+                    <label class="option-card" id="opcao-mensal">
+                        <input type="radio" name="pagamento" value="mensal">
+                        <div class="title">Mensal</div>
+                        <div class="discount" id="desconto-mensal">Sem desconto adicional</div>
+                    </label>
+                </div>
+            </div>
 
-    <!-- VALORES E CONDIÇÕES (limpo) -->
-    <section class="valores-section valores-section--clean">
-      <h2 class="section-title">VALORES E CONDIÇÕES</h2>
-      <p class="section-subtitle valores-subtitle">Defina como deseja investir e pagar</p>
-      <div class="valores-card">
-        <!-- Recorrência -->
-        <div class="recorrencia-selector">
-          <h4>📆 Escolha o Período de Recorrência</h4>
-          <p class="recorrencia-subtitle">Escolha o período que melhor se adapta à sua estratégia.</p>
-          <div class="recorrencia-options">
-            <label class="recorrencia-option" title="Ideal para testar o serviço e validar fit">
-              <input type="radio" name="recorrencia" value="1" />
-              <div class="option-content">
-                <span class="option-periodo">1 mês</span>
-                <span class="option-desconto">Sem desconto</span>
-                <span class="option-tip">Ideal para testar o serviço</span>
-              </div>
-            </label>
-            <label class="recorrencia-option" title="Boa relação custo-benefício com compromisso curto">
-              <input type="radio" name="recorrencia" value="3" />
-              <div class="option-content">
-                <span class="option-periodo">3 meses</span>
-                <span class="option-desconto">5% de desconto</span>
-                <span class="option-tip">Equilíbrio custo‑benefício</span>
-              </div>
-            </label>
-            <label class="recorrencia-option recomendado" title="Recomendado: tempo ideal para consolidar resultados">
-              <input type="radio" name="recorrencia" value="6" checked />
-              <div class="option-content">
-                <span class="option-periodo">6 meses</span>
-                <span class="option-desconto">10% de desconto</span>
-                <span class="badge-recomendado">★ RECOMENDADO</span>
-                <span class="option-tip">Melhor custo-benefício (recomendado)</span>
-              </div>
-            </label>
-            <label class="recorrencia-option" title="Máxima fidelização e economia progressiva">
-              <input type="radio" name="recorrencia" value="12" />
-              <div class="option-content">
-                <span class="option-periodo">12 meses</span>
-                <span class="option-desconto">15% de desconto</span>
-                <span class="option-tip">Fidelização máxima</span>
-              </div>
-            </label>
-          </div>
+            <!-- Resumo Financeiro -->
+            <div class="resumo-financeiro">
+                <h3>💰 Resumo Financeiro</h3>
+                <div class="valor-row">
+                    <span>Valor Base dos Serviços:</span>
+                    <span class="valor" id="valorBase">R$ 0,00</span>
+                </div>
+                <div class="valor-row" id="descontoRecorrenciaRow" style="display:none;">
+                    <span>Desconto por Recorrência:</span>
+                    <span class="valor" id="descontoRecorrencia">- R$ 0,00</span>
+                </div>
+                <div class="valor-row">
+                    <div>
+                        <span>Desconto Condicional (5% OFF):</span>
+                        <div style="font-size: 0.75rem; color: #888; margin-top: 2px;">*Condicionado ao pagamento em dia e resposta à pesquisa mensal</div>
+                    </div>
+                    <span class="valor" id="descontoCondicional">- R$ 0,00</span>
+                </div>
+                <div class="valor-row" id="descontoPagamentoRow" style="display:none;">
+                    <span>Desconto por Forma de Pagamento:</span>
+                    <span class="valor" id="descontoPagamento">- R$ 0,00</span>
+                </div>
+                <div class="valor-row total">
+                    <span>Valor Final Mensal:</span>
+                    <span class="valor" id="valorFinalMensal">R$ 0,00</span>
+                </div>
+                <div class="valor-row total">
+                    <span>Total do Período:</span>
+                    <span class="valor" id="valorTotalPeriodo">R$ 0,00</span>
+                </div>
+            </div>
         </div>
-
-        <!-- Forma de pagamento -->
-        <div class="selecao-pagamento">
-          <h4>💳 Escolha sua forma de pagamento:</h4>
-          <div class="pagamento-opcoes">
-            <label class="opcao-pagamento">
-              <input type="radio" name="formaPagamento" value="avista" checked />
-              <div class="opcao-card" style="position:relative;">
-                <span class="badge-vantajoso">Mais vantajoso 💸</span>
-                <span class="opcao-icon">💵</span>
-                <strong>À vista (Pix/Boleto)</strong>
-                <p>Pagamento único no início</p>
-              </div>
-            </label>
-            <label class="opcao-pagamento">
-              <input type="radio" name="formaPagamento" value="parcelado" />
-              <div class="opcao-card">
-                <span class="opcao-icon">💳</span>
-                <strong>50% + 50% em 30 dias</strong>
-                <p>Divida em duas parcelas</p>
-              </div>
-            </label>
-            <label class="opcao-pagamento">
-              <input type="radio" name="formaPagamento" value="mensal" />
-              <div class="opcao-card">
-                <span class="opcao-icon">🔁</span>
-                <strong>Mensalidade recorrente</strong>
-                <p>Pagamento mensal automático</p>
-              </div>
-            </label>
-          </div>
-          <div id="pagamentoHint" class="pagamento-hint">💸 Desconto de 7% aplicado automaticamente.</div>
-        </div>
-
-        <!-- Breakdown de valores -->
-        <div class="valores-breakdown">
-          <div class="valor-row">
-            <span class="valor-label">Valor Mensal dos Serviços:</span>
-            <span class="valor-value" id="valorTotalView">R$ 0,00</span>
-          </div>
-          <div class="valor-row desconto-recorrencia-row" id="descontoRecorrenciaRow">
-            <span class="valor-label">Desconto por Recorrência:</span>
-            <span class="valor-value desconto-recorrencia" id="descontoRecorrenciaView">- R$ 0,00</span>
-          </div>
-          <div class="valor-row desconto-row" id="descontoCustomizadoRow" style="display:none;">
-            <span class="valor-label"><span id="descontoCustomizadoLabelView">Desconto:</span></span>
-            <span class="valor-value desconto-recorrencia" id="descontoCustomizadoView">- R$ 0,00</span>
-          </div>
-          <div class="valor-row desconto-row">
-            <span class="valor-label">
-              <span>Desconto Adicional (5%)</span>
-              <small>Condicionado a: Resposta da pesquisa de satisfação + Pagamento em dia</small>
-            </span>
-            <span class="valor-value desconto" id="descontoView">- R$ 0,00</span>
-          </div>
-          <div class="valor-row desconto-row" id="descontoFormaPagamentoRow" style="display:none;">
-            <span class="valor-label"><span id="descontoFormaPagamentoLabel">Desconto por Forma de Pagamento</span></span>
-            <span class="valor-value desconto" id="descontoFormaPagamentoView">- R$ 0,00</span>
-          </div>
-          <div class="valor-row total-row">
-            <span class="valor-label">💰 Valor com todos os descontos aplicados:</span>
-            <span class="valor-value total" id="valorFinalView">R$ 0,00</span>
-          </div>
-          <div class="valor-row total-periodo-row">
-            <span class="valor-label">💎 Total do Período:</span>
-            <span class="valor-value total-periodo" id="valorTotalPeriodoView">R$ 0,00</span>
-          </div>
-        </div>
-
-        <div class="observacoes-info" id="observacoesContainer" style="display:none;">
-          <h4>💬 Observações</h4>
-          <p id="observacoesView"></p>
-        </div>
-      </div>
     </section>
 
-    <!-- Processo de Trabalho -->
-    <section class="processo-section">
-      <h2 class="section-title">PROCESSO DE TRABALHO</h2>
-      <div class="processo-grid">
-        <div class="processo-card">
-          <div class="processo-number">1</div>
-          <h4>Operação de Campanha</h4>
-          <ul>
-            <li>Criação, Estruturação e Otimização Diária de Campanhas</li>
-            <li>Alocação Inteligente de Orçamento</li>
-            <li>Monitoramento Ativo da Saúde da Conta</li>
-          </ul>
+    <!-- Comparação de Planos -->
+    <section class="section comparacao" id="secaoComparacao" style="display:none;">
+        <div class="container">
+            <h2 class="section-title">COMPARE OS PLANOS</h2>
+            <p class="section-subtitle">Veja as diferenças entre os planos disponíveis</p>
+            <div class="comparacao-buttons">
+                <button class="btn btn-secondary" id="btnCompararSocial" onclick="mostrarComparacaoSocial()" style="display:none;">📱 Comparar Social Mídia</button>
+                <button class="btn btn-secondary" id="btnCompararTrafego" onclick="mostrarComparacaoTrafego()" style="display:none;">🎯 Comparar Tráfego Pago</button>
+            </div>
+            <div id="comparacaoContent"></div>
         </div>
-        <div class="processo-card">
-          <div class="processo-number">2</div>
-          <h4>Audiência e Segmentação</h4>
-          <ul>
-            <li>Desenvolvimento e Refinamento Contínuo de Audiências‑Alvo</li>
-            <li>Criação de Públicos Semelhantes (Lookalikes)</li>
-            <li>Estruturação de Funis de Retargeting</li>
-          </ul>
-        </div>
-        <div class="processo-card">
-          <div class="processo-number">3</div>
-          <h4>Conteúdo e Teste</h4>
-          <ul>
-            <li>Criação de Artes e Copy para Anúncios</li>
-            <li>Implementação de Testes A/B</li>
-          </ul>
-        </div>
-        <div class="processo-card">
-          <div class="processo-number">4</div>
-          <h4>Análise e Estratégia</h4>
-          <ul>
-            <li>Relatório Semanal de Desempenho</li>
-            <li>Reunião Mensal de Performance e Estratégia</li>
-          </ul>
-        </div>
-      </div>
     </section>
 
-    <!-- Resumo da Proposta (para PDF e visualização) -->
-    <section class="resumo-proposta-section" id="resumoPropostaSection">
-      <div class="resumo-proposta-content">
-        <h2>Resumo da Proposta Comercial</h2>
-        <div class="resumo-dados-basicos">
-          <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
-          <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
-          <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
+    <!-- Depoimentos -->
+    <section class="section depoimentos">
+        <div class="container">
+            <h2 class="section-title">O QUE NOSSOS CLIENTES DIZEM</h2>
+            <div class="depoimentos-grid">
+                <div class="depoimento-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <p class="texto">"A Heat Digital transformou completamente nossa presença digital. Resultados incríveis em poucos meses!"</p>
+                    <p class="autor">- Maria Silva, CEO TechCorp</p>
+                </div>
+                <div class="depoimento-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <p class="texto">"Profissionalismo e resultados excepcionais. Recomendo para qualquer empresa que quer crescer."</p>
+                    <p class="autor">- João Santos, Diretor Comercial</p>
+                </div>
+                <div class="depoimento-card">
+                    <div class="stars">⭐⭐⭐⭐⭐</div>
+                    <p class="texto">"ROI impressionante! A metodologia Heat realmente funciona. Nossa receita triplicou."</p>
+                    <p class="autor">- Ana Costa, Fundadora StartupX</p>
+                </div>
+            </div>
         </div>
-        <div class="resumo-servicos" id="resumoServicos"></div>
-        <div class="resumo-valores">
-          <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
-          <p id="resumoInvestimentoMidia"></p>
-        </div>
-        <div class="resumo-legais">
-          <p><strong>Observações Legais:</strong></p>
-          <ul>
-            <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
-            <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
-            <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
-            <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-    <div class="footer-actions footer-actions-central">
-      <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">📄 Baixar Resumo PDF</button>
-    </div>
-
-    <!-- CTA Aceitar -->
-    <section class="cta-section" id="ctaAceite">
-      <div class="cta-content">
-        <h2>Aceitar Esta Proposta</h2>
-        <p>Gostou da proposta? Clique no botão abaixo para aceitar!</p>
-        <button onclick="aceitarProposta()" class="btn-aceitar-proposta" aria-label="Aceitar esta proposta e ver resumo para confirmação">✅ Aceitar Proposta</button>
-        <p class="cta-alternativa">Ou entre em contato para esclarecer dúvidas:</p>
-        <div class="contato-buttons">
-          <a href="#" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>
-          <a href="#" class="btn-email">✉️ E-mail</a>
-        </div>
-        <p class="validade-proposta">Esta proposta é válida por 7 dias a partir da data de emissão.</p>
-      </div>
     </section>
 
-    <!-- Modal Resumo Aceite -->
-    <div id="modalResumoAceite" class="modal">
-      <div class="modal-content modal-resumo-aceite">
-        <div id="resumoProposta"></div>
-        <div class="modal-actions" style="margin-top:16px;">
-          <button onclick="exportarPDFResumoModal()" class="btn btn-secondary btn-export-pdf" title="Baixar resumo em PDF"><span class="icon">📄</span> Baixar PDF</button>
-          <button id="btnConfirmarAceite" onclick="confirmarAceiteProposta()" class="btn btn-primary btn-aceitar-proposta btn-confirmar" aria-live="polite"><span class="icon">✅</span> Confirmar Aceite</button>
-          <button onclick="fecharModalResumoAceite()" class="btn btn-ghost btn-fechar-modal">Cancelar</button>
+    <!-- FAQ -->
+    <section class="section faq">
+        <div class="container">
+            <h2 class="section-title">PERGUNTAS FREQUENTES</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Como funciona o processo de trabalho?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Nosso processo é dividido em etapas claras: diagnóstico, estratégia, execução e otimização. Você terá acompanhamento semanal e relatórios mensais detalhados.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Posso cancelar o contrato a qualquer momento?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Sim, você pode cancelar com 30 dias de antecedência. Não há multas ou taxas de cancelamento.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Quanto tempo para ver os primeiros resultados?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Normalmente, os primeiros resultados aparecem entre 30-60 dias. Resultados mais significativos são vistos a partir do 3º mês.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>O que está incluso no investimento em mídia?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>O investimento em mídia é pago diretamente às plataformas (Facebook, Google, etc.) e não está incluso no valor dos nossos serviços. É o orçamento que você destina para impulsionar suas campanhas.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Como funciona o desconto condicional de 5%?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Você ganha 5% de desconto mantendo os pagamentos em dia e respondendo nossa pesquisa mensal de satisfação. É nossa forma de valorizar clientes comprometidos.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Posso trocar de plano durante o contrato?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Sim! Você pode fazer upgrade ou downgrade do seu plano a qualquer momento. As mudanças entram em vigor no próximo ciclo de cobrança.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Vocês trabalham com todos os segmentos?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Trabalhamos com diversos segmentos, mas temos especialização em e-commerce, serviços profissionais, SaaS e empresas B2B. Cada estratégia é personalizada para seu nicho.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFAQ(this)">
+                        <span>Como é feito o acompanhamento dos resultados?</span>
+                        <span>+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Você recebe relatórios mensais detalhados, tem acesso a dashboards em tempo real e reuniões periódicas com seu account manager para análise de performance.</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <p class="microcopy-aceite" id="microcopyAceite">Ao confirmar o aceite, nossa equipe entrará em contato para o envio do contrato e orientações de assinatura.</p>
+    </section>
+
+    <!-- Resumo Final -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">RESUMO DA SUA PROPOSTA</h2>
+            <div class="resumo-final" id="resumoFinal">
+                <h3>📋 Detalhes do Contrato</h3>
+                <p><strong>Cliente:</strong> <span id="resumoCliente"></span></p>
+                <p><strong>Data:</strong> <span id="resumoData"></span></p>
+                <div id="resumoServicos"></div>
+                <div class="resumo-condicoes" style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #333;">
+                    <p style="margin-bottom: 8px;"><strong>🗓️ Recorrência:</strong> <span id="resumoRecorrencia">Semestral</span></p>
+                    <p style="margin-bottom: 15px;"><strong>💳 Forma de Pagamento:</strong> <span id="resumoFormaPagamento">À Vista</span></p>
+                </div>
+                <div class="resumo-valores" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #1E5942;">
+                    <p style="margin-bottom: 10px;"><strong>Valor Final:</strong> <span id="resumoValorFinal" style="color: #00E388; font-size: 1.5rem; font-weight: 800;"></span></p>
+                    <p style="margin-bottom: 15px;"><strong>Total do Período:</strong> <span id="resumoValorTotal" style="color: #1E5942; font-size: 1.3rem; font-weight: 700;"></span></p>
+                    <p style="font-size: 0.9rem; color: #888; margin-top: 20px;"><strong>Data da Proposta:</strong> <span id="resumoDataFinal"></span></p>
+                </div>
+                <button class="btn btn-export" onclick="exportarPDF()">📄 Baixar PDF</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Final -->
+    <section class="cta-final">
+        <div class="container">
+            <h2 class="section-title">PRONTO PARA COMEÇAR?</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 20px;">Aceite a proposta ou tire suas dúvidas conosco</p>
+            <div id="avisoSelecao" style="background: rgba(255, 107, 107, 0.15); border: 2px solid #FF6B6B; border-radius: 10px; padding: 15px; margin: 20px 0; color: #FF6B6B; text-align: center; font-weight: 600; display: none;">
+                ⚠️ Por favor, selecione a recorrência e forma de pagamento antes de aceitar a proposta
+            </div>
+            <div class="cta-buttons">
+                <button class="btn btn-primary" id="btnAceitarPrincipal" onclick="aceitarProposta()">
+                    ✅ Aceitar Proposta
+                </button>
+                <a href="https://wa.me/5511999999999" class="btn btn-secondary" target="_blank">
+                    📱 Falar no WhatsApp
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Botão Flutuante -->
+    <button class="btn btn-primary" id="btnAceitarFlutuante" onclick="aceitarProposta()">
+        <span class="btn-icon">✅</span>
+        <span class="btn-text">Aceitar</span>
+    </button>
+
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .btn:disabled {
+            background: #666 !important;
+            cursor: not-allowed !important;
+            animation: none !important;
+        }
+        
+        /* Botão Flutuante */
+        #btnAceitarFlutuante {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            box-shadow: 0 8px 25px rgba(0,227,136,0.4);
+            animation: pulse 2s infinite;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: auto;
+            white-space: nowrap;
+        }
+        
+        #btnAceitarFlutuante .btn-icon {
+            font-size: 1.1rem;
+        }
+        
+        #btnAceitarFlutuante .btn-text {
+            display: inline;
+        }
+        
+        /* Mobile - Botão Flutuante */
+        @media (max-width: 768px) {
+            #btnAceitarFlutuante {
+                bottom: 15px;
+                right: 15px;
+                left: 15px;
+                right: auto;
+                width: calc(100% - 30px);
+                max-width: none;
+                padding: 18px 20px;
+                font-size: 1.1rem;
+                justify-content: center;
+                border-radius: 15px;
+                box-shadow: 0 6px 20px rgba(0,227,136,0.5);
+            }
+            
+            #btnAceitarFlutuante .btn-text {
+                display: inline;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #btnAceitarFlutuante {
+                bottom: 10px;
+                left: 10px;
+                width: calc(100% - 20px);
+                padding: 16px 18px;
+                font-size: 1rem;
+                border-radius: 12px;
+            }
+            
+            #btnAceitarFlutuante .btn-icon {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Esconder botão flutuante quando CTA principal estiver visível */
+        @media (max-width: 768px) {
+            .cta-final {
+                padding-bottom: 100px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .cta-final {
+                padding-bottom: 90px;
+            }
+        }
+    </style>
+
+    <!-- Modal de Confirmação -->
+    <div id="modalConfirmacao" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModal()">&times;</span>
+            <h3>🎯 Confirmar Proposta</h3>
+            <div id="resumoModal" style="background: #111; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #1E5942;"></div>
+            <p style="color: #ccc; font-size: 0.9rem; text-align: center;">Ao confirmar, você aceita os termos da proposta apresentada</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="confirmarProposta()">✅ Confirmar</button>
+                <button class="btn" onclick="fecharModal()" style="background: #666;">Cancelar</button>
+            </div>
         </div>
     </div>
 
-    <!-- Modal Aceite Final -->
-    <div id="modalAceite" class="modal">
-      <div class="modal-content">
-        <h2>✅ Proposta Aceita com Sucesso!</h2>
-        <p>Obrigado por aceitar nossa proposta! Em breve entraremos em contato para iniciar o projeto.</p>
-        <button onclick="fecharModalAceite()" class="btn-fechar-modal">Fechar</button>
-      </div>
+    <!-- Modal de Sucesso -->
+    <div id="modalSucesso" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalSucesso()">&times;</span>
+            <h3>🎉 Proposta Aceita!</h3>
+            <p>Obrigado por escolher a Heat Digital! Entraremos em contato em breve para os próximos passos.</p>
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="fecharModalSucesso()">Fechar</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <script src="proposta-visualizacao.js"></script>
-  <script src="proposta-visualizacao-overrides.js"></script>
+    <script>
+        // Dados dos planos
+        const planos = {
+            socialMidia: {
+                start: { nome: 'START', valor: 1500, entregaveis: ['3 posts semanais', 'Manual de comunicação', '8 artes/mês', 'Copywriting', 'Organização via Notion', 'Análise de concorrentes'] },
+                scale: { nome: 'SCALE', valor: 2200, entregaveis: ['5 posts semanais', 'Manual de comunicação', '12 artes/mês', 'Copywriting', 'Relatório mensal', 'Organização via Notion', 'Análise de concorrentes'] },
+                heat: { nome: 'HEAT', valor: 3200, entregaveis: ['7 posts semanais', 'Linha editorial premium', '16 artes/mês', 'Copywriting estratégico', 'Relatório completo', 'Monitoramento de tendências', 'Suporte em tempo real'] }
+            },
+            trafegoPago: {
+                foco: { nome: 'FOCO', valor: 2400, entregaveis: ['3 criativos em imagem', 'Rastreamento de leads', 'Planejamento de campanhas', 'Script de vendas', 'Análise de concorrência', 'Definição de ICP', '1 reunião mensal'] },
+                aceleracao: { nome: 'ACELERAÇÃO', valor: 2800, entregaveis: ['5 criativos em imagem', 'Rastreamento de leads', 'Planejamento de campanhas', 'Script de vendas', 'Análise de concorrência', 'Definição de ICP', '2 reuniões mensais'] },
+                heat: { nome: 'DESTAQUE', valor: 3500, entregaveis: ['8 criativos em imagem', 'Rastreamento de leads', 'Planejamento de campanhas', 'Script de vendas', 'Análise de concorrência', 'Definição de ICP', '4 reuniões mensais + suporte direto'] }
+            }
+        };
+
+        let valorBase = 0;
+        let servicosContratados = [];
+
+        // Inicializar página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarDados();
+            configurarEventListeners();
+            calcularValores();
+            configurarComparacao();
+            verificarSelecoes();
+        });
+
+        function carregarDados() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Dados do cliente
+            document.getElementById('nomeCliente').textContent = params.get('nomeCliente') || 'Cliente';
+            document.getElementById('empresaCliente').textContent = params.get('empresaCliente') || 'Empresa';
+            document.getElementById('dataProposta').textContent = new Date().toLocaleDateString('pt-BR');
+            
+            // Carregar serviços
+            const socialMidia = params.get('servicoSocialMidia');
+            const trafegoPago = params.get('servicoTrafegoPago');
+            
+            valorBase = 0;
+            servicosContratados = [];
+            
+            if (socialMidia && socialMidia !== 'nao-se-aplica' && planos.socialMidia[socialMidia]) {
+                const plano = planos.socialMidia[socialMidia];
+                valorBase += plano.valor;
+                servicosContratados.push({
+                    tipo: 'Social Mídia',
+                    plano: plano.nome,
+                    valor: plano.valor,
+                    entregaveis: plano.entregaveis
+                });
+            }
+            
+            if (trafegoPago && trafegoPago !== 'nao-se-aplica' && planos.trafegoPago[trafegoPago]) {
+                const plano = planos.trafegoPago[trafegoPago];
+                valorBase += plano.valor;
+                servicosContratados.push({
+                    tipo: 'Tráfego Pago',
+                    plano: plano.nome,
+                    valor: plano.valor,
+                    entregaveis: plano.entregaveis
+                });
+            }
+            
+            renderizarServicos();
+            atualizarResumo();
+        }
+
+        function renderizarServicos() {
+            const container = document.getElementById('servicosContainer');
+            container.innerHTML = '';
+            
+            servicosContratados.forEach(servico => {
+                const card = document.createElement('div');
+                card.className = 'servico-card';
+                card.innerHTML = `
+                    <div class="servico-header">
+                        <h3>${servico.tipo}</h3>
+                        <div class="servico-badge">${servico.plano}</div>
+                    </div>
+                    <div class="entregaveis">
+                        <h4>Entregáveis:</h4>
+                        <ul>
+                            ${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="valor-mensal">
+                        <span>Valor Mensal:</span>
+                        <span class="valor">R$ ${servico.valor.toLocaleString('pt-BR')},00</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function configurarEventListeners() {
+            // Recorrência
+            document.querySelectorAll('input[name="recorrencia"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.querySelectorAll('.recorrencia-options .option-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                    this.closest('.option-card').classList.add('selected');
+                    calcularValores();
+                    verificarSelecoes();
+                });
+            });
+
+            // Pagamento
+            document.querySelectorAll('input[name="pagamento"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.querySelectorAll('.pagamento-options .option-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                    this.closest('.option-card').classList.add('selected');
+                    calcularValores();
+                    verificarSelecoes();
+                });
+            });
+        }
+
+        function calcularValores() {
+            const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
+            const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value;
+            
+            // Descontos por recorrência
+            const descontosRecorrencia = { 1: 0, 3: 0.05, 6: 0.10, 12: 0.15 };
+            const descontoRecorrencia = valorBase * (descontosRecorrencia[recorrencia] || 0);
+            
+            // Desconto condicional sempre aplicado
+            const descontoCondicional = valorBase * 0.05;
+            
+            // Descontos por pagamento (não aplicável para recorrência mensal)
+            let descontoPagamento = 0;
+            if (recorrencia > 1) {
+                const descontosPagamento = { avista: 0.10, parcelado: 0.05, mensal: 0 };
+                descontoPagamento = valorBase * (descontosPagamento[pagamento] || 0);
+            }
+            
+            const valorFinal = valorBase - descontoRecorrencia - descontoCondicional - descontoPagamento;
+            const valorTotal = valorFinal * recorrencia;
+            
+            // Controlar opções de pagamento baseado na recorrência
+            const opcaoAvista = document.getElementById('opcao-avista');
+            const opcaoParcelado = document.getElementById('opcao-parcelado');
+            const opcaoMensal = document.getElementById('opcao-mensal');
+            
+            if (recorrencia === 1) {
+                // Recorrência mensal - apenas pagamento mensal
+                opcaoAvista.style.display = 'none';
+                opcaoParcelado.style.display = 'none';
+                opcaoMensal.style.display = 'block';
+                
+                // Auto-selecionar mensal
+                document.querySelector('input[name="pagamento"][value="mensal"]').checked = true;
+                document.querySelector('input[name="pagamento"][value="mensal"]').closest('.option-card').classList.add('selected');
+            } else {
+                // Outras recorrências - todas as opções
+                opcaoAvista.style.display = 'block';
+                opcaoParcelado.style.display = 'block';
+                opcaoMensal.style.display = 'block';
+                
+                document.getElementById('desconto-avista').textContent = '10% desconto adicional';
+                document.getElementById('desconto-parcelado').textContent = '5% desconto adicional';
+                document.getElementById('desconto-mensal').textContent = 'Sem desconto adicional';
+            }
+            
+            // Atualizar display
+            document.getElementById('valorBase').textContent = `R$ ${valorBase.toLocaleString('pt-BR')},00`;
+            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR')},00`;
+            
+            if (descontoRecorrencia > 0) {
+                document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
+                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR')},00`;
+            } else {
+                document.getElementById('descontoRecorrenciaRow').style.display = 'none';
+            }
+            
+            if (descontoPagamento > 0) {
+                document.getElementById('descontoPagamentoRow').style.display = 'flex';
+                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR')},00`;
+            } else {
+                document.getElementById('descontoPagamentoRow').style.display = 'none';
+            }
+            
+            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00`;
+            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00 (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
+            
+            atualizarResumo();
+            verificarSelecoes();
+        }
+
+        function atualizarResumo() {
+            const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
+            const valorFinal = parseFloat(document.getElementById('valorFinalMensal').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            const valorTotal = valorFinal * recorrencia;
+            const dataAtual = document.getElementById('dataProposta').textContent;
+            
+            document.getElementById('resumoCliente').textContent = `${document.getElementById('nomeCliente').textContent} - ${document.getElementById('empresaCliente').textContent}`;
+            document.getElementById('resumoData').textContent = dataAtual;
+            document.getElementById('resumoValorFinal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00/mês`;
+            document.getElementById('resumoValorTotal').textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00`;
+            
+            // Atualizar recorrência e forma de pagamento
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            const resumoRecorrencia = document.getElementById('resumoRecorrencia');
+            const resumoFormaPagamento = document.getElementById('resumoFormaPagamento');
+            
+            if (resumoRecorrencia && recorrenciaSelecionada) {
+                resumoRecorrencia.textContent = recorrenciaSelecionada.closest('.option-card').querySelector('.title').textContent;
+            }
+            
+            if (resumoFormaPagamento && pagamentoSelecionado) {
+                resumoFormaPagamento.textContent = pagamentoSelecionado.closest('.option-card').querySelector('.title').textContent;
+            }
+            
+            // Atualizar data no resumo final também
+            const resumoDataFinal = document.getElementById('resumoDataFinal');
+            if (resumoDataFinal) {
+                resumoDataFinal.textContent = dataAtual;
+            }
+            
+            const resumoServicos = document.getElementById('resumoServicos');
+            resumoServicos.innerHTML = servicosContratados.map(servico => `
+                <div class="resumo-servico">
+                    <strong>${servico.tipo} (${servico.plano})</strong>
+                    <ul>
+                        ${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        }
+
+        function toggleFAQ(element) {
+            const faqItem = element.parentElement;
+            const isActive = faqItem.classList.contains('active');
+            
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+                item.querySelector('.faq-question span:last-child').textContent = '+';
+            });
+            
+            if (!isActive) {
+                faqItem.classList.add('active');
+                element.querySelector('span:last-child').textContent = '-';
+            }
+        }
+
+        function verificarSelecoes() {
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            const btnPrincipal = document.getElementById('btnAceitarPrincipal');
+            const btnFlutuante = document.getElementById('btnAceitarFlutuante');
+            const aviso = document.getElementById('avisoSelecao');
+            
+            if (recorrenciaSelecionada && pagamentoSelecionado) {
+                btnPrincipal.disabled = false;
+                btnFlutuante.disabled = false;
+                aviso.style.display = 'none';
+            } else {
+                btnPrincipal.disabled = true;
+                btnFlutuante.disabled = true;
+                aviso.style.display = 'block';
+            }
+        }
+
+        function aceitarProposta() {
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            if (!recorrenciaSelecionada || !pagamentoSelecionado) {
+                document.getElementById('avisoSelecao').style.display = 'block';
+                document.getElementById('avisoSelecao').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+            
+            // Gerar resumo para o modal
+            const cliente = `${document.getElementById('nomeCliente').textContent} - ${document.getElementById('empresaCliente').textContent}`;
+            const valorFinal = document.getElementById('valorFinalMensal').textContent;
+            const valorTotal = document.getElementById('valorTotalPeriodo').textContent;
+            
+            // Obter textos das opções selecionadas
+            const recorrenciaTexto = recorrenciaSelecionada.closest('.option-card').querySelector('.title').textContent;
+            const pagamentoTexto = pagamentoSelecionado.closest('.option-card').querySelector('.title').textContent;
+            
+            let resumoServicos = '';
+            servicosContratados.forEach(servico => {
+                resumoServicos += `<p><strong>${servico.tipo}:</strong> ${servico.plano} - R$ ${servico.valor.toLocaleString('pt-BR')},00/mês</p>`;
+            });
+            
+            document.getElementById('resumoModal').innerHTML = `
+                <p><strong>Cliente:</strong> ${cliente}</p>
+                ${resumoServicos}
+                <hr style="border-color: #333; margin: 15px 0;">
+                <p><strong>Recorrência:</strong> ${recorrenciaTexto}</p>
+                <p><strong>Forma de Pagamento:</strong> ${pagamentoTexto}</p>
+                <hr style="border-color: #333; margin: 15px 0;">
+                <p><strong>Valor Mensal:</strong> ${valorFinal}</p>
+                <p><strong>Total do Período:</strong> ${valorTotal}</p>
+            `;
+            
+            document.getElementById('modalConfirmacao').style.display = 'block';
+        }
+
+        function confirmarProposta() {
+            document.getElementById('modalConfirmacao').style.display = 'none';
+            document.getElementById('modalSucesso').style.display = 'block';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalConfirmacao').style.display = 'none';
+        }
+
+        function fecharModalSucesso() {
+            document.getElementById('modalSucesso').style.display = 'none';
+        }
+
+        function exportarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Dados do cliente
+            const nomeCliente = document.getElementById('nomeCliente').textContent || 'Cliente';
+            const empresaCliente = document.getElementById('empresaCliente').textContent || 'Empresa';
+            const dataAtual = document.getElementById('dataProposta').textContent || new Date().toLocaleDateString('pt-BR');
+            const valorFinal = document.getElementById('resumoValorFinal').textContent || 'R$ 0,00';
+            const valorTotal = document.getElementById('resumoValorTotal').textContent || 'R$ 0,00';
+            
+            // Configurar fonte
+            doc.setFont('helvetica');
+            
+            // Cabeçalho
+            doc.setFontSize(20);
+            doc.setTextColor(30, 89, 66);
+            doc.text('HEAT DIGITAL', 20, 25);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Performance Inteligente para Crescimento Real', 20, 32);
+            
+            // Título
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 0);
+            doc.text('Resumo da Proposta Comercial', 20, 50);
+            
+            // Dados do cliente
+            doc.setFontSize(12);
+            doc.text(`Cliente: ${nomeCliente}`, 20, 65);
+            doc.text(`Empresa: ${empresaCliente}`, 20, 72);
+            doc.text(`Data: ${dataAtual}`, 20, 79);
+            
+            // Recorrência e forma de pagamento
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            if (recorrenciaSelecionada) {
+                const recorrenciaTexto = recorrenciaSelecionada.closest('.option-card').querySelector('.title').textContent;
+                doc.text(`Recorrência: ${recorrenciaTexto}`, 20, 86);
+            }
+            
+            if (pagamentoSelecionado) {
+                const pagamentoTexto = pagamentoSelecionado.closest('.option-card').querySelector('.title').textContent;
+                doc.text(`Forma de Pagamento: ${pagamentoTexto}`, 20, 93);
+            }
+            
+            // Linha separadora
+            doc.setDrawColor(30, 89, 66);
+            doc.line(20, 100, 190, 100);
+            
+            let yPos = 110;
+            
+            // Serviços contratados
+            doc.setFontSize(14);
+            doc.setTextColor(30, 89, 66);
+            doc.text('Serviços Contratados:', 20, yPos);
+            yPos += 10;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            
+            servicosContratados.forEach(servico => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(`${servico.tipo} (${servico.plano})`, 25, yPos);
+                yPos += 7;
+                
+                doc.setFont('helvetica', 'normal');
+                servico.entregaveis.forEach(item => {
+                    const lines = doc.splitTextToSize(`• ${item}`, 160);
+                    lines.forEach(line => {
+                        doc.text(line, 30, yPos);
+                        yPos += 5;
+                    });
+                });
+                yPos += 5;
+            });
+            
+            // Valores
+            yPos += 10;
+            doc.setDrawColor(30, 89, 66);
+            doc.line(20, yPos, 190, yPos);
+            yPos += 10;
+            
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Valor Final: ${valorFinal}`, 20, yPos);
+            yPos += 8;
+            doc.text(`Total do Período: ${valorTotal}`, 20, yPos);
+            
+            // Rodapé
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text('Esta proposta é válida por 7 dias a partir da data de emissão.', 20, 280);
+            
+            // Salvar
+            const nomeArquivo = `Proposta_Heat_${empresaCliente.replace(/\s+/g, '_')}.pdf`;
+            doc.save(nomeArquivo);
+        }
+
+        function configurarComparacao() {
+            const temSocial = servicosContratados.some(s => s.tipo === 'Social Mídia');
+            const temTrafego = servicosContratados.some(s => s.tipo === 'Tráfego Pago');
+            
+            if (temSocial || temTrafego) {
+                document.getElementById('secaoComparacao').style.display = 'block';
+                
+                if (temSocial) {
+                    document.getElementById('btnCompararSocial').style.display = 'inline-block';
+                }
+                
+                if (temTrafego) {
+                    document.getElementById('btnCompararTrafego').style.display = 'inline-block';
+                }
+            }
+        }
+
+        function mostrarComparacaoSocial() {
+            const content = document.getElementById('comparacaoContent');
+            content.innerHTML = `
+                <div class="comparacao-table">
+                    <div class="plano-comparacao">
+                        <h4>START</h4>
+                        <div class="preco">R$ 1.500</div>
+                        <ul>
+                            <li>3 posts semanais</li>
+                            <li>Manual de comunicação</li>
+                            <li>8 artes/mês</li>
+                            <li>Copywriting</li>
+                            <li>Organização via Notion</li>
+                            <li>Análise de concorrentes</li>
+                        </ul>
+                    </div>
+                    <div class="plano-comparacao destaque">
+                        <h4>SCALE</h4>
+                        <div class="preco">R$ 2.200</div>
+                        <ul>
+                            <li>5 posts semanais</li>
+                            <li>Manual de comunicação</li>
+                            <li>12 artes/mês</li>
+                            <li>Copywriting</li>
+                            <li>Relatório mensal</li>
+                            <li>Organização via Notion</li>
+                            <li>Análise de concorrentes</li>
+                        </ul>
+                    </div>
+                    <div class="plano-comparacao">
+                        <h4>HEAT</h4>
+                        <div class="preco">R$ 3.200</div>
+                        <ul>
+                            <li>7 posts semanais</li>
+                            <li>Linha editorial premium</li>
+                            <li>16 artes/mês</li>
+                            <li>Copywriting estratégico</li>
+                            <li>Relatório completo</li>
+                            <li>Monitoramento de tendências</li>
+                            <li>Suporte em tempo real</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function mostrarComparacaoTrafego() {
+            const content = document.getElementById('comparacaoContent');
+            content.innerHTML = `
+                <div class="comparacao-table">
+                    <div class="plano-comparacao">
+                        <h4>FOCO</h4>
+                        <div class="preco">R$ 2.400</div>
+                        <ul>
+                            <li>3 criativos em imagem</li>
+                            <li>Rastreamento de leads</li>
+                            <li>Planejamento de campanhas</li>
+                            <li>Script de vendas</li>
+                            <li>Análise de concorrência</li>
+                            <li>Definição de ICP</li>
+                            <li>1 reunião mensal</li>
+                        </ul>
+                    </div>
+                    <div class="plano-comparacao destaque">
+                        <h4>ACELERAÇÃO</h4>
+                        <div class="preco">R$ 2.800</div>
+                        <ul>
+                            <li>5 criativos em imagem</li>
+                            <li>Rastreamento de leads</li>
+                            <li>Planejamento de campanhas</li>
+                            <li>Script de vendas</li>
+                            <li>Análise de concorrência</li>
+                            <li>Definição de ICP</li>
+                            <li>2 reuniões mensais</li>
+                        </ul>
+                    </div>
+                    <div class="plano-comparacao">
+                        <h4>DESTAQUE</h4>
+                        <div class="preco">R$ 3.500</div>
+                        <ul>
+                            <li>8 criativos em imagem</li>
+                            <li>Rastreamento de leads</li>
+                            <li>Planejamento de campanhas</li>
+                            <li>Script de vendas</li>
+                            <li>Análise de concorrência</li>
+                            <li>Definição de ICP</li>
+                            <li>4 reuniões mensais + suporte direto</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const modalConfirmacao = document.getElementById('modalConfirmacao');
+            const modalSucesso = document.getElementById('modalSucesso');
+            
+            if (event.target === modalConfirmacao) {
+                modalConfirmacao.style.display = 'none';
+            }
+            if (event.target === modalSucesso) {
+                modalSucesso.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>

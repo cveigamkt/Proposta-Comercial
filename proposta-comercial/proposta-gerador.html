@@ -10,7 +10,7 @@
 <body class="gerador-page">
     <div class="gerador-container">
         <header class="gerador-header">
-            <h1>🔥 Gerador de Proposta Comercial</h1>
+            <h1>🧾 Gerador de Proposta Comercial</h1>
             <p>Configure todos os parâmetros da proposta para o cliente</p>
         </header>
 
@@ -34,7 +34,7 @@
 
             <!-- Serviço 1: Social Media -->
             <section class="form-section">
-                <h2>📱 Serviço 1: Social Media</h2>
+                <h2>🧑‍💻 Serviço 1: Social Media</h2>
                 <div class="form-group">
                     <label for="servicoSocialMidia">Selecione o Plano</label>
                     <select id="servicoSocialMidia" name="servicoSocialMidia">
@@ -67,10 +67,10 @@
                     <div class="entregaveis-info" id="infoTrafegoPago"></div>
                 </div>
                 <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
-                    <label for="investimentoMidia">💰 Investimento em Mídia (Orçamento do Cliente) *</label>
+                    <label for="investimentoMidia">💵 Investimento em Mídia (Orçamento do Cliente) *</label>
                     <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00">
                     <small id="limiteInvestimento" class="info-investimento">
-                        <strong>ℹ️ Importante:</strong> Este é o valor que o cliente investirá mensalmente em anúncios (Meta Ads, Google Ads, etc.). 
+                        <strong>⚠️ Importante:</strong> Este é o valor que o cliente investirá mensalmente em anúncios (Meta Ads, Google Ads, etc.).
                         Este valor NÃO inclui nosso valor mensal de gestão.
                     </small>
                     <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
@@ -81,54 +81,23 @@
             <!-- Valores e Pagamento -->
             <section class="form-section">
                 <h2>💰 Valores e Condições de Pagamento</h2>
-                
+
                 <!-- Desconto Customizado (Opcional) -->
                 <div class="form-group desconto-customizado-group">
-                    <label>🎁 Desconto Customizado (Opcional)</label>
-                    <div class="desconto-customizado-fields">
-                        <div class="form-group">
-                            <label for="descontoDescricao">Descrição do Desconto</label>
-                            <input type="text" id="descontoDescricao" name="descontoDescricao" placeholder="Ex: Black Friday, Primeira Contratação, etc.">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="descontoTipo">Tipo</label>
-                                <select id="descontoTipo" name="descontoTipo">
-                                    <option value="percentual">Percentual (%)</option>
-                                    <option value="fixo">Valor Fixo (R$)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="descontoValor">Valor</label>
-                                <input type="text" id="descontoValor" name="descontoValor" placeholder="Ex: 10 ou 500">
-                            </div>
-                        </div>
-                    </div>
-                    <small>💡 Adicione um desconto especial para o cliente (opcional)</small>
-                </div>
-                
-                <div class="valor-total-display">
-                    <div class="valor-item">
-                        <span class="label">Valor Mensal dos Serviços:</span>
-                        <span class="valor" id="valorTotalDisplay">R$ 0,00</span>
-                    </div>
-                    <div class="valor-item desconto" id="descontoCustomizadoItem" style="display: none;">
-                        <span class="label" id="descontoCustomizadoLabel">Desconto:</span>
-                        <span class="valor" id="descontoCustomizadoDisplay">- R$ 0,00</span>
-                    </div>
-                    <div class="valor-item desconto">
-                        <span class="label">Desconto Adicional (5% - Pesquisa + Pagamento em Dia):</span>
-                        <span class="valor" id="descontoDisplay">- R$ 0,00</span>
-                    </div>
-                    <div class="valor-item final">
-                        <span class="label">Valor Final Mensal:</span>
-                        <span class="valor" id="valorFinalDisplay">R$ 0,00</span>
+                    <label>Desconto Customizado (Opcional)</label>
+                    <div class="desconto-controls" style="display:grid;grid-template-columns: 1fr auto 140px; gap: 8px; align-items:center;">
+                        <input type="text" id="descontoDescricao" placeholder="Ex: Primeira contratação">
+                        <select id="descontoTipo">
+                            <option value="percentual">% Percentual</option>
+                            <option value="valor">R$ Valor</option>
+                        </select>
+                        <input type="text" id="descontoValor" placeholder="Ex: 10 ou 200">
                     </div>
                 </div>
 
                 <!-- Simulador de Períodos -->
                 <div class="simulador-periodos">
-                    <h4>📊 Simulação de Períodos (para sua análise)</h4>
+                    <h4>🗓️ Simulação de Períodos (para sua análise)</h4>
                     <p class="simulador-subtitle">Veja os valores finais para cada período e decida qual desconto adicionar</p>
                     <div class="periodos-grid">
                         <div class="periodo-card">
@@ -159,13 +128,34 @@
                     </div>
                 </div>
 
+                <!-- Resumo de Valores -->
+                <div class="resumo-valores" style="margin-top:16px; background:#0f2a21; padding:16px; border-radius:10px;">
+                    <div class="valor-row" style="display:flex; justify-content:space-between; margin:6px 0;">
+                        <span class="valor-label">Subtotal dos Serviços</span>
+                        <strong id="valorTotalDisplay">R$ 0,00</strong>
+                    </div>
+                    <div id="descontoCustomizadoItem" style="display:none; align-items:center; justify-content:space-between; margin:6px 0;">
+                        <span id="descontoCustomizadoLabel">Desconto (Customizado):</span>
+                        <strong id="descontoCustomizadoDisplay">- R$ 0,00</strong>
+                    </div>
+                    <div class="valor-row" style="display:flex; justify-content:space-between; margin:6px 0;">
+                        <span class="valor-label">Desconto adicional</span>
+                        <strong id="descontoDisplay">- R$ 0,00</strong>
+                    </div>
+                    <hr style="border-color:#1E5942; opacity:0.4;">
+                    <div class="valor-row total" style="display:flex; justify-content:space-between; margin:6px 0; font-size:1.05rem;">
+                        <span class="valor-label">Valor Final Mensal</span>
+                        <strong id="valorFinalDisplay">R$ 0,00</strong>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="observacoes">Observações Adicionais</label>
                     <textarea id="observacoes" name="observacoes" rows="4" placeholder="Observações ou condições especiais para esta proposta..."></textarea>
                 </div>
-                
+
                 <div class="info-box">
-                    <p><strong>ℹ️ Formas de Pagamento:</strong></p>
+                    <p><strong>💳 Formas de Pagamento:</strong></p>
                     <p>O cliente escolherá a forma de pagamento ao aceitar a proposta. Opções disponíveis:</p>
                     <ul>
                         <li>À vista (Pix/Boleto)</li>
@@ -178,10 +168,10 @@
             <!-- Botões de Ação -->
             <div class="form-actions">
                 <button type="button" class="btn-preview" onclick="previewProposta()">
-                    👁️ Visualizar Proposta
+                    👀 Visualizar Proposta
                 </button>
                 <button type="submit" class="btn-generate">
-                    🚀 Gerar Link da Proposta
+                    🔗 Gerar Link da Proposta
                 </button>
             </div>
         </form>
@@ -190,7 +180,7 @@
         <div id="modalLink" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeModal()">&times;</span>
-                <h2>✅ Proposta Gerada com Sucesso!</h2>
+                <h2>🎉 Proposta Gerada com Sucesso!</h2>
                 <p>Copie o link abaixo e envie para o cliente:</p>
                 <div class="link-container">
                     <input type="text" id="linkGerado" readonly>
