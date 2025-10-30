@@ -4,8 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerador de Proposta Comercial - Heat Digital</title>
-    <link rel="stylesheet" href="proposta-styles.css">
+    <link rel="stylesheet" href="./proposta-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos básicos para garantir funcionamento */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
+        .gerador-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .gerador-header { text-align: center; margin-bottom: 40px; }
+        .gerador-header h1 { font-size: 2.5rem; color: #1E5942; margin-bottom: 10px; }
+        .proposta-form { background: #1a1a1a; border-radius: 20px; padding: 40px; }
+        .form-section { margin-bottom: 40px; padding: 30px; background: #252525; border-radius: 15px; }
+        .form-section h2 { color: #1E5942; margin-bottom: 20px; font-size: 1.5rem; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 1rem; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1E5942; outline: none; }
+        .form-actions { display: flex; gap: 20px; justify-content: center; margin-top: 40px; }
+        .btn-preview, .btn-generate { padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-preview { background: #666; color: #fff; }
+        .btn-generate { background: #1E5942; color: #fff; }
+        .btn-preview:hover { background: #777; }
+        .btn-generate:hover { background: #267356; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+        .modal-content { background: #1a1a1a; margin: 10% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 600px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .link-container { display: flex; gap: 10px; margin: 20px 0; }
+        .link-container input { flex: 1; }
+        .btn-copy { padding: 10px 20px; background: #1E5942; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
 </head>
 <body class="gerador-page">
     <div class="gerador-container">
