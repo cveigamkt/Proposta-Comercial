@@ -1,3 +1,69 @@
+/* Barra do botão PDF no topo */
+/* Removido pdf-top-bar, botão PDF agora centralizado após resumo */
+
+.footer-actions-central {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 40px 0 0 0;
+    padding-bottom: 10px;
+}
+
+/* Sessão de resumo da proposta */
+.resumo-proposta-section {
+    background: #181f1b;
+    border-radius: 18px;
+    margin: 40px auto 40px auto;
+    max-width: 800px;
+    box-shadow: 0 4px 24px rgba(30,89,66,0.10);
+    padding: 40px 30px 30px 30px;
+    border: 2px solid #1E5942;
+}
+.resumo-proposta-content h2 {
+    color: #1E5942;
+    font-size: 2rem;
+    margin-bottom: 18px;
+    text-align: center;
+}
+.resumo-dados-basicos p {
+    font-size: 1.1rem;
+    color: #E0E0E0;
+    margin-bottom: 6px;
+}
+.resumo-servico {
+    margin-bottom: 18px;
+}
+.resumo-servico strong {
+    color: #00FF88;
+    font-size: 1.1rem;
+}
+.resumo-servico ul {
+    margin: 8px 0 0 20px;
+    color: #CFCFCF;
+    font-size: 1rem;
+}
+.resumo-valores {
+    margin: 18px 0 10px 0;
+    font-size: 1.1rem;
+    color: #F2F2F2;
+}
+.resumo-legais {
+    background: #232b27;
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-top: 18px;
+    font-size: 0.98rem;
+    color: #B0B0B0;
+}
+.resumo-legais ul {
+    margin: 10px 0 0 20px;
+    color: #B0B0B0;
+    font-size: 0.98rem;
+}
+.resumo-legais li {
+    margin-bottom: 6px;
+}
 /* ===================================
    RESET E BASE
    =================================== */
@@ -638,26 +704,105 @@ body {
 }
 
 /* Botão Export PDF */
+/* Botão Export PDF - topo e rodapé */
 .btn-export-pdf {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    color: #FFFFFF;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(90deg, #1E5942 0%, #267356 100%);
+    color: #fff;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1.1rem;
     cursor: pointer;
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(30, 89, 66, 0.2);
+    transition: all 0.3s;
+    margin: 10px 0;
 }
 
 .btn-export-pdf:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-2px);
+    background: linear-gradient(90deg, #267356 0%, #1E5942 100%);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 8px 25px rgba(30, 89, 66, 0.3);
+}
+
+.btn-export-pdf-top {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+}
+
+.btn-export-pdf-bottom {
+    display: flex;
+    margin: 0 auto 30px auto;
+    position: static;
+    justify-content: center;
+    width: max-content;
+}
+
+.footer-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: transparent;
+    margin-bottom: -10px;
+}
+
+@media (max-width: 768px) {
+    .btn-export-pdf-top {
+        position: static;
+        margin: 20px auto 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    .btn-export-pdf-bottom {
+        width: 100%;
+        margin: 0 auto 20px auto;
+    }
+}
+
+/* Botão aceitar proposta flutuante */
+/* Botão aceitar proposta flutuante centralizado */
+/* Botão aceitar proposta flutuante centralizado de verdade */
+.btn-aceitar-flutuante-centro {
+    position: fixed !important;
+    left: 50vw;
+    bottom: 30px;
+    transform: translateX(-50%);
+    z-index: 999;
+    box-shadow: 0 8px 30px rgba(0,255,136,0.25);
+    animation: flutuarBtnAceitar 1.2s infinite alternate;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 320px;
+    max-width: 90vw;
+}
+
+@keyframes flutuarBtnAceitar {
+    from { transform: translateY(0) scale(1); }
+    to { transform: translateY(-8px) scale(1.04); }
+}
+
+@media (max-width: 768px) {
+    .btn-aceitar-flutuante-centro {
+        left: 50%;
+        right: auto;
+        width: 95vw;
+        min-width: 0;
+        bottom: 15px;
+        font-size: 1.1rem;
+        padding: 16px 0;
+        transform: translateX(-50%);
+        max-width: 98vw;
+    }
+    .footer-actions-central {
+        margin: 30px 0 0 0;
+    }
 }
 
 /* Seção de Apresentação */
@@ -1313,7 +1458,7 @@ body {
 }
 
 .cta-content {
-    max-width: 700px;
+    max-width: 800px;
     margin: 0 auto;
 }
 
@@ -1328,6 +1473,74 @@ body {
     font-size: 1.2rem;
     color: rgba(255, 255, 255, 0.95);
     margin-bottom: 15px;
+}
+
+.contato-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Link do resumo para a CTA */
+.resumo-aceite-link {
+    display: inline-block;
+    margin: 10px 0 0 0;
+    color: #00FF88;
+    font-weight: 700;
+    text-decoration: none;
+}
+.resumo-aceite-link:hover { text-decoration: underline; }
+
+/* Detalhes colapsáveis no resumo */
+.resumo-servico details {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 10px 0;
+}
+.resumo-servico summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #CDE7DE;
+    outline: none;
+}
+.resumo-servico ul { margin: 8px 0 4px 18px; }
+
+/* Bloco de resumo financeiro no card de resumo */
+.resumo-financeiro {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255,255,255,0.08);
+}
+.resumo-financeiro .linha { display:flex; justify-content: space-between; margin: 6px 0; }
+.resumo-financeiro .label { opacity: 0.9; }
+.resumo-financeiro .valor { font-weight: 700; }
+
+/* Botão aceitar dentro do resumo, com o mesmo estilo da página */
+.btn-aceitar-resumo {
+    display: inline-block;
+    background: #00FF88;
+    color: #0C3B2E;
+    padding: 14px 28px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 1.05rem;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
+    margin: 14px auto 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-aceitar-resumo:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 12px 35px rgba(0, 255, 136, 0.6);
+    background: #00DD77;
 }
 
 /* Seleção de Forma de Pagamento */
@@ -1423,7 +1636,7 @@ body {
 
 /* Botão de Aceitar Proposta */
 .btn-aceitar-proposta {
-    display: inline-block;
+    display: block;
     background: #00FF88;
     color: #0C3B2E;
     padding: 20px 50px;
@@ -1435,9 +1648,28 @@ body {
     border: none;
     cursor: pointer;
     box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4);
-    margin: 25px 0;
+    margin: 25px auto;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Modal Resumo Aceite: maior em desktop */
+@media (min-width: 1024px) {
+    .modal-resumo-aceite {
+        width: 40vw;
+        max-width: none;
+    }
+}
+
+/* Responsividade: Resumo e Modal */
+@media (max-width: 600px) {
+    .modal-content { width: 95vw; margin: 5% auto; padding: 20px; }
+    .modal-resumo-aceite { width: 95vw !important; max-width: none; }
+    .resumo-proposta-content { padding: 16px !important; }
+    .resumo-proposta-content h2 { font-size: 1.6rem !important; }
+    .resumo-proposta-content p, .resumo-proposta-content li, .resumo-proposta-content .linha { font-size: 0.95rem; }
+    .resumo-financeiro .linha { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .resumo-financeiro .valor { margin-top: 0; }
 }
 
 .btn-aceitar-proposta:hover {

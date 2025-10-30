@@ -470,7 +470,14 @@ document.getElementById('descontoValor').addEventListener('input', calcularValor
 
 // Função utilitária para gerar URL de visualização (sempre absoluta)
 function gerarURLVisualizacao() {
-    return window.location.origin + '/proposta-visualizacao.html';
+    // Se rodando em file://, monta o caminho absoluto do arquivo na mesma pasta
+    if (window.location.protocol === 'file:') {
+        const path = window.location.pathname.replace(/\\/g, '/');
+        const base = path.substring(0, path.lastIndexOf('/')); // pasta atual
+        return 'file://' + base + '/proposta-visualizacao.html';
+    } else {
+        return window.location.origin + '/proposta-visualizacao.html';
+    }
 }
 
 // Função de inicialização que redireciona automaticamente se houver parâmetros na URL

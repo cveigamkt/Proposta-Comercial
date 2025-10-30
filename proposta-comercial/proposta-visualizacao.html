@@ -16,27 +16,10 @@
             <div class="header-content">
                 <h1 class="heat-logo">🔥 HEAT DIGITAL</h1>
                 <p class="header-tagline">Performance Inteligente para Crescimento Real</p>
-                <button onclick="exportarPDF()" class="btn-export-pdf" title="Baixar proposta em PDF">
-                    📥 Baixar PDF
-                </button>
             </div>
         </header>
 
-        <!-- Seção de Apresentação -->
-        <section class="apresentacao">
-            <div class="apresentacao-content">
-                <h2>Proposta Comercial</h2>
-                <div class="manifesto-intro">
-                    <p class="manifesto-text">Existem promessas. E existe previsibilidade.</p>
-                    <p class="manifesto-desc">Você não precisa de mais uma agência que promete resultados. Você precisa de um sistema que entrega crescimento previsível através de dados, estratégia e execução constante.</p>
-                </div>
-                <div class="cliente-info">
-                    <p><strong>Cliente:</strong> <span id="nomeClienteView"></span></p>
-                    <p><strong>Empresa:</strong> <span id="empresaClienteView"></span></p>
-                    <p class="data-proposta"><strong>Data:</strong> <span id="dataProposta"></span></p>
-                </div>
-            </div>
-        </section>
+        <!-- ...demais sessões... -->
 
         <!-- Metodologia Heat -->
         <section class="metodologia-section">
@@ -376,6 +359,39 @@
             </div>
         </section>
 
+        <!-- Sessão de Resumo da Proposta (para exportação e visualização) -->
+        <section class="resumo-proposta-section" id="resumoPropostaSection">
+            <div class="resumo-proposta-content">
+                <h2>Resumo da Proposta Comercial</h2>
+                <div class="resumo-dados-basicos">
+                    <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
+                    <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
+                    <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
+                </div>
+                <div class="resumo-servicos" id="resumoServicos"></div>
+                <div class="resumo-valores">
+                    <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
+                    <p id="resumoInvestimentoMidia"></p>
+                </div>
+                <div class="resumo-legais">
+                    <p><strong>Observações Legais:</strong></p>
+                    <ul>
+                        <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
+                        <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
+                        <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
+                        <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Botão PDF centralizado e espaçado -->
+        <div class="footer-actions footer-actions-central">
+            <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">
+                <span class="btn-icon">📥</span> <span class="btn-text">Baixar Resumo PDF</span>
+            </button>
+        </div>
+
         <!-- CTA de Ação -->
         <section class="cta-section">
             <div class="cta-content">
@@ -399,7 +415,18 @@
             </div>
         </section>
 
-        <!-- Modal de Confirmação -->
+        <!-- Modal de Confirmação de Aceite (Resumo e Confirmação) -->
+        <div id="modalResumoAceite" class="modal">
+            <div class="modal-content modal-resumo-aceite">
+                <div id="resumoProposta"></div>
+                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px;">
+                    <button onclick="exportarPDFResumoModal()" class="btn-export-pdf" title="Baixar resumo em PDF">📄 Baixar PDF</button>
+                    <button onclick="confirmarAceiteProposta()" class="btn-aceitar-proposta btn-confirmar">Confirmar Aceite</button>
+                    <button onclick="fecharModalResumoAceite()" class="btn-fechar-modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de Aceite Final -->
         <div id="modalAceite" class="modal">
             <div class="modal-content">
                 <h2>✅ Proposta Aceita com Sucesso!</h2>
@@ -544,6 +571,37 @@
             </div>
         </div>
 
+        <!-- Sessão de Resumo da Proposta (para exportação e visualização) -->
+        <section class="resumo-proposta-section" id="resumoPropostaSection">
+            <div class="resumo-proposta-content">
+                <h2>Resumo da Proposta Comercial</h2>
+                <div class="resumo-dados-basicos">
+                    <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
+                    <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
+                    <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
+                </div>
+                <div class="resumo-servicos" id="resumoServicos"></div>
+                <div class="resumo-valores">
+                    <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
+                    <p id="resumoInvestimentoMidia"></p>
+                </div>
+                <div class="resumo-legais">
+                    <p><strong>Observações Legais:</strong></p>
+                    <ul>
+                        <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
+                        <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
+                        <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
+                        <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        <!-- Botão PDF centralizado e espaçado -->
+        <div class="footer-actions footer-actions-central">
+            <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">
+                <span class="btn-icon">📥</span> <span class="btn-text">Baixar Resumo PDF</span>
+            </button>
+        </div>
         <!-- Footer -->
         <footer class="proposta-footer">
             <p>© 2025 Heat Digital - Performance Inteligente para Crescimento Real</p>
@@ -555,5 +613,6 @@
     </div>
 
     <script src="proposta-visualizacao.js"></script>
+    <script src="proposta-visualizacao-overrides.js"></script>
 </body>
 </html>

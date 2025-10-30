@@ -8,7 +8,7 @@ const planosSocialMedia = {
             'Linha editorial e manual de comunicação',
             'Até 8 artes/mês (feed + stories)',
             'Copywriting (legendas e chamadas)',
-            'Organização via plataforma (Notion/Monday
+            'Organização via plataforma (Notion/Monday)',
             'Análise de Concorrentes'
         ]
     },
@@ -118,8 +118,10 @@ function obterParametros() {
 
 // Renderizar informações do cliente
 function renderizarCliente(dados) {
-    document.getElementById('nomeClienteView').textContent = dados.nomeCliente;
-    document.getElementById('empresaClienteView').textContent = dados.empresaCliente;
+    const nomeEl = document.getElementById('nomeClienteView');
+    if (nomeEl) nomeEl.textContent = dados.nomeCliente;
+    const empresaEl = document.getElementById('empresaClienteView');
+    if (empresaEl) empresaEl.textContent = dados.empresaCliente;
     
     // Data atual
     const hoje = new Date();
@@ -128,7 +130,10 @@ function renderizarCliente(dados) {
         month: 'long',
         year: 'numeric'
     });
-    document.getElementById('dataProposta').textContent = dataFormatada;
+    const dataPropostaEl = document.getElementById('dataProposta');
+    if (dataPropostaEl) dataPropostaEl.textContent = dataFormatada;
+    const resumoDataEl = document.getElementById('resumoDataProposta');
+    if (resumoDataEl) resumoDataEl.textContent = dataFormatada;
 }
 
 // Renderizar serviços
@@ -291,21 +296,34 @@ function verificarDados() {
     return true;
 }
 
-// Aceitar proposta
+// Aceitar proposta: exibe modal de resumo antes de confirmar
 function aceitarProposta() {
     const dados = obterParametros();
-    
-    // Capturar forma de pagamento selecionada
     const formaPagamentoSelecionada = document.querySelector('input[name="formaPagamento"]:checked');
     if (!formaPagamentoSelecionada) {
         alert('⚠️ Por favor, selecione uma forma de pagamento antes de aceitar a proposta.');
         return;
     }
-    
-    const formaPagamento = formaPagamentoSelecionada.value;
+    // Montar resumo visual
+    let resumo = `<div style='text-align:left;'>`;
+    resumo += `<p><strong>Cliente:</strong> ${dados.nomeCliente}</p>`;
+    resumo += `<p><strong>Empresa:</strong> ${dados.empresaCliente}</p>`;
+    resumo += `<p><strong>Serviço Social Media:</strong> ${dados.servicoSocialMedia !== 'nao-se-aplica' ? dados.servicoSocialMedia.toUpperCase() : 'Não contratado'}</p>`;
+    resumo += `<p><strong>Serviço Tráfego Pago:</strong> ${dados.servicoTrafegoPago !== 'nao-se-aplica' ? dados.servicoTrafegoPago.toUpperCase() : 'Não contratado'}</p>`;
+    resumo += `<p><strong>Investimento em Mídia:</strong> ${dados.investimentoMidia ? dados.investimentoMidia : 'Não informado'}</p>`;
+    resumo += `<p><strong>Forma de Pagamento:</strong> ${formaPagamentoSelecionada.nextElementSibling.querySelector('strong').textContent}</p>`;
+    if (dados.observacoes) resumo += `<p><strong>Observações:</strong> ${dados.observacoes}</p>`;
+    resumo += `</div>`;
+    document.getElementById('resumoProposta').innerHTML = resumo;
+    document.getElementById('modalResumoAceite').style.display = 'block';
+}
+
+// Confirma o aceite após o resumo
+function confirmarAceiteProposta() {
+    const dados = obterParametros();
+    const formaPagamentoSelecionada = document.querySelector('input[name="formaPagamento"]:checked');
     let formaPagamentoTexto = '';
-    
-    switch(formaPagamento) {
+    switch(formaPagamentoSelecionada.value) {
         case 'avista':
             formaPagamentoTexto = 'À vista (Pix/Boleto)';
             break;
@@ -316,8 +334,6 @@ function aceitarProposta() {
             formaPagamentoTexto = 'Mensalidade recorrente';
             break;
     }
-    
-    // Coletar dados para envio
     const aceite = {
         timestamp: new Date().toISOString(),
         nomeCliente: dados.nomeCliente,
@@ -330,16 +346,15 @@ function aceitarProposta() {
         observacoes: dados.observacoes,
         status: 'ACEITO'
     };
-    
     // TODO: Integrar com Google Sheets
-    // Por enquanto, vamos simular o envio
     console.log('Proposta aceita:', aceite);
-    
-    // Mostrar modal de confirmação
+    document.getElementById('modalResumoAceite').style.display = 'none';
     document.getElementById('modalAceite').style.display = 'block';
-    
-    // Em produção, aqui você faria uma chamada para o Google Apps Script
     // enviarParaGoogleSheets(aceite);
+}
+
+function fecharModalResumoAceite() {
+    document.getElementById('modalResumoAceite').style.display = 'none';
 }
 
 // Fechar modal de aceite
@@ -347,41 +362,80 @@ function fecharModalAceite() {
     document.getElementById('modalAceite').style.display = 'none';
 }
 
-// Exportar proposta para PDF
+// Exportar apenas o resumo da proposta para PDF
 function exportarPDF() {
-    const nomeCliente = document.getElementById('nomeClienteView').textContent || 'Cliente';
-    const empresaCliente = document.getElementById('empresaClienteView').textContent || 'Empresa';
-    const nomeArquivo = `Proposta_Heat_${empresaCliente.replace(/\s+/g, '_')}.pdf`;
-    
-    // Ocultar botões antes de gerar PDF
-    const btnExport = document.querySelector('.btn-export-pdf');
-    const btnAceitar = document.querySelector('.btn-aceitar-proposta');
-    const botoesContato = document.querySelector('.contato-buttons');
-    const selecaoPagamento = document.querySelector('.selecao-pagamento');
-    
-    if (btnExport) btnExport.style.display = 'none';
-    if (btnAceitar) btnAceitar.style.display = 'none';
-    if (botoesContato) botoesContato.style.display = 'none';
-    if (selecaoPagamento) selecaoPagamento.style.display = 'none';
-    
-    // Configurações do PDF
+    const empresaCliente = (document.getElementById('resumoEmpresaCliente')?.textContent || 'Empresa').trim() || 'Empresa';
+    const nomeArquivo = `Resumo_Proposta_Heat_${empresaCliente.replace(/\s+/g, '_')}.pdf`;
+    const alvo = document.getElementById('resumoPropostaSection');
+    if (!alvo) return;
+    const btnExports = document.querySelectorAll('.btn-export-pdf');
+    btnExports.forEach(btn => btn.style.display = 'none');
+    const originalBg = alvo.style.backgroundColor;
+    alvo.style.backgroundColor = '#ffffff';
     const opt = {
-        margin: 10,
+        margin: [10,10,10,10],
         filename: nomeArquivo,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // <-- AGORA HORIZONTAL
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    
-    // Gerar PDF
-    html2pdf().set(opt).from(document.querySelector('.proposta-container')).save().then(() => {
-        // Reexibir botões após gerar PDF
-        if (btnExport) btnExport.style.display = '';
-        if (btnAceitar) btnAceitar.style.display = '';
-        if (botoesContato) botoesContato.style.display = '';
-        if (selecaoPagamento) selecaoPagamento.style.display = '';
+    html2pdf().set(opt).from(alvo).save().then(() => {
+        btnExports.forEach(btn => btn.style.display = '');
+        alvo.style.backgroundColor = originalBg || '';
+    }).catch(()=>{
+        btnExports.forEach(btn => btn.style.display = '');
+        alvo.style.backgroundColor = originalBg || '';
     });
 }
+// Preencher sessão de resumo com dados detalhados
+function preencherResumoProposta() {
+    const dados = obterParametros();
+    document.getElementById('resumoNomeCliente').textContent = dados.nomeCliente;
+    document.getElementById('resumoEmpresaCliente').textContent = dados.empresaCliente;
+    // Data
+    const hoje = new Date();
+    const dataFormatada = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    document.getElementById('resumoDataProposta').textContent = dataFormatada;
+
+    // Serviços detalhados
+    let servicosHtml = '';
+    let valorMensal = 0;
+    // Social Media
+    if (dados.servicoSocialMedia && dados.servicoSocialMedia !== 'nao-se-aplica') {
+        const plano = planosSocialMedia[dados.servicoSocialMedia];
+        servicosHtml += `<div class='resumo-servico'><strong>Social Media (${plano.nome}):</strong><ul>`;
+        plano.entregaveis.forEach(item => {
+            servicosHtml += `<li>${item}</li>`;
+        });
+        servicosHtml += `</ul></div>`;
+        valorMensal += plano.valor;
+    }
+    // Tráfego Pago
+    if (dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica') {
+        const plano = planosTrafegoPago[dados.servicoTrafegoPago];
+        servicosHtml += `<div class='resumo-servico'><strong>Tráfego Pago (${plano.nome}):</strong><ul>`;
+        plano.entregaveis.forEach(item => {
+            servicosHtml += `<li>${item}</li>`;
+        });
+        servicosHtml += `</ul></div>`;
+        valorMensal += plano.valor;
+    }
+    if (!servicosHtml) {
+        servicosHtml = '<p><em>Nenhum serviço contratado.</em></p>';
+    }
+    document.getElementById('resumoServicos').innerHTML = servicosHtml;
+    // Valor mensal
+    document.getElementById('resumoValorMensal').textContent = formatarMoeda(valorMensal);
+    // Investimento em mídia
+    let investimentoHtml = '';
+    if (dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica') {
+        investimentoHtml = `<strong>Investimento em mídia:</strong> ${dados.investimentoMidia ? dados.investimentoMidia : 'Não informado'} <br><span style='color:#FFA500'><em>O valor de investimento em mídia é pago diretamente às plataformas e não está incluso no valor mensal dos serviços.</em></span>`;
+    }
+    document.getElementById('resumoInvestimentoMidia').innerHTML = investimentoHtml;
+}
+
+// Preencher resumo ao carregar
+document.addEventListener('DOMContentLoaded', preencherResumoProposta);
 
 // Abrir modal de comparação de planos
 function abrirModalComparacaoTrafego() {
