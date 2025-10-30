@@ -1,28 +1,6 @@
 {
   "rewrites": [
     { "source": "/gerador", "destination": "/proposta-gerador.html" },
-    { "source": "/proposta", "destination": "/proposta-visualizacao.html" },
-    { "source": "/proposta-visualizacao", "destination": "/proposta-visualizacao.html" },
-    { "source": "/proposta-gerador", "destination": "/proposta-gerador.html" }
-  ],
-  "headers": [
-    {
-      "source": "**/*.css",
-      "headers": [
-        { "key": "Content-Type", "value": "text/css" }
-      ]
-    },
-    {
-      "source": "**/*.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript" }
-      ]
-    },
-    {
-      "source": "**/*.html",
-      "headers": [
-        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
-      ]
-    }
+    { "source": "/proposta", "destination": "/proposta-visualizacao.html" }
   ]
 }
