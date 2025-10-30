@@ -1,618 +1,437 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proposta Comercial - Heat Digital</title>
-    <link rel="stylesheet" href="proposta-styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- html2pdf.js para exportar PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Proposta Comercial - Heat Digital</title>
+  <link rel="stylesheet" href="proposta-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js"></script>
 </head>
 <body class="proposta-page">
-    <div class="proposta-container">
-        <!-- Header -->
-        <header class="proposta-header">
-            <div class="header-content">
-                <h1 class="heat-logo">🔥 HEAT DIGITAL</h1>
-                <p class="header-tagline">Performance Inteligente para Crescimento Real</p>
-            </div>
-        </header>
+  <div class="proposta-container">
+    <!-- Header -->
+    <header class="proposta-header">
+      <div class="header-content">
+        <h1 class="heat-logo">HEAT DIGITAL</h1>
+        <p class="header-tagline">Performance Inteligente para Crescimento Real</p>
+      </div>
+      <div class="cliente-mini">
+        <span id="nomeClienteView"></span> • <span id="empresaClienteView"></span>
+      </div>
+    </header>
 
-        <!-- ...demais sessões... -->
-
-        <!-- Metodologia Heat -->
-        <section class="metodologia-section">
-            <h2 class="section-title">METODOLOGIA HEAT</h2>
-            <p class="section-subtitle">Performance inteligente através de 4 pilares fundamentais</p>
-            <div class="metodologia-grid">
-                <div class="metodologia-card">
-                    <div class="card-icon">📱</div>
-                    <h3>Máquina de Conteúdo</h3>
-                    <p>Criamos uma rotina estratégica de conteúdo, garantindo presença digital alinhada ao posicionamento da marca. Conteúdo que conecta e converte.</p>
-                </div>
-                <div class="metodologia-card">
-                    <div class="card-icon">🎯</div>
-                    <h3>Funil de aquisição</h3>
-                    <p>Tráfego pago e canal direto para gerar reconhecimento de marca e oportunidades reais de negócio. Dados e performance em cada campanha.</p>
-                </div>
-                <div class="metodologia-card">
-                    <div class="card-icon">🤝</div>
-                    <h3>Integração Comercial</h3>
-                    <p>Unimos marketing e vendas para acompanhar cada oportunidade do primeiro contato até o fechamento. Leads qualificados que convertem em vendas.</p>
-                </div>
-                <div class="metodologia-card">
-                    <div class="card-icon">📊</div>
-                    <h3>Estratégia de Marca</h3>
-                    <p>Ajustamos como sua marca se apresenta, destacamos o que a torna única e definimos sua linha de comunicação. Posicionamento que diferencia no mercado.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Serviços Contratados -->
-        <section class="servicos-section" id="servicosSection">
-            <h2 class="section-title">SERVIÇOS CONTRATADOS</h2>
-            
-            <!-- Social Media -->
-            <div class="servico-card" id="socialMediaCard" style="display: none;">
-                <div class="servico-header">
-                    <h3>📱 ESTRATÉGIA DE COMUNICAÇÃO</h3>
-                    <span class="servico-badge" id="badgeSocialMedia"></span>
-                </div>
-                <div class="servico-body">
-                    <h4>Entregáveis:</h4>
-                    <ul class="entregaveis-list" id="listaSocialMedia"></ul>
-                    <div class="servico-valor">
-                        <span class="valor-label">Valor Mensal:</span>
-                        <span class="valor-amount" id="valorSocialMedia"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tráfego Pago -->
-            <div class="servico-card" id="trafegoPagoCard" style="display: none;">
-                <div class="servico-header">
-                    <h3>🎯 TRÁFEGO PAGO</h3>
-                    <span class="servico-badge" id="badgeTrafegoPago"></span>
-                </div>
-                <div class="servico-body">
-                    <h4>Entregáveis:</h4>
-                    <ul class="entregaveis-list" id="listaTrafegoPago"></ul>
-                    
-                    <div class="investimento-nota-discreta" id="investimentoMidiaView" style="display: none;">
-                        <p>⚠️ IMPORTANTE: Este valor NÃO INCLUI INVESTIMENTO EM MÍDIA</p>
-                    </div>
-                    
-                    <div class="servico-valor">
-                        <span class="valor-label">Fee de Gestão Mensal:</span>
-                        <span class="valor-amount" id="valorTrafegoPago"></span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Valores e Condições -->
-        <section class="valores-section">
-            <h2 class="section-title">VALORES E CONDIÇÕES</h2>
-            <div class="valores-card">
-                <!-- Seletor de Recorrência -->
-                <div class="recorrencia-selector">
-                    <h4>🔄 Escolha o Período de Recorrência</h4>
-                    <p class="recorrencia-subtitle">Quanto maior o período, maior o desconto!</p>
-                    <div class="recorrencia-options">
-                        <label class="recorrencia-option">
-                            <input type="radio" name="recorrencia" value="1">
-                            <div class="option-content">
-                                <span class="option-periodo">1 mês</span>
-                                <span class="option-desconto">Sem desconto</span>
-                            </div>
-                        </label>
-                        <label class="recorrencia-option">
-                            <input type="radio" name="recorrencia" value="3">
-                            <div class="option-content">
-                                <span class="option-periodo">3 meses</span>
-                                <span class="option-desconto">5% de desconto</span>
-                            </div>
-                        </label>
-                        <label class="recorrencia-option recomendado">
-                            <input type="radio" name="recorrencia" value="6" checked>
-                            <div class="option-content">
-                                <span class="option-periodo">6 meses</span>
-                                <span class="option-desconto">10% de desconto</span>
-                                <span class="badge-recomendado">⭐ RECOMENDADO</span>
-                            </div>
-                        </label>
-                        <label class="recorrencia-option">
-                            <input type="radio" name="recorrencia" value="12">
-                            <div class="option-content">
-                                <span class="option-periodo">12 meses</span>
-                                <span class="option-desconto">15% de desconto</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="valores-breakdown">
-                    <div class="valor-row">
-                        <span class="valor-label">Valor Mensal dos Serviços:</span>
-                        <span class="valor-value" id="valorTotalView">R$ 0,00</span>
-                    </div>
-                    <div class="valor-row desconto-recorrencia-row" id="descontoRecorrenciaRow">
-                        <span class="valor-label">Desconto por Recorrência:</span>
-                        <span class="valor-value desconto-recorrencia" id="descontoRecorrenciaView">- R$ 0,00</span>
-                    </div>
-                    <div class="valor-row desconto-row" id="descontoCustomizadoRow" style="display: none;">
-                        <span class="valor-label">
-                            <span id="descontoCustomizadoLabelView">Desconto:</span>
-                        </span>
-                        <span class="valor-value desconto-recorrencia" id="descontoCustomizadoView">- R$ 0,00</span>
-                    </div>
-                    <div class="valor-row desconto-row">
-                        <span class="valor-label">
-                            <span>Desconto Adicional (5%)</span>
-                            <small>Condicionado a: Resposta da pesquisa de satisfação + Pagamento em dia</small>
-                        </span>
-                        <span class="valor-value desconto" id="descontoView">- R$ 0,00</span>
-                    </div>
-                    <div class="valor-row total-row">
-                        <span class="valor-label">Valor Final Mensal:</span>
-                        <span class="valor-value total" id="valorFinalView">R$ 0,00</span>
-                    </div>
-                    <div class="valor-row total-periodo-row">
-                        <span class="valor-label">💎 Total do Período:</span>
-                        <span class="valor-value total-periodo" id="valorTotalPeriodoView">R$ 0,00</span>
-                    </div>
-                </div>
-
-                <!-- Seleção de Forma de Pagamento -->
-                <div class="selecao-pagamento">
-                    <h4>💳 Escolha sua forma de pagamento:</h4>
-                    <div class="pagamento-opcoes">
-                        <label class="opcao-pagamento">
-                            <input type="radio" name="formaPagamento" value="avista" checked>
-                            <div class="opcao-card">
-                                <span class="opcao-icon">💰</span>
-                                <strong>À vista (Pix/Boleto)</strong>
-                                <p>Pagamento único no início</p>
-                            </div>
-                        </label>
-                        <label class="opcao-pagamento">
-                            <input type="radio" name="formaPagamento" value="parcelado">
-                            <div class="opcao-card">
-                                <span class="opcao-icon">📊</span>
-                                <strong>50% + 50% em 30 dias</strong>
-                                <p>Divida em duas parcelas</p>
-                            </div>
-                        </label>
-                        <label class="opcao-pagamento">
-                            <input type="radio" name="formaPagamento" value="mensal">
-                            <div class="opcao-card">
-                                <span class="opcao-icon">🔄</span>
-                                <strong>Mensalidade recorrente</strong>
-                                <p>Pagamento mensal automático</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="observacoes-info" id="observacoesContainer" style="display: none;">
-                    <h4>📝 Observações</h4>
-                    <p id="observacoesView"></p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Processo de Trabalho -->
-        <section class="processo-section">
-            <h2 class="section-title">PROCESSO DE TRABALHO</h2>
-            <div class="processo-grid">
-                <div class="processo-card">
-                    <div class="processo-number">1</div>
-                    <h4>Operação de Campanha</h4>
-                    <ul>
-                        <li>Criação, Estruturação e Otimização Diária de Campanhas</li>
-                        <li>Alocação Inteligente de Orçamento</li>
-                        <li>Monitoramento Ativo da Saúde da Conta</li>
-                    </ul>
-                </div>
-                <div class="processo-card">
-                    <div class="processo-number">2</div>
-                    <h4>Audiência e Segmentação</h4>
-                    <ul>
-                        <li>Desenvolvimento e Refinamento Contínuo de Audiências-Alvo</li>
-                        <li>Criação de Públicos Semelhantes (Lookalikes)</li>
-                        <li>Estruturação de Funis de Retargeting</li>
-                    </ul>
-                </div>
-                <div class="processo-card">
-                    <div class="processo-number">3</div>
-                    <h4>Conteúdo e Teste</h4>
-                    <ul>
-                        <li>Criação de Artes e Copy (Textos) para Anúncios</li>
-                        <li>Implementação de Testes A/B</li>
-                    </ul>
-                </div>
-                <div class="processo-card">
-                    <div class="processo-number">4</div>
-                    <h4>Análise e Estratégia</h4>
-                    <ul>
-                        <li>Relatório Semanal de Desempenho Simplificado</li>
-                        <li>Reunião Mensal de Performance e Definição de Estratégia</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Depoimentos -->
-        <section class="depoimentos-section">
-            <h2 class="section-title">O QUE NOSSOS CLIENTES DIZEM</h2>
-            <p class="section-subtitle">Resultados reais de quem confia na Heat</p>
-            <div class="depoimentos-grid">
-                <div class="depoimento-card">
-                    <div class="depoimento-rating">⭐⭐⭐⭐⭐</div>
-                    <p class="depoimento-texto">"Em 3 meses triplicamos nossos leads qualificados. A equipe da Heat entende profundamente de performance e otimização. Melhor investimento que fizemos!"</p>
-                    <div class="depoimento-autor">
-                        <div class="autor-avatar">👔</div>
-                        <div class="autor-info">
-                            <strong>Carlos Silva</strong>
-                            <span>CEO, TechStart Solutions</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="depoimento-card">
-                    <div class="depoimento-rating">⭐⭐⭐⭐⭐</div>
-                    <p class="depoimento-texto">"Reduzimos o custo por aquisição em 45% e aumentamos as conversões em 120%. A metodologia Heat realmente funciona!"</p>
-                    <div class="depoimento-autor">
-                        <div class="autor-avatar">👩‍💼</div>
-                        <div class="autor-info">
-                            <strong>Mariana Costa</strong>
-                            <span>Diretora de Marketing, Bella Estética</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="depoimento-card">
-                    <div class="depoimento-rating">⭐⭐⭐⭐⭐</div>
-                    <p class="depoimento-texto">"Finalmente encontramos uma agência que fala a linguagem de resultados. ROI positivo desde o primeiro mês!"</p>
-                    <div class="depoimento-autor">
-                        <div class="autor-avatar">👨‍💻</div>
-                        <div class="autor-info">
-                            <strong>Roberto Mendes</strong>
-                            <span>Founder, EduOnline</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Comparação de Planos -->
-        <section class="comparacao-section">
-            <h2 class="section-title">COMPARE OS PLANOS</h2>
-            <p class="section-subtitle">Encontre o plano ideal para suas necessidades</p>
-            <div class="comparacao-buttons">
-                <button id="btnCompararSocialMedia" onclick="abrirModalComparacaoSocial()" class="btn-comparar" style="display: none;">
-                    � Comparar Planos de Social Media
-                </button>
-                <button id="btnCompararTrafego" onclick="abrirModalComparacaoTrafego()" class="btn-comparar" style="display: none;">
-                    📊 Comparar Planos de Tráfego Pago
-                </button>
-            </div>
-        </section>
-
-        <!-- FAQ -->
-        <section class="faq-section">
-            <h2 class="section-title">PERGUNTAS FREQUENTES</h2>
-            <div class="faq-container">
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>Como funciona o processo de trabalho?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Após aceitar a proposta, iniciamos com um onboarding completo onde entendemos seu negócio, público-alvo e objetivos. Em seguida, desenvolvemos a estratégia, criamos as campanhas e começamos o monitoramento ativo com otimizações diárias.</p>
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>Qual o prazo para ver resultados?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Os primeiros resultados aparecem nas primeiras semanas, mas o verdadeiro potencial se manifesta após 60-90 dias de otimização contínua. Marketing digital é construção de máquina de vendas, não mágica instantânea.</p>
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>O investimento em mídia está incluso no valor do serviço?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Não. O investimento em mídia (budget para anúncios) é separado e pago diretamente nas plataformas (Meta Ads, Google Ads). Nosso valor mensal é referente à gestão estratégica, criação de artes, copy e otimização constante das campanhas.</p>
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>Posso cancelar o serviço a qualquer momento?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Sim. Trabalhamos com contratos flexíveis. Recomendamos no mínimo 3 meses para ver resultados consistentes, mas você pode cancelar com aviso prévio de 30 dias.</p>
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>Vocês garantem resultados?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Garantimos dedicação total, estratégia baseada em dados e otimização constante. Resultados dependem de múltiplos fatores (produto, mercado, investimento), mas nossa metodologia é comprovada e focada em performance.</p>
-                    </div>
-                </div>
-                <div class="faq-item">
-                    <div class="faq-question" onclick="toggleFAQ(this)">
-                        <span>Vocês criam o conteúdo dos anúncios?</span>
-                        <i class="faq-icon">▼</i>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Sim! Criamos artes (design) e copy (textos) dos anúncios. Para vídeos profissionais, podemos trabalhar em parceria com sua equipe ou indicar parceiros especializados.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Sessão de Resumo da Proposta (para exportação e visualização) -->
-        <section class="resumo-proposta-section" id="resumoPropostaSection">
-            <div class="resumo-proposta-content">
-                <h2>Resumo da Proposta Comercial</h2>
-                <div class="resumo-dados-basicos">
-                    <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
-                    <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
-                    <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
-                </div>
-                <div class="resumo-servicos" id="resumoServicos"></div>
-                <div class="resumo-valores">
-                    <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
-                    <p id="resumoInvestimentoMidia"></p>
-                </div>
-                <div class="resumo-legais">
-                    <p><strong>Observações Legais:</strong></p>
-                    <ul>
-                        <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
-                        <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
-                        <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
-                        <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Botão PDF centralizado e espaçado -->
-        <div class="footer-actions footer-actions-central">
-            <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">
-                <span class="btn-icon">📥</span> <span class="btn-text">Baixar Resumo PDF</span>
-            </button>
+    <!-- Metodologia Heat -->
+    <section class="metodologia-section">
+      <h2 class="section-title">METODOLOGIA HEAT</h2>
+      <p class="section-subtitle">Performance inteligente através de 4 pilares fundamentais</p>
+      <div class="metodologia-grid">
+        <div class="metodologia-card">
+          <div class="card-icon">🧠</div>
+          <h3>Máquina de Conteúdo</h3>
+          <p>Criamos uma rotina estratégica de conteúdo, garantindo presença digital alinhada ao posicionamento da marca. Conteúdo que conecta e converte.</p>
         </div>
+        <div class="metodologia-card">
+          <div class="card-icon">📈</div>
+          <h3>Funil de Aquisição</h3>
+          <p>Tráfego pago e canal direto para gerar reconhecimento de marca e oportunidades reais de negócio. Dados e performance em cada campanha.</p>
+        </div>
+        <div class="metodologia-card">
+          <div class="card-icon">🤝</div>
+          <h3>Integração Comercial</h3>
+          <p>Unimos marketing e vendas para acompanhar cada oportunidade do primeiro contato até o fechamento. Leads qualificados que convertem em vendas.</p>
+        </div>
+        <div class="metodologia-card">
+          <div class="card-icon">🎯</div>
+          <h3>Estratégia de Marca</h3>
+          <p>Ajustamos como sua marca se apresenta, destacamos o que a torna única e definimos sua linha de comunicação. Posicionamento que diferencia no mercado.</p>
+        </div>
+      </div>
+    </section>
 
-        <!-- CTA de Ação -->
-        <section class="cta-section">
-            <div class="cta-content">
-                <h2>Aceitar Esta Proposta</h2>
-                <p>Gostou da proposta? Clique no botão abaixo para aceitar!</p>
-                
-                <button onclick="aceitarProposta()" class="btn-aceitar-proposta">
-                    ✅ Aceitar Proposta
-                </button>
-                
-                <p class="cta-alternativa">Ou entre em contato para esclarecer dúvidas:</p>
-                <div class="contato-buttons">
-                    <a href="https://wa.me/5547999999999" target="_blank" class="btn-whatsapp">
-                        📱 WhatsApp
-                    </a>
-                    <a href="mailto:contato@heatdigital.com.br" class="btn-email">
-                        ✉️ E-mail
-                    </a>
-                </div>
-                <p class="validade-proposta">Esta proposta é válida por 7 dias a partir da data de emissão.</p>
-            </div>
-        </section>
+    <!-- Serviços Contratados -->
+    <section class="servicos-section" id="servicosSection">
+      <h2 class="section-title">SERVIÇOS CONTRATADOS</h2>
 
-        <!-- Modal de Confirmação de Aceite (Resumo e Confirmação) -->
-        <div id="modalResumoAceite" class="modal">
-            <div class="modal-content modal-resumo-aceite">
-                <div id="resumoProposta"></div>
-                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px;">
-                    <button onclick="exportarPDFResumoModal()" class="btn-export-pdf" title="Baixar resumo em PDF">📄 Baixar PDF</button>
-                    <button onclick="confirmarAceiteProposta()" class="btn-aceitar-proposta btn-confirmar">Confirmar Aceite</button>
-                    <button onclick="fecharModalResumoAceite()" class="btn-fechar-modal">Cancelar</button>
-                </div>
-            </div>
+      <!-- Social Media -->
+      <div class="servico-card" id="socialMediaCard" style="display:none;">
+        <div class="servico-header">
+          <h3>ESTRATÉGIA DE COMUNICAÇÃO</h3>
+          <span class="servico-badge" id="badgeSocialMedia"></span>
         </div>
-        <!-- Modal de Aceite Final -->
-        <div id="modalAceite" class="modal">
-            <div class="modal-content">
-                <h2>✅ Proposta Aceita com Sucesso!</h2>
-                <p>Obrigado por aceitar nossa proposta!</p>
-                <p>Em breve entraremos em contato para iniciar o projeto.</p>
-                <button onclick="fecharModalAceite()" class="btn-fechar-modal">Fechar</button>
-            </div>
+        <div class="servico-body">
+          <h4>Entregáveis:</h4>
+          <ul class="entregaveis-list" id="listaSocialMedia">
+            <li>5 posts semanais (até 20/mês)</li>
+            <li>Linha editorial + manual de comunicação</li>
+            <li>Até 12 artes/mês</li>
+            <li>Copywriting (legendas e chamadas)</li>
+            <li>Relatório mensal</li>
+            <li>Organização via plataforma (Notion/Monday)</li>
+            <li>Análise de Concorrentes</li>
+          </ul>
+          <div class="servico-valor">
+            <span class="valor-label">Valor Mensal:</span>
+            <span class="valor-amount" id="valorSocialMedia"></span>
+          </div>
         </div>
+      </div>
 
-        <!-- Modal de Comparação de Planos - Tráfego Pago -->
-        <div id="modalComparacaoTrafego" class="modal">
-            <div class="modal-content modal-comparacao">
-                <span class="close" onclick="fecharModalComparacaoTrafego()">&times;</span>
-                <h2>📊 Comparação de Planos - Tráfego Pago</h2>
-                <div class="planos-comparacao">
-                    <div class="plano-comparacao plano-foco">
-                        <div class="plano-header">
-                            <h3>FOCO</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 2.400</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Investimento: até R$ 5.000/mês</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ Mapeamento Simplificado de Leads</li>
-                            <li>✓ Suporte Direto Customer Success (CSM)</li>
-                            <li>✓ 3 Criativos Otimizados</li>
-                            <li>✓ 1 Reunião de Performance mensal (50 min)</li>
-                        </ul>
-                    </div>
-                    <div class="plano-comparacao plano-aceleracao destaque">
-                        <div class="plano-badge">MAIS POPULAR</div>
-                        <div class="plano-header">
-                            <h3>ACELERAÇÃO</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 2.800</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Investimento: R$ 5.001 - R$ 10.000/mês</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ Mapeamento e Estruturação Personalizada de Gestão de Leads</li>
-                            <li>✓ +3 Criativos Otimizados</li>
-                            <li>✓ +1 Reunião de Performance mensal (50 min)</li>
-                            <li>✓ Testes A/B Contínuos (criativos e landing pages)</li>
-                        </ul>
-                    </div>
-                    <div class="plano-comparacao plano-heat">
-                        <div class="plano-header">
-                            <h3>🔥 HEAT</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 3.500</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Investimento: acima de R$ 10.001/mês</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ +Análise do comercial</li>
-                            <li>✓ Reunião de Performance semanal (50 min)</li>
-                            <li>✓ Testes A/B Contínuos</li>
-                            <li>✓ Relatórios completos com insights</li>
-                            <li>✓ Monitoramento de concorrentes</li>
-                            <li>✓ Suporte estratégico em tempo real</li>
-                            <li>✓ Calendário de campanhas</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+      <!-- Tráfego Pago -->
+      <div class="servico-card" id="trafegoPagoCard" style="display:none;">
+        <div class="servico-header">
+          <h3>TRÁFEGO PAGO</h3>
+          <span class="servico-badge" id="badgeTrafegoPago"></span>
         </div>
+        <div class="servico-body">
+          <h4>Entregáveis:</h4>
+          <ul class="entregaveis-list" id="listaTrafegoPago">
+            <li>Criação, Estruturação e Otimização Diária de Campanhas</li>
+            <li>Alocação Inteligente de Orçamento</li>
+            <li>Monitoramento Ativo da Saúde da Conta</li>
+            <li>Desenvolvimento e Refinamento Contínuo de Audiências-Alvo</li>
+            <li>Criação de Públicos Semelhantes (Lookalikes)</li>
+            <li>Estruturação de Funis de Retargeting</li>
+            <li>Criação de Artes e Copy para Anúncios</li>
+            <li>Implementação de Testes A/B</li>
+            <li>Relatório Semanal de Desempenho</li>
+            <li>Reunião Mensal de Performance e Estratégia</li>
+          </ul>
 
-        <!-- Modal de Comparação de Planos - Social Media -->
-        <div id="modalComparacaoSocial" class="modal">
-            <div class="modal-content modal-comparacao">
-                <span class="close" onclick="fecharModalComparacaoSocial()">&times;</span>
-                <h2>📱 Comparação de Planos - Social Media</h2>
-                <div class="planos-comparacao">
-                    <div class="plano-comparacao plano-start">
-                        <div class="plano-header">
-                            <h3>START</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 1.500</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Ideal para começar</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ 3 posts semanais (até 12/mês)</li>
-                            <li>✓ Linha editorial e manual de comunicação</li>
-                            <li>✓ Até 8 artes/mês (feed + stories)</li>
-                            <li>✓ Copywriting (legendas e chamadas)</li>
-                            <li>✓ Organização via plataforma</li>
-                            <li>✓ Análise de Concorrentes</li>
-                        </ul>
-                    </div>
-                    <div class="plano-comparacao plano-scale destaque">
-                        <div class="plano-badge">MAIS POPULAR</div>
-                        <div class="plano-header">
-                            <h3>SCALE</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 2.200</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Para crescer com consistência</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ 5 posts semanais (até 20/mês)</li>
-                            <li>✓ Linha editorial + manual de comunicação</li>
-                            <li>✓ Até 12 artes/mês</li>
-                            <li>✓ Copywriting (legendas e chamadas)</li>
-                            <li>✓ Relatório mensal</li>
-                            <li>✓ Organização via plataforma</li>
-                            <li>✓ Análise de Concorrentes</li>
-                        </ul>
-                    </div>
-                    <div class="plano-comparacao plano-heat-social">
-                        <div class="plano-header">
-                            <h3>🔥 HEAT</h3>
-                            <div class="plano-preco">
-                                <span class="preco-valor">R$ 3.200</span>
-                                <span class="preco-periodo">/mês</span>
-                            </div>
-                            <p class="plano-investimento">Presença dominante</p>
-                        </div>
-                        <ul class="plano-features">
-                            <li>✓ 7 posts semanais (28/mês)</li>
-                            <li>✓ Linha editorial premium</li>
-                            <li>✓ Até 16 artes (feed, stories, carrosséis)</li>
-                            <li>✓ Copywriting estratégico</li>
-                            <li>✓ Relatórios completos com insights</li>
-                            <li>✓ Monitoramento de concorrentes</li>
-                            <li>✓ Suporte estratégico em tempo real</li>
-                            <li>✓ Calendário de campanhas</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+          <div class="investimento-nota-discreta" id="investimentoMidiaView" style="display:none;">
+            <p>IMPORTANTE: O valor de investimento em mídia é pago diretamente às plataformas e não está incluso no valor mensal dos serviços.</p>
+          </div>
 
-        <!-- Sessão de Resumo da Proposta (para exportação e visualização) -->
-        <section class="resumo-proposta-section" id="resumoPropostaSection">
-            <div class="resumo-proposta-content">
-                <h2>Resumo da Proposta Comercial</h2>
-                <div class="resumo-dados-basicos">
-                    <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
-                    <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
-                    <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
-                </div>
-                <div class="resumo-servicos" id="resumoServicos"></div>
-                <div class="resumo-valores">
-                    <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
-                    <p id="resumoInvestimentoMidia"></p>
-                </div>
-                <div class="resumo-legais">
-                    <p><strong>Observações Legais:</strong></p>
-                    <ul>
-                        <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
-                        <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
-                        <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
-                        <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-        <!-- Botão PDF centralizado e espaçado -->
-        <div class="footer-actions footer-actions-central">
-            <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">
-                <span class="btn-icon">📥</span> <span class="btn-text">Baixar Resumo PDF</span>
-            </button>
+          <div class="servico-valor">
+            <span class="valor-label">Fee de Gestão Mensal:</span>
+            <span class="valor-amount" id="valorTrafegoPago"></span>
+          </div>
         </div>
-        <!-- Footer -->
-        <footer class="proposta-footer">
-            <p>© 2025 Heat Digital - Performance Inteligente para Crescimento Real</p>
-            <p class="footer-legal">
-                <a href="politica-privacidade.html">Política de Privacidade</a> | 
-                <a href="termos-uso.html">Termos de Uso</a>
-            </p>
-        </footer>
+      </div>
+</section>
+
+    <!-- Comparação de Serviços -->
+    <section class="comparacao-section">
+      <h2 class="section-title">COMPARE OS PLANOS</h2>
+      <p class="section-subtitle">Veja as diferenças e escolha a melhor opção</p>
+      <div class="comparacao-actions" style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:24px;">
+        <button id="btnCompararSocialMedia" class="btn btn-secondary" style="display:none;" onclick="abrirModalComparacaoSocial()">Comparar Social Media</button>
+        <button id="btnCompararTrafego" class="btn btn-secondary" style="display:none;" onclick="abrirModalComparacaoTrafego()">Comparar Tráfego Pago</button>
+      </div>
+    </section>
+
+    <!-- Modal: Comparação Social Media -->
+    <div id="modalComparacaoSocial" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h2>Comparar Planos — Social Media</h2>
+        <table class="comparacao-tabela" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Plano</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Frequência</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Artes</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Destaques</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px;">START</td>
+              <td style="padding:8px;">3 posts/semana</td>
+              <td style="padding:8px;">Até 8/mês</td>
+              <td style="padding:8px;">Linha editorial, copy e organização</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">SCALE</td>
+              <td style="padding:8px;">5 posts/semana</td>
+              <td style="padding:8px;">Até 12/mês</td>
+              <td style="padding:8px;">+ Relatório mensal e suporte</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">HEAT</td>
+              <td style="padding:8px;">7 posts/semana</td>
+              <td style="padding:8px;">Até 16/mês</td>
+              <td style="padding:8px;">Engajamento avançado, análises e calendário</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button class="btn btn-ghost" onclick="fecharModalComparacaoSocial()">Fechar</button>
+        </div>
+      </div>
     </div>
 
-    <script src="proposta-visualizacao.js"></script>
-    <script src="proposta-visualizacao-overrides.js"></script>
+    <!-- Modal: Comparação Tráfego Pago -->
+    <div id="modalComparacaoTrafego" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h2>Comparar Planos – Tráfego Pago</h2>
+        <table class="comparacao-tabela" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Plano</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Investimento em Mídia</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Entregas Principais</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">Acompanhamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px;">FOCO</td>
+              <td style="padding:8px;">R$ 5.000/mês</td>
+              <td style="padding:8px;">3 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
+              <td style="padding:8px;">1 reunião mensal com o cliente</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">ACELERAÇÃO</td>
+              <td style="padding:8px;">R$ 5.001 a 10.000/mês</td>
+              <td style="padding:8px;">5 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
+              <td style="padding:8px;">2 reuniões mensais com o cliente</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">DESTAQUE</td>
+              <td style="padding:8px;">R$ 10.001+/mês</td>
+              <td style="padding:8px;">8 criativos em imagem; rastreamento de leads; planejamento de campanhas; script de vendas; análise de concorrência; definição de ICP</td>
+              <td style="padding:8px;">4 reuniões mensais com o cliente + suporte estratégico do Head de Tráfego</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button class="btn btn-ghost" onclick="fecharModalComparacaoTrafego()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VALORES E CONDIÇÕES (limpo) -->
+    <section class="valores-section valores-section--clean">
+      <h2 class="section-title">VALORES E CONDIÇÕES</h2>
+      <p class="section-subtitle valores-subtitle">Defina como deseja investir e pagar</p>
+      <div class="valores-card">
+        <!-- Recorrência -->
+        <div class="recorrencia-selector">
+          <h4>📆 Escolha o Período de Recorrência</h4>
+          <p class="recorrencia-subtitle">Escolha o período que melhor se adapta à sua estratégia.</p>
+          <div class="recorrencia-options">
+            <label class="recorrencia-option" title="Ideal para testar o serviço e validar fit">
+              <input type="radio" name="recorrencia" value="1" />
+              <div class="option-content">
+                <span class="option-periodo">1 mês</span>
+                <span class="option-desconto">Sem desconto</span>
+                <span class="option-tip">Ideal para testar o serviço</span>
+              </div>
+            </label>
+            <label class="recorrencia-option" title="Boa relação custo-benefício com compromisso curto">
+              <input type="radio" name="recorrencia" value="3" />
+              <div class="option-content">
+                <span class="option-periodo">3 meses</span>
+                <span class="option-desconto">5% de desconto</span>
+                <span class="option-tip">Equilíbrio custo‑benefício</span>
+              </div>
+            </label>
+            <label class="recorrencia-option recomendado" title="Recomendado: tempo ideal para consolidar resultados">
+              <input type="radio" name="recorrencia" value="6" checked />
+              <div class="option-content">
+                <span class="option-periodo">6 meses</span>
+                <span class="option-desconto">10% de desconto</span>
+                <span class="badge-recomendado">★ RECOMENDADO</span>
+                <span class="option-tip">Melhor custo-benefício (recomendado)</span>
+              </div>
+            </label>
+            <label class="recorrencia-option" title="Máxima fidelização e economia progressiva">
+              <input type="radio" name="recorrencia" value="12" />
+              <div class="option-content">
+                <span class="option-periodo">12 meses</span>
+                <span class="option-desconto">15% de desconto</span>
+                <span class="option-tip">Fidelização máxima</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Forma de pagamento -->
+        <div class="selecao-pagamento">
+          <h4>💳 Escolha sua forma de pagamento:</h4>
+          <div class="pagamento-opcoes">
+            <label class="opcao-pagamento">
+              <input type="radio" name="formaPagamento" value="avista" checked />
+              <div class="opcao-card" style="position:relative;">
+                <span class="badge-vantajoso">Mais vantajoso 💸</span>
+                <span class="opcao-icon">💵</span>
+                <strong>À vista (Pix/Boleto)</strong>
+                <p>Pagamento único no início</p>
+              </div>
+            </label>
+            <label class="opcao-pagamento">
+              <input type="radio" name="formaPagamento" value="parcelado" />
+              <div class="opcao-card">
+                <span class="opcao-icon">💳</span>
+                <strong>50% + 50% em 30 dias</strong>
+                <p>Divida em duas parcelas</p>
+              </div>
+            </label>
+            <label class="opcao-pagamento">
+              <input type="radio" name="formaPagamento" value="mensal" />
+              <div class="opcao-card">
+                <span class="opcao-icon">🔁</span>
+                <strong>Mensalidade recorrente</strong>
+                <p>Pagamento mensal automático</p>
+              </div>
+            </label>
+          </div>
+          <div id="pagamentoHint" class="pagamento-hint">💸 Desconto de 7% aplicado automaticamente.</div>
+        </div>
+
+        <!-- Breakdown de valores -->
+        <div class="valores-breakdown">
+          <div class="valor-row">
+            <span class="valor-label">Valor Mensal dos Serviços:</span>
+            <span class="valor-value" id="valorTotalView">R$ 0,00</span>
+          </div>
+          <div class="valor-row desconto-recorrencia-row" id="descontoRecorrenciaRow">
+            <span class="valor-label">Desconto por Recorrência:</span>
+            <span class="valor-value desconto-recorrencia" id="descontoRecorrenciaView">- R$ 0,00</span>
+          </div>
+          <div class="valor-row desconto-row" id="descontoCustomizadoRow" style="display:none;">
+            <span class="valor-label"><span id="descontoCustomizadoLabelView">Desconto:</span></span>
+            <span class="valor-value desconto-recorrencia" id="descontoCustomizadoView">- R$ 0,00</span>
+          </div>
+          <div class="valor-row desconto-row">
+            <span class="valor-label">
+              <span>Desconto Adicional (5%)</span>
+              <small>Condicionado a: Resposta da pesquisa de satisfação + Pagamento em dia</small>
+            </span>
+            <span class="valor-value desconto" id="descontoView">- R$ 0,00</span>
+          </div>
+          <div class="valor-row desconto-row" id="descontoFormaPagamentoRow" style="display:none;">
+            <span class="valor-label"><span id="descontoFormaPagamentoLabel">Desconto por Forma de Pagamento</span></span>
+            <span class="valor-value desconto" id="descontoFormaPagamentoView">- R$ 0,00</span>
+          </div>
+          <div class="valor-row total-row">
+            <span class="valor-label">💰 Valor com todos os descontos aplicados:</span>
+            <span class="valor-value total" id="valorFinalView">R$ 0,00</span>
+          </div>
+          <div class="valor-row total-periodo-row">
+            <span class="valor-label">💎 Total do Período:</span>
+            <span class="valor-value total-periodo" id="valorTotalPeriodoView">R$ 0,00</span>
+          </div>
+        </div>
+
+        <div class="observacoes-info" id="observacoesContainer" style="display:none;">
+          <h4>💬 Observações</h4>
+          <p id="observacoesView"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Processo de Trabalho -->
+    <section class="processo-section">
+      <h2 class="section-title">PROCESSO DE TRABALHO</h2>
+      <div class="processo-grid">
+        <div class="processo-card">
+          <div class="processo-number">1</div>
+          <h4>Operação de Campanha</h4>
+          <ul>
+            <li>Criação, Estruturação e Otimização Diária de Campanhas</li>
+            <li>Alocação Inteligente de Orçamento</li>
+            <li>Monitoramento Ativo da Saúde da Conta</li>
+          </ul>
+        </div>
+        <div class="processo-card">
+          <div class="processo-number">2</div>
+          <h4>Audiência e Segmentação</h4>
+          <ul>
+            <li>Desenvolvimento e Refinamento Contínuo de Audiências‑Alvo</li>
+            <li>Criação de Públicos Semelhantes (Lookalikes)</li>
+            <li>Estruturação de Funis de Retargeting</li>
+          </ul>
+        </div>
+        <div class="processo-card">
+          <div class="processo-number">3</div>
+          <h4>Conteúdo e Teste</h4>
+          <ul>
+            <li>Criação de Artes e Copy para Anúncios</li>
+            <li>Implementação de Testes A/B</li>
+          </ul>
+        </div>
+        <div class="processo-card">
+          <div class="processo-number">4</div>
+          <h4>Análise e Estratégia</h4>
+          <ul>
+            <li>Relatório Semanal de Desempenho</li>
+            <li>Reunião Mensal de Performance e Estratégia</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resumo da Proposta (para PDF e visualização) -->
+    <section class="resumo-proposta-section" id="resumoPropostaSection">
+      <div class="resumo-proposta-content">
+        <h2>Resumo da Proposta Comercial</h2>
+        <div class="resumo-dados-basicos">
+          <p><strong>Cliente:</strong> <span id="resumoNomeCliente"></span></p>
+          <p><strong>Empresa:</strong> <span id="resumoEmpresaCliente"></span></p>
+          <p><strong>Data da Proposta:</strong> <span id="resumoDataProposta"></span></p>
+        </div>
+        <div class="resumo-servicos" id="resumoServicos"></div>
+        <div class="resumo-valores">
+          <p><strong>Valor Mensal dos Serviços:</strong> <span id="resumoValorMensal"></span></p>
+          <p id="resumoInvestimentoMidia"></p>
+        </div>
+        <div class="resumo-legais">
+          <p><strong>Observações Legais:</strong></p>
+          <ul>
+            <li>Os serviços descritos acima serão prestados conforme detalhamento nesta proposta.</li>
+            <li>O valor de investimento em mídia (caso aplicável) é de responsabilidade do cliente e não está incluso no valor mensal dos serviços.</li>
+            <li>O início dos trabalhos está condicionado à assinatura de contrato e envio do comprovante de pagamento inicial.</li>
+            <li>Esta proposta é válida por 7 dias a partir da data de emissão.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <div class="footer-actions footer-actions-central">
+      <button onclick="exportarPDF()" class="btn-export-pdf btn-export-pdf-bottom" title="Baixar resumo em PDF">📄 Baixar Resumo PDF</button>
+    </div>
+
+    <!-- CTA Aceitar -->
+    <section class="cta-section" id="ctaAceite">
+      <div class="cta-content">
+        <h2>Aceitar Esta Proposta</h2>
+        <p>Gostou da proposta? Clique no botão abaixo para aceitar!</p>
+        <button onclick="aceitarProposta()" class="btn-aceitar-proposta" aria-label="Aceitar esta proposta e ver resumo para confirmação">✅ Aceitar Proposta</button>
+        <p class="cta-alternativa">Ou entre em contato para esclarecer dúvidas:</p>
+        <div class="contato-buttons">
+          <a href="#" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>
+          <a href="#" class="btn-email">✉️ E-mail</a>
+        </div>
+        <p class="validade-proposta">Esta proposta é válida por 7 dias a partir da data de emissão.</p>
+      </div>
+    </section>
+
+    <!-- Modal Resumo Aceite -->
+    <div id="modalResumoAceite" class="modal">
+      <div class="modal-content modal-resumo-aceite">
+        <div id="resumoProposta"></div>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button onclick="exportarPDFResumoModal()" class="btn btn-secondary btn-export-pdf" title="Baixar resumo em PDF"><span class="icon">📄</span> Baixar PDF</button>
+          <button id="btnConfirmarAceite" onclick="confirmarAceiteProposta()" class="btn btn-primary btn-aceitar-proposta btn-confirmar" aria-live="polite"><span class="icon">✅</span> Confirmar Aceite</button>
+          <button onclick="fecharModalResumoAceite()" class="btn btn-ghost btn-fechar-modal">Cancelar</button>
+        </div>
+        <p class="microcopy-aceite" id="microcopyAceite">Ao confirmar o aceite, nossa equipe entrará em contato para o envio do contrato e orientações de assinatura.</p>
+        </div>
+    </div>
+
+    <!-- Modal Aceite Final -->
+    <div id="modalAceite" class="modal">
+      <div class="modal-content">
+        <h2>✅ Proposta Aceita com Sucesso!</h2>
+        <p>Obrigado por aceitar nossa proposta! Em breve entraremos em contato para iniciar o projeto.</p>
+        <button onclick="fecharModalAceite()" class="btn-fechar-modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="proposta-visualizacao.js"></script>
+  <script src="proposta-visualizacao-overrides.js"></script>
 </body>
 </html>

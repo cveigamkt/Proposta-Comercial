@@ -49,10 +49,13 @@ const planosTrafegoPago = {
         investimentoMin: 0,
         investimentoMax: 5000,
         entregaveis: [
-            'Mapeamento Simplificado de Leads',
-            'Suporte Direto Customer Success (CSM)',
-            '3 Criativos Otimizados',
-            '1 Reunião de Performance mensal (50 min) conduzida pelo HEAD da conta'
+            '3 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 1 reunião mensal com o cliente'
         ]
     },
     'aceleracao': {
@@ -61,25 +64,28 @@ const planosTrafegoPago = {
         investimentoMin: 5001,
         investimentoMax: 10000,
         entregaveis: [
-            'Mapeamento e Estruturação Personalizada de Gestão de Leads',
-            '+3 Criativos Otimizados',
-            '+1 Reunião de Performance mensal (50 min) conduzida pelo HEAD da conta',
-            'Testes A/B  Contínuos (em criativos E landing pages)'
+            '5 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 2 reuniões mensais com o cliente'
         ]
     },
     'heat': {
-        nome: 'HEAT',
+        nome: 'DESTAQUE',
         valor: 3500.00,
         investimentoMin: 10001,
         investimentoMax: null, // Sem limite
         entregaveis: [
-            '+Análise do comercial',
-            'Reunião de Performance semanal (50 min) conduzida pelo HEAD da conta',
-            'Testes A/B Contínuos (em criativos E landing pages)',
-            'Relatórios completos com insights de crescimento',
-            'Monitoramento de concorrentes e tendências',
-            'Suporte estratégico em tempo real',
-            'Calendário de campanhas'
+            '8 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 4 reuniões mensais com o cliente + suporte estratégico direto do Head de Tráfego'
         ]
     }
 };
@@ -99,7 +105,7 @@ function obterDescontoRecorrencia(meses) {
 function calcularValores() {
     let total = 0;
     
-    const socialMedia = document.getElementById('servicoSocialMedia').value;
+    const socialMedia = document.getElementById('servicoSocialMidia').value;
     const trafegoPago = document.getElementById('servicoTrafegoPago').value;
     
     if (socialMedia !== 'nao-se-aplica') {
@@ -184,7 +190,7 @@ function formatarMoeda(valor) {
 }
 
 // Atualizar entregáveis de Social Media
-document.getElementById('servicoSocialMedia').addEventListener('change', function() {
+document.getElementById('servicoSocialMidia').addEventListener('change', function() {
     const plano = this.value;
     const container = document.getElementById('entregaveisSocialMedia');
     const info = document.getElementById('infoSocialMedia');
@@ -338,7 +344,7 @@ document.getElementById('propostaForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     // Validar se pelo menos um serviço foi selecionado
-    const socialMedia = document.getElementById('servicoSocialMedia').value;
+    const socialMedia = document.getElementById('servicoSocialMidia').value;
     const trafegoPago = document.getElementById('servicoTrafegoPago').value;
     
     if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
@@ -367,7 +373,7 @@ document.getElementById('propostaForm').addEventListener('submit', function(e) {
         nomeCliente: document.getElementById('nomeCliente').value,
         empresaCliente: document.getElementById('empresaCliente').value,
         emailCliente: document.getElementById('emailCliente').value,
-        servicoSocialMedia: socialMedia,
+    servicoSocialMidia: socialMedia,
         servicoTrafegoPago: trafegoPago,
         investimentoMidia: document.getElementById('investimentoMidia').value,
         descontoDescricao: document.getElementById('descontoDescricao').value,
@@ -422,7 +428,7 @@ window.onclick = function(event) {
 
 // Preview da proposta (abre em nova aba)
 function previewProposta() {
-    const socialMedia = document.getElementById('servicoSocialMedia').value;
+    const socialMedia = document.getElementById('servicoSocialMidia').value;
     const trafegoPago = document.getElementById('servicoTrafegoPago').value;
     
     if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
@@ -434,7 +440,7 @@ function previewProposta() {
         nomeCliente: document.getElementById('nomeCliente').value || 'Cliente Exemplo',
         empresaCliente: document.getElementById('empresaCliente').value || 'Empresa Exemplo',
         emailCliente: document.getElementById('emailCliente').value,
-        servicoSocialMedia: socialMedia,
+    servicoSocialMidia: socialMedia,
         servicoTrafegoPago: trafegoPago,
         investimentoMidia: document.getElementById('investimentoMidia').value,
         descontoDescricao: document.getElementById('descontoDescricao').value,

@@ -68,28 +68,34 @@ Sistema para criar e enviar propostas comerciais personalizadas para clientes po
 
 ### Tráfego Pago
 - **FOCO** - R$ 1.897,00/mês
-  - Investimento: Até R$ 5.000
-  - Mapeamento de Leads
-  - Suporte CSM
-  - 3 Criativos Otimizados
-  - 1 Reunião mensal (50 min)
+  - Investimento: R$ 5.000/mês
+  - 3 Criativos em imagem (briefing + produção)
+  - Rastreamento e acompanhamento de leads
+  - Planejamento de campanhas
+  - Script de vendas
+  - Análise de concorrência
+  - Definição de público-alvo (ICP)
+  - Acompanhamento: 1 reunião mensal com o cliente
 
 - **ACELERAÇÃO** - R$ 2.297,00/mês
-  - Investimento: R$ 5.001 - R$ 10.000
-  - Gestão Personalizada de Leads
-  - +3 Criativos Otimizados
-  - +1 Reunião mensal (50 min)
-  - Testes A/B Contínuos
+  - Investimento: R$ 5.001 a 10.000/mês
+  - 5 Criativos em imagem (briefing + produção)
+  - Rastreamento e acompanhamento de leads
+  - Planejamento de campanhas
+  - Script de vendas
+  - Análise de concorrência
+  - Definição de público-alvo (ICP)
+  - Acompanhamento: 2 reuniões mensais com o cliente
 
-- **HEAT** - Negociação
-  - Investimento: Acima de R$ 10.000
-  - Análise do comercial
-  - Reunião semanal (50 min)
-  - Testes A/B Contínuos
-  - Relatórios completos
-  - Monitoramento de concorrentes
-  - Suporte estratégico
-  - Calendário de campanhas
+- **DESTAQUE** - Negociação
+  - Investimento: R$ 10.001+/mês
+  - 8 Criativos em imagem (briefing + produção)
+  - Rastreamento e acompanhamento de leads
+  - Planejamento de campanhas
+  - Script de vendas
+  - Análise de concorrência
+  - Definição de público-alvo (ICP)
+  - Acompanhamento: 4 reuniões mensais com o cliente + suporte estratégico direto do Head de Tráfego
 
 ---
 

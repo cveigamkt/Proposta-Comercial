@@ -1,5 +1,5 @@
-/* Barra do botão PDF no topo */
-/* Removido pdf-top-bar, botão PDF agora centralizado após resumo */
+﻿/* Barra do botÃ£o PDF no topo */
+/* Removido pdf-top-bar, botÃ£o PDF agora centralizado apÃ³s resumo */
 
 .footer-actions-central {
     width: 100%;
@@ -10,7 +10,7 @@
     padding-bottom: 10px;
 }
 
-/* Sessão de resumo da proposta */
+/* SessÃ£o de resumo da proposta */
 .resumo-proposta-section {
     background: #181f1b;
     border-radius: 18px;
@@ -83,7 +83,7 @@ body {
 }
 
 /* ===================================
-   PÁGINA DO GERADOR
+   PÃGINA DO GERADOR
    =================================== */
 .gerador-page {
     background: linear-gradient(135deg, #0C3B2E 0%, #1E5942 50%, #267356 100%);
@@ -119,7 +119,7 @@ body {
     color: rgba(255, 255, 255, 0.9);
 }
 
-/* Formulário */
+/* FormulÃ¡rio */
 .proposta-form {
     background: #1a1a1a;
     padding: 40px;
@@ -274,14 +274,14 @@ body {
 }
 
 .info-box li::before {
-    content: '✓';
+    content: 'âœ“';
     position: absolute;
     left: 0;
     color: #1E5942;
     font-weight: 700;
 }
 
-/* Entregáveis */
+/* EntregÃ¡veis */
 .entregaveis-container {
     background: rgba(30, 89, 66, 0.1);
     padding: 20px;
@@ -365,7 +365,7 @@ body {
     border: 2px solid rgba(30, 89, 66, 0.3);
 }
 
-/* Simulador de Períodos */
+/* Simulador de PerÃ­odos */
 .simulador-periodos {
     background: linear-gradient(135deg, rgba(30, 89, 66, 0.1) 0%, rgba(30, 89, 66, 0.05) 100%);
     padding: 30px;
@@ -521,7 +521,7 @@ body {
     color: #1E5942;
 }
 
-/* Botões de Ação */
+/* BotÃµes de AÃ§Ã£o */
 .form-actions {
     display: flex;
     gap: 15px;
@@ -624,6 +624,124 @@ body {
     font-size: 1.05rem;
 }
 
+/* Modal actions and unified buttons */
+.modal-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 16px;
+}
+
+/* Botões do modal de confirmação – hierarquia e proporções */
+.modal-actions .btn {
+    height: 48px;
+    padding: 0 20px;
+    border-radius: 8px; /* borda uniforme */
+}
+.modal-actions .btn .icon { margin-right: 8px; font-size: 1rem; }
+
+/* Primário: Confirmar Aceite */
+.modal-actions .btn-primary {
+    background: #00E388;
+    color: #0C3B2E;
+    border: 2px solid #00E388;
+    box-shadow: inset 0 0 10px rgba(0,227,136,0.3), 0 6px 18px rgba(0,227,136,0.25);
+}
+.modal-actions .btn-primary:hover {
+    background: #00c777;
+    box-shadow: inset 0 0 10px rgba(0,227,136,0.28), 0 10px 22px rgba(0,227,136,0.32);
+}
+
+/* Secundário: Baixar PDF */
+.modal-actions .btn-export-pdf {
+    background: #1b1b1b !important;
+    border: 1px solid #00E388 !important;
+    color: #00E388 !important;
+    box-shadow: none !important;
+    padding: 0 20px !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+}
+.modal-actions .btn-export-pdf:hover { background: #222 !important; }
+
+/* Terciário: Cancelar (texto) */
+.modal-actions .btn-ghost { color: #A9BEB3; }
+.modal-actions .btn-ghost:hover { color: #FFFFFF; text-decoration: underline; }
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 9999px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.btn .icon { margin-right: 8px; display: inline-flex; }
+
+.btn-primary { background: #00E388; color: #0C3B2E; box-shadow: 0 8px 24px rgba(0,227,136,0.35); border: 2px solid #00E388; }
+.btn-primary:hover { transform: translateY(-2px); background: #00c777; box-shadow: 0 12px 32px rgba(0,227,136,0.45); }
+.btn-primary:disabled { background: #0a5f45; color: #7ccfb1; opacity: .7; cursor: not-allowed; }
+
+.btn-secondary { background: transparent; color: #00E388; border: 2px solid #00E388; }
+.btn-secondary:hover { background: rgba(0,227,136,0.08); }
+
+.btn-ghost { background: transparent; color: #AAAAAA; border: none; }
+.btn-ghost:hover { color: #FFFFFF; text-decoration: underline; }
+
+@media (min-width: 768px) {
+  .modal-actions .btn-primary { min-width: 40%; }
+}
+
+/* Overrides finais para correções de ícones e layout */
+.info-box li::before { content: '\2714' !important; }
+
+/* Modal de resumo com largura maior em desktop */
+.modal-content.modal-resumo-aceite { max-width: 40vw; }
+@media (max-width: 767px) {
+  .modal-content.modal-resumo-aceite { max-width: 95vw; }
+}
+
+/* Container do resumo de aceite com padding menor para equilíbrio */
+.modal-content.modal-resumo-aceite { padding: 24px; }
+
+/* Microcopy abaixo dos botões do modal */
+.microcopy-aceite {
+  margin-top: 8px;
+  color: #A9BEB3;
+  font-size: 0.82rem;
+  text-align: center;
+}
+.microcopy-aceite::before { content: '🛡️ '; }
+
+/* Animação de feedback no Confirmar Aceite */
+.btn-confirmar.is-loading {
+  position: relative;
+  opacity: .9;
+}
+.btn-confirmar.is-loading::after {
+  content: ' Processando...';
+  font-weight: 700;
+}
+.btn-confirmar.pulse {
+  animation: pulseConfirm 0.6s ease-in-out infinite alternate;
+}
+@keyframes pulseConfirm {
+  from { transform: translateY(0) scale(1); box-shadow: 0 8px 24px rgba(0,227,136,.35); }
+  to   { transform: translateY(-1px) scale(1.02); box-shadow: 0 10px 30px rgba(0,227,136,.45); }
+}
+
+section.valores-section:not(.valores-section--clean) { display: none !important; }
+
 .link-container {
     display: flex;
     gap: 10px;
@@ -663,7 +781,7 @@ body {
 }
 
 /* ===================================
-   PÁGINA DE VISUALIZAÇÃO DA PROPOSTA
+   PÃGINA DE VISUALIZAÃ‡ÃƒO DA PROPOSTA
    =================================== */
 .proposta-page {
     background: #0f0f0f;
@@ -703,8 +821,8 @@ body {
     font-weight: 500;
 }
 
-/* Botão Export PDF */
-/* Botão Export PDF - topo e rodapé */
+/* BotÃ£o Export PDF */
+/* BotÃ£o Export PDF - topo e rodapÃ© */
 .btn-export-pdf {
     display: inline-flex;
     align-items: center;
@@ -765,9 +883,9 @@ body {
     }
 }
 
-/* Botão aceitar proposta flutuante */
-/* Botão aceitar proposta flutuante centralizado */
-/* Botão aceitar proposta flutuante centralizado de verdade */
+/* BotÃ£o aceitar proposta flutuante */
+/* BotÃ£o aceitar proposta flutuante centralizado */
+/* BotÃ£o aceitar proposta flutuante centralizado de verdade */
 .btn-aceitar-flutuante-centro {
     position: fixed !important;
     left: 50vw;
@@ -805,7 +923,7 @@ body {
     }
 }
 
-/* Seção de Apresentação */
+/* SeÃ§Ã£o de ApresentaÃ§Ã£o */
 .apresentacao {
     background: #1a1a1a;
     padding: 50px 40px;
@@ -954,7 +1072,7 @@ body {
     font-size: 0.95rem;
 }
 
-/* Serviços Contratados */
+/* ServiÃ§os Contratados */
 .servicos-section {
     background: #0f0f0f;
     padding: 80px 40px;
@@ -1025,7 +1143,7 @@ body {
 }
 
 .entregaveis-list li::before {
-    content: '✓';
+content: '\2714';
     position: absolute;
     left: 0;
     color: #1E5942;
@@ -1045,7 +1163,7 @@ body {
     border-left: 3px solid #1E5942;
 }
 
-/* Nota discreta sobre investimento em mídia */
+/* Nota discreta sobre investimento em mÃ­dia */
 .investimento-nota-discreta {
     background: transparent;
     border-left: 3px solid rgba(255, 165, 0, 0.6);
@@ -1081,7 +1199,7 @@ body {
     color: #1E5942;
 }
 
-/* Valores e Condições */
+/* Valores e CondiÃ§Ãµes */
 .valores-section {
     background: #1a1a1a;
     padding: 80px 40px;
@@ -1096,13 +1214,14 @@ body {
     border: 2px solid rgba(30, 89, 66, 0.2);
 }
 
-/* Seletor de Recorrência Interativo */
+/* Seletor de recorrência Interativo */
 .recorrencia-selector {
     background: linear-gradient(135deg, rgba(30, 89, 66, 0.15) 0%, rgba(30, 89, 66, 0.05) 100%);
-    padding: 30px;
+    padding: 32px;
     border-radius: 16px;
-    margin-bottom: 16px;
-    border: 2px solid rgba(30, 89, 66, 0.3);
+    margin: 40px 0;
+    border: 1px solid rgba(30, 89, 66, 0.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .recorrencia-selector h4 {
@@ -1139,31 +1258,35 @@ body {
 
 .recorrencia-option .option-content {
     background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid #1E5942;
     border-radius: 12px;
-    padding: 20px 15px;
+    padding: 24px 18px 24px 18px;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    height: 150px;
+    gap: 10px;
+    height: 190px; /* altura maior para evitar sobreposição */
     justify-content: center;
     position: relative;
-    padding-bottom: 20px; /* reserva base em todos */
+    padding-top: 36px;  /* espaço extra para o badge RECOMENDADO */
+    padding-bottom: 24px; /* reserva base */
+    opacity: 0.9;
 }
 
 .recorrencia-option:hover .option-content {
-    border-color: rgba(30, 89, 66, 0.5);
+    border-color: rgba(30, 89, 66, 0.6);
     background: rgba(30, 89, 66, 0.08);
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.02);
 }
 
 .recorrencia-option input[type="radio"]:checked + .option-content {
-    background: linear-gradient(135deg, rgba(30, 89, 66, 0.25) 0%, rgba(30, 89, 66, 0.15) 100%);
-    border-color: #1E5942;
-    border-width: 3px;
-    box-shadow: 0 0 20px rgba(30, 89, 66, 0.3);
+    background: rgba(0, 227, 136, 0.12);
+    border-color: #00E388;
+    border-width: 1px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transform: scale(1.03);
+    opacity: 1;
 }
 
 .option-periodo {
@@ -1180,6 +1303,13 @@ body {
     display: block;
 }
 
+/* Microcopy de apoio nas opÃ§Ãµes de recorrÃªncia */
+.option-tip {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.75);
+    display: block;
+}
+
 .recorrencia-option input[type="radio"]:checked + .option-content .option-periodo {
     color: #1E5942;
 }
@@ -1188,29 +1318,57 @@ body {
     color: #0D9668;
 }
 
+.recorrencia-option input[type="radio"]:checked + .option-content::after {
+    content: '\2714';
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    background: #00FF88;
+    color: #0C3B2E;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    font-weight: 900;
+}
+
 .recorrencia-option .badge-recomendado {
-    display: inline-block;
+    display: inline-flex;              /* mantém tudo na mesma linha */
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;               /* evita quebra de linha */
+    line-height: 1;                    /* compacidade */
     background: linear-gradient(135deg, #FFD700, #FFA500);
     color: #000;
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     font-weight: 800;
-    padding: 3px 8px;
+    padding: 4px 10px;
     border-radius: 12px;
     letter-spacing: 0.3px;
     position: absolute;
-    top: 8px;
+    top: -10px;                        /* sobe acima do card */
     left: 50%;
     transform: translateX(-50%);
 }
 
+/* Oculta o selo recomendado quando o período está selecionado */
+.recorrencia-option input[type="radio"]:checked + .option-content .badge-recomendado { display: none; }
+
 .recorrencia-option.recomendado .option-content {
     border-color: rgba(255, 215, 0, 0.4);
-    padding-top: 32px;
-    padding-bottom: 20px;
+    padding-top: 46px; /* mais espaço para o badge */
+    padding-bottom: 24px;
 }
 
 .valores-breakdown {
     margin-bottom: 40px;
+    padding: 28px;
+    border-radius: 16px;
+    border: 1px solid rgba(30, 89, 66, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .valor-row {
@@ -1256,20 +1414,22 @@ body {
 }
 
 .total-row {
-    padding-top: 25px;
-    margin-top: 15px;
-    border-top: 2px solid rgba(30, 89, 66, 0.4) !important;
+    margin: 16px 0;
+    padding-top: 12px;
+    border-top: 1px solid #1E5942 !important;
+    opacity: 0.9;
 }
 
 .total-row .valor-label {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: #1E5942;
 }
 
 .total-row .valor-value.total {
-    font-size: 2.2rem;
-    color: #1E5942;
+    font-size: 1.5rem;
+    color: #00E388;
+    font-weight: 900;
 }
 
 .total-periodo-row {
@@ -1288,8 +1448,30 @@ body {
 
 .total-periodo-row .valor-value.total-periodo {
     font-size: 2rem;
-    color: #1E5942;
+    color: #9CE0B5;
 }
+
+/* Tipografia secundária e subtítulo da seção de valores */
+.valores-subtitle { color: #A9BEB3; text-align: center; margin-top: -10px; margin-bottom: 20px; }
+.valor-row small { color: #A9BEB3; }
+
+/* Mensagem flutuante de feedback na seleção de pagamento */
+.pagamento-hint {
+    position: relative;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.9rem;
+    background: rgba(0, 227, 136, 0.15);
+    color: #CDE7DE;
+    border: 1px solid rgba(0, 227, 136, 0.35);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: none;
+}
+
+/* Animação suave para valores atualizados */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+.val-animate { animation: fadeUp 180ms ease-out; }
 
 .pagamento-info,
 .observacoes-info {
@@ -1442,7 +1624,7 @@ body {
 }
 
 .processo-card li::before {
-    content: '•';
+content: '\2714';
     position: absolute;
     left: 0;
     color: #1E5942;
@@ -1493,7 +1675,7 @@ body {
 }
 .resumo-aceite-link:hover { text-decoration: underline; }
 
-/* Detalhes colapsáveis no resumo */
+/* Detalhes colapsÃ¡veis no resumo */
 .resumo-servico details {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(0,0,0,0.2);
@@ -1519,7 +1701,7 @@ body {
 .resumo-financeiro .label { opacity: 0.9; }
 .resumo-financeiro .valor { font-weight: 700; }
 
-/* Botão aceitar dentro do resumo, com o mesmo estilo da página */
+/* Botão de aceitar dentro do resumo, com o mesmo estilo da pÃ¡gina */
 .btn-aceitar-resumo {
     display: inline-block;
     background: #00FF88;
@@ -1546,10 +1728,11 @@ body {
 /* Seleção de Forma de Pagamento */
 .selecao-pagamento {
     background: rgba(255, 255, 255, 0.1);
-    padding: 30px;
+    padding: 32px;
     border-radius: 16px;
-    margin: 35px 0;
+    margin: 40px 0;
     backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .selecao-pagamento h3 {
@@ -1578,7 +1761,7 @@ body {
     background: rgba(255, 255, 255, 0.08);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
-    padding: 25px 15px;
+    padding: 28px 18px;
     text-align: center;
     transition: all 0.3s ease;
     height: 100%;
@@ -1595,10 +1778,27 @@ body {
 }
 
 .opcao-pagamento input[type="radio"]:checked + .opcao-card {
-    background: rgba(0, 255, 136, 0.2);
-    border-color: #00FF88;
-    border-width: 3px;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    background: rgba(0, 227, 136, 0.12);
+    border-color: #00E388;
+    border-width: 2px;
+    box-shadow: inset 0 0 10px rgba(0, 227, 136, 0.3);
+}
+
+/* Check visual quando ativo */
+.opcao-pagamento input[type="radio"]:checked + .opcao-card::after {
+    content: '\2714';
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    background: #00FF88;
+    color: #0C3B2E;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    font-weight: 900;
 }
 
 .opcao-icon {
@@ -1620,6 +1820,20 @@ body {
     margin: 0;
 }
 
+/* Badge para Ã€ vista mais vantajoso */
+.badge-vantajoso {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: #00E388;
+    color: #0C3B2E;
+    font-weight: 800;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
 .cta-alternativa {
     font-size: 1rem;
     margin-top: 30px;
@@ -1634,7 +1848,7 @@ body {
     opacity: 0.8;
 }
 
-/* Botão de Aceitar Proposta */
+/* BotÃ£o de Aceitar Proposta */
 .btn-aceitar-proposta {
     display: block;
     background: #00FF88;
@@ -1730,7 +1944,7 @@ body {
     box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
 }
 
-/* Botão Fechar Modal */
+/* BotÃ£o Fechar Modal */
 .btn-fechar-modal {
     background: #1E5942;
     color: white;
@@ -1827,7 +2041,7 @@ body {
 }
 
 /* ===================================
-   COMPARAÇÃO DE PLANOS
+   COMPARAÃ‡ÃƒO DE PLANOS
    =================================== */
 .comparacao-section {
     background: #0C0C0C;
@@ -1956,7 +2170,7 @@ body {
     border-bottom: none;
 }
 
-/* Cores específicas para planos de Social Media */
+/* Cores especÃ­ficas para planos de Social Media */
 .plano-start .plano-header h3 {
     color: #3B82F6;
 }
@@ -2137,7 +2351,7 @@ body {
         padding: 20px;
     }
     
-    /* Seletor de recorrência em mobile */
+    /* Seletor de recorrÃªncia em mobile */
     .recorrencia-options {
         grid-template-columns: 1fr;
         gap: 12px;
@@ -2165,7 +2379,7 @@ body {
         padding: 20px;
     }
     
-    /* Simulador de períodos em mobile */
+    /* Simulador de perÃ­odos em mobile */
     .periodos-grid {
         grid-template-columns: 1fr;
         gap: 12px;
@@ -2274,4 +2488,3 @@ body {
     .proposta-header {
         background: #1E5942;
     }
-}

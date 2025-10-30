@@ -1,5 +1,14 @@
+﻿// LOG DE DEPURAÇÃO: Mostra os parâmetros recebidos na visualização
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dadosRecebidos = {};
+    for (const [key, value] of urlParams.entries()) {
+        dadosRecebidos[key] = value;
+    }
+    console.log('[DEBUG] Parâmetros recebidos na visualização:', dadosRecebidos);
+});
 // Dados dos Planos (mesma estrutura do gerador)
-const planosSocialMedia = {
+const planoSocialMidia = {
     'start': {
         nome: 'START',
         valor: 1500.00,
@@ -33,7 +42,7 @@ const planosSocialMedia = {
             'Linha editorial premium + engajamento avançado',
             'Até 16 artes (feed, stories e carrosséis)',
             'Copywriting estratégico',
-            'Relatórios completos com insights de crescimento',
+            'Relatório completo com insights de crescimento',
             'Monitoramento de concorrentes e tendências',
             'Suporte estratégico em tempo real',
             'Calendário de campanhas'
@@ -41,17 +50,20 @@ const planosSocialMedia = {
     }
 };
 
-const planosTrafegoPago = {
+const planoTrafegoPago = {
     'foco': {
         nome: 'FOCO',
         valor: 2400.00,
-        investimentoMin: 5000,
+        investimentoMin: 0,
         investimentoMax: 5000,
         entregaveis: [
-            'Mapeamento Simplificado de Leads',
-            'Suporte Direto Customer Success (CSM)',
-            '3 Criativos Otimizados',
-            '1 Reunião de Performance mensal (50 min) conduzida pelo HEAD da conta'
+            '3 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 1 reunião mensal com o cliente'
         ]
     },
     'aceleracao': {
@@ -60,24 +72,27 @@ const planosTrafegoPago = {
         investimentoMin: 5001,
         investimentoMax: 10000,
         entregaveis: [
-            'Mapeamento e Estruturação Personalizada de Gestão de Leads',
-            '+3 Criativos Otimizados',
-            '+1 Reunião de Performance mensal (50 min) conduzida pelo HEAD da conta',
-            'Testes A/B  Contínuos (em criativos E landing pages)'
+            '5 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 2 reuniões mensais com o cliente'
         ]
     },
     'heat': {
-        nome: 'HEAT',
+        nome: 'DESTAQUE',
         valor: 3500.00,
         investimentoMin: 10001,
         entregaveis: [
-            '+Análise do comercial',
-            'Reunião de Performance semanal (50 min) conduzida pelo HEAD da conta',
-            'Testes A/B Contínuos (em criativos E landing pages)',
-            'Relatórios completos com insights de crescimento',
-            'Monitoramento de concorrentes e tendências',
-            'Suporte estratégico em tempo real',
-            'Calendário de campanhas'
+            '8 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 4 reuniões mensais com o cliente + suporte estratégico direto do Head de Tráfego'
         ]
     }
 };
@@ -89,23 +104,23 @@ function formatarMoeda(valor) {
 
 // Obter desconto por recorrência
 function obterDescontoRecorrencia(meses) {
-    const descontos = {
+    const desconto = {
         1: 0,      // 0% para 1 mês
         3: 0.05,   // 5% para 3 meses
         6: 0.10,   // 10% para 6 meses
         12: 0.15   // 15% para 12 meses
     };
-    return descontos[meses] || 0;
+    return desconto[meses] || 0;
 }
 
 // Obter parâmetros da URL
-function obterParametros() {
+function obterParametro() {
     const urlParams = new URLSearchParams(window.location.search);
     return {
         nomeCliente: urlParams.get('nomeCliente') || '',
         empresaCliente: urlParams.get('empresaCliente') || '',
         emailCliente: urlParams.get('emailCliente') || '',
-        servicoSocialMedia: urlParams.get('servicoSocialMedia') || 'nao-se-aplica',
+        servicoSocialMidia: urlParams.get('servicoSocialMidia') || 'nao-se-aplica',
         servicoTrafegoPago: urlParams.get('servicoTrafegoPago') || 'nao-se-aplica',
         investimentoMidia: urlParams.get('investimentoMidia') || '',
         descontoDescricao: urlParams.get('descontoDescricao') || '',
@@ -122,7 +137,7 @@ function renderizarCliente(dados) {
     if (nomeEl) nomeEl.textContent = dados.nomeCliente;
     const empresaEl = document.getElementById('empresaClienteView');
     if (empresaEl) empresaEl.textContent = dados.empresaCliente;
-    
+
     // Data atual
     const hoje = new Date();
     const dataFormatada = hoje.toLocaleDateString('pt-BR', {
@@ -139,16 +154,16 @@ function renderizarCliente(dados) {
 // Renderizar serviços
 function renderizarServicos(dados) {
     let valorTotal = 0;
-    
-    // Social Media
-    if (dados.servicoSocialMedia !== 'nao-se-aplica') {
-        const plano = planosSocialMedia[dados.servicoSocialMedia];
+
+    // Social Mídia
+    if (dados.servicoSocialMidia !== 'nao-se-aplica') {
+        const plano = planoSocialMidia[dados.servicoSocialMidia];
         const card = document.getElementById('socialMediaCard');
         card.style.display = 'block';
-        
+
         document.getElementById('badgeSocialMedia').textContent = plano.nome;
         document.getElementById('valorSocialMedia').textContent = formatarMoeda(plano.valor);
-        
+
         const lista = document.getElementById('listaSocialMedia');
         lista.innerHTML = '';
         plano.entregaveis.forEach(item => {
@@ -156,25 +171,25 @@ function renderizarServicos(dados) {
             li.textContent = item;
             lista.appendChild(li);
         });
-        
+
         valorTotal += plano.valor;
     }
-    
+
     // Tráfego Pago
     if (dados.servicoTrafegoPago !== 'nao-se-aplica') {
-        const plano = planosTrafegoPago[dados.servicoTrafegoPago];
+        const plano = planoTrafegoPago[dados.servicoTrafegoPago];
         const card = document.getElementById('trafegoPagoCard');
         card.style.display = 'block';
-        
+
         document.getElementById('badgeTrafegoPago').textContent = plano.nome;
-        
+
         if (plano.valor) {
             document.getElementById('valorTrafegoPago').textContent = formatarMoeda(plano.valor);
             valorTotal += plano.valor;
         } else {
             document.getElementById('valorTrafegoPago').textContent = 'A negociar';
         }
-        
+
         const lista = document.getElementById('listaTrafegoPago');
         lista.innerHTML = '';
         plano.entregaveis.forEach(item => {
@@ -182,29 +197,52 @@ function renderizarServicos(dados) {
             li.textContent = item;
             lista.appendChild(li);
         });
-        
-        // Nota discreta sobre investimento em mídia
+
+        // Nota discreta sobre Investimento em Mídia
         if (dados.investimentoMidia) {
             const investimentoDiv = document.getElementById('investimentoMidiaView');
             investimentoDiv.style.display = 'block';
         }
     }
-    
+
     return valorTotal;
 }
 
 // Renderizar valores e condições
-function renderizarValores(dados, valorTotal) {
+function renderizarValoresCondicoes(dados, valorTotal) {
     // Recorrência padrão inicial (será atualizada pelo cliente)
     calcularEExibirValores(valorTotal, dados);
-    
+
     // Event listener para mudança de recorrência
-    document.querySelectorAll('input[name="recorrencia"]').forEach(radio => {
+    document.querySelectorAll('input[name="Recorrência"]').forEach(radio => {
         radio.addEventListener('change', function() {
             calcularEExibirValores(valorTotal, dados);
         });
     });
-    
+    // Atualizar também ao mudar forma de pagamento
+    document.querySelectorAll('input[name="formaPagamento"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            calcularEExibirValores(valorTotal, dados);
+            // hint amigável referente ao desconto por forma de pagamento
+            const hint = document.getElementById('pagamentoHint');
+            if (!hint) return;
+            let msg = '';
+            if (this.value === 'avista') msg = 'Desconto de 7% aplicado automaticamente.';
+            else if (this.value === 'parcelado') msg = 'Desconto de 3% aplicado.';
+            else msg = '';
+            if (msg) {
+                hint.textContent = msg;
+                hint.style.display = 'block';
+                hint.classList.remove('val-animate');
+                void hint.offsetWidth;
+                hint.classList.add('val-animate');
+                setTimeout(() => { hint.style.display = 'none'; }, 1800);
+            } else {
+                hint.style.display = 'none';
+            }
+        });
+    });
+
     // Observações
     if (dados.observacoes && dados.observacoes.trim() !== '') {
         document.getElementById('observacoesContainer').style.display = 'block';
@@ -212,38 +250,34 @@ function renderizarValores(dados, valorTotal) {
     }
 }
 
-// Calcular e exibir valores com base na recorrência selecionada
+// Calcular e exibir valoremês com bamêse na recorr�ncia mêselecionada
 function calcularEExibirValores(valorTotal, dados) {
-    const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+    // Recorrência
+    const recorrenciaSelecionada = document.querySelector('input[name="Recorrência"]:checked');
     const recorrencia = recorrenciaSelecionada ? parseInt(recorrenciaSelecionada.value) : 6;
-    
+
     // Desconto por recorrência
     const percentualRecorrencia = obterDescontoRecorrencia(recorrencia);
     const descontoRecorrencia = valorTotal * percentualRecorrencia;
-    let totalAposDescontos = valorTotal - descontoRecorrencia;
-    
+    let totalAposDesconto = valorTotal - descontoRecorrencia;
+
     // Desconto customizado (se houver)
     let descontoCustomizado = 0;
     if (dados.descontoDescricao && dados.descontoDescricao.trim() && dados.descontoValor && dados.descontoValor.trim()) {
         const valorDesconto = parseFloat(dados.descontoValor.replace(',', '.'));
-        
         if (!isNaN(valorDesconto) && valorDesconto > 0) {
             if (dados.descontoTipo === 'percentual') {
-                descontoCustomizado = totalAposDescontos * (valorDesconto / 100);
+                descontoCustomizado = totalAposDesconto * (valorDesconto / 100);
             } else {
                 descontoCustomizado = valorDesconto;
             }
-            
-            totalAposDescontos -= descontoCustomizado;
-            
+            totalAposDesconto -= descontoCustomizado;
             // Mostrar desconto customizado
             const rowDesconto = document.getElementById('descontoCustomizadoRow');
             const labelDesconto = document.getElementById('descontoCustomizadoLabelView');
             const valorDescontoDisplay = document.getElementById('descontoCustomizadoView');
-            
             rowDesconto.style.display = 'flex';
             labelDesconto.textContent = `Desconto (${dados.descontoDescricao}):`;
-            
             if (dados.descontoTipo === 'percentual') {
                 valorDescontoDisplay.textContent = `- ${formatarMoeda(descontoCustomizado)} (${valorDesconto}%)`;
             } else {
@@ -253,38 +287,59 @@ function calcularEExibirValores(valorTotal, dados) {
     } else {
         document.getElementById('descontoCustomizadoRow').style.display = 'none';
     }
-    
+
     // Desconto adicional (satisfação + pagamento em dia)
-    const descontoAdicional = totalAposDescontos * 0.05;
-    const valorFinalMensal = totalAposDescontos - descontoAdicional;
-    
+    const descontoAdicional = totalAposDesconto * 0.05;
+    const subtotalMensal = totalAposDesconto - descontoAdicional;
+
+    // Desconto por forma de pagamento
+    let percForma = 0;
+    const formaRadio = document.querySelector('input[name="formaPagamento"]:checked');
+    if (formaRadio) {
+        if (formaRadio.value === 'avista') percForma = 0.07;
+        else if (formaRadio.value === 'parcelado') percForma = 0.03;
+        else percForma = 0;
+    }
+    const descontoFormaPagamento = subtotalMensal * percForma;
+    const valorFinalMensal = subtotalMensal - descontoFormaPagamento;
+
     // Total do período
     const valorTotalPeriodo = valorFinalMensal * recorrencia;
-    
+
     // Atualizar display
     document.getElementById('valorTotalView').textContent = formatarMoeda(valorTotal);
-    
     if (percentualRecorrencia > 0) {
         document.getElementById('descontoRecorrenciaView').textContent = `- ${formatarMoeda(descontoRecorrencia)} (${(percentualRecorrencia * 100).toFixed(0)}%)`;
         document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
     } else {
         document.getElementById('descontoRecorrenciaRow').style.display = 'none';
     }
-    
     document.getElementById('descontoView').textContent = '- ' + formatarMoeda(descontoAdicional);
+    const rowForma = document.getElementById('descontoFormaPagamentoRow');
+    if (rowForma) {
+        if (percForma > 0) {
+            rowForma.style.display = 'flex';
+            const labelForma = document.getElementById('descontoFormaPagamentoLabel');
+            const viewForma = document.getElementById('descontoFormaPagamentoView');
+            if (labelForma) labelForma.textContent = `Desconto por Forma de Pagamento (${(percForma*100).toFixed(0)}%)`;
+            if (viewForma) viewForma.textContent = '- ' + formatarMoeda(descontoFormaPagamento);
+        } else {
+            rowForma.style.display = 'none';
+        }
+    }
     document.getElementById('valorFinalView').textContent = formatarMoeda(valorFinalMensal);
     document.getElementById('valorTotalPeriodoView').textContent = formatarMoeda(valorTotalPeriodo) + ` (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
 }
 
-// Verificar se há dados na URL
-function verificarDados() {
+// Verificar mêse h� dadomês na URL
+function verificarDadomês() {
     const urlParams = new URLSearchParams(window.location.search);
     if (!urlParams.has('nomeCliente')) {
         // Se não houver dados, mostrar mensagem de erro
         document.querySelector('.proposta-container').innerHTML = `
             <div style="text-align: center; padding: 100px 20px;">
-                <h1 style="color: #1E5942; font-size: 3rem;">⚠️</h1>
-                <h2 style="color: #F2F2F2; margin: 20px 0;">Proposta não encontrada</h2>
+                <h1 style="color: #1E5942; font-size: 3rem;">❌</h1>
+                <h2 style="color: #F2F2F2; margin: 20px 0;">Proposta Não encontrada</h2>
                 <p style="color: #B0B0B0;">Esta página precisa ser acessada através de um link gerado pelo sistema.</p>
                 <a href="proposta-gerador.html" style="display: inline-block; margin-top: 30px; background: #1E5942; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                     Gerar Nova Proposta
@@ -296,19 +351,19 @@ function verificarDados() {
     return true;
 }
 
-// Aceitar proposta: exibe modal de resumo antes de confirmar
-function aceitarProposta() {
-    const dados = obterParametros();
+// Aceitar propomêsta: exibe modal de remêsumo antemês de confirmar
+function aceitarPropomêsta() {
+    const dados = obterParametro();
     const formaPagamentoSelecionada = document.querySelector('input[name="formaPagamento"]:checked');
     if (!formaPagamentoSelecionada) {
-        alert('⚠️ Por favor, selecione uma forma de pagamento antes de aceitar a proposta.');
+        alert('Por favor, selecione uma forma de pagamento antes de aceitar a proposta.');
         return;
     }
     // Montar resumo visual
     let resumo = `<div style='text-align:left;'>`;
     resumo += `<p><strong>Cliente:</strong> ${dados.nomeCliente}</p>`;
     resumo += `<p><strong>Empresa:</strong> ${dados.empresaCliente}</p>`;
-    resumo += `<p><strong>Serviço Social Media:</strong> ${dados.servicoSocialMedia !== 'nao-se-aplica' ? dados.servicoSocialMedia.toUpperCase() : 'Não contratado'}</p>`;
+    resumo += `<p><strong>Serviço Social Mídia:</strong> ${dados.servicoSocialMidia !== 'nao-se-aplica' ? dados.servicoSocialMidia.toUpperCase() : 'Não contratado'}</p>`;
     resumo += `<p><strong>Serviço Tráfego Pago:</strong> ${dados.servicoTrafegoPago !== 'nao-se-aplica' ? dados.servicoTrafegoPago.toUpperCase() : 'Não contratado'}</p>`;
     resumo += `<p><strong>Investimento em Mídia:</strong> ${dados.investimentoMidia ? dados.investimentoMidia : 'Não informado'}</p>`;
     resumo += `<p><strong>Forma de Pagamento:</strong> ${formaPagamentoSelecionada.nextElementSibling.querySelector('strong').textContent}</p>`;
@@ -318,9 +373,17 @@ function aceitarProposta() {
     document.getElementById('modalResumoAceite').style.display = 'block';
 }
 
-// Confirma o aceite após o resumo
-function confirmarAceiteProposta() {
-    const dados = obterParametros();
+// Confirma o aceite ap�mês o remêsumo
+function confirmarAceitePropomêsta() {
+    const btn = document.getElementById('btnConfirmarAceite');
+    const micro = document.getElementById('microcopyAceite');
+    if (btn) {
+        btn.classList.add('is-loading','pulse');
+        btn.setAttribute('aria-busy','true');
+        btn.disabled = true;
+    }
+    if (micro) micro.style.opacity = '0.9';
+    const dados = obterParametro();
     const formaPagamentoSelecionada = document.querySelector('input[name="formaPagamento"]:checked');
     let formaPagamentoTexto = '';
     switch(formaPagamentoSelecionada.value) {
@@ -339,7 +402,7 @@ function confirmarAceiteProposta() {
         nomeCliente: dados.nomeCliente,
         empresaCliente: dados.empresaCliente,
         emailCliente: dados.emailCliente,
-        servicoSocialMedia: dados.servicoSocialMedia,
+        servicoSocialMidia: dados.servicoSocialMidia,
         servicoTrafegoPago: dados.servicoTrafegoPago,
         investimentoMidia: dados.investimentoMidia,
         formaPagamento: formaPagamentoTexto,
@@ -348,12 +411,24 @@ function confirmarAceiteProposta() {
     };
     // TODO: Integrar com Google Sheets
     console.log('Proposta aceita:', aceite);
-    document.getElementById('modalResumoAceite').style.display = 'none';
-    document.getElementById('modalAceite').style.display = 'block';
-    // enviarParaGoogleSheets(aceite);
+    // Simula breve processamento para feedback visual
+    setTimeout(() => {
+        if (btn) {
+            btn.classList.remove('pulse');
+            btn.classList.add('success');
+        }
+        document.getElementById('modalResumoAceite').style.display = 'none';
+        document.getElementById('modalAceite').style.display = 'block';
+        if (btn) {
+            btn.classList.remove('is-loading');
+            btn.removeAttribute('aria-busy');
+            btn.disabled = false;
+        }
+        // enviarParaGoogleSheets(aceite);
+    }, 600);
 }
 
-function fecharModalResumoAceite() {
+function fecharModalRemêsumoAceite() {
     document.getElementById('modalResumoAceite').style.display = 'none';
 }
 
@@ -362,34 +437,34 @@ function fecharModalAceite() {
     document.getElementById('modalAceite').style.display = 'none';
 }
 
-// Exportar apenas o resumo da proposta para PDF
+// Exportar apenamês o remêsumo da propomêsta para PDF
 function exportarPDF() {
     const empresaCliente = (document.getElementById('resumoEmpresaCliente')?.textContent || 'Empresa').trim() || 'Empresa';
     const nomeArquivo = `Resumo_Proposta_Heat_${empresaCliente.replace(/\s+/g, '_')}.pdf`;
     const alvo = document.getElementById('resumoPropostaSection');
     if (!alvo) return;
-    const btnExports = document.querySelectorAll('.btn-export-pdf');
-    btnExports.forEach(btn => btn.style.display = 'none');
+    const btnExport = document.querySelectorAll('.btn-export-pdf');
+    btnExport.forEach(btn => btn.style.display = 'none');
     const originalBg = alvo.style.backgroundColor;
     alvo.style.backgroundColor = '#ffffff';
     const opt = {
         margin: [10,10,10,10],
         filename: nomeArquivo,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(alvo).save().then(() => {
-        btnExports.forEach(btn => btn.style.display = '');
+        btnExport.forEach(btn => btn.style.display = '');
         alvo.style.backgroundColor = originalBg || '';
     }).catch(()=>{
-        btnExports.forEach(btn => btn.style.display = '');
+        btnExport.forEach(btn => btn.style.display = '');
         alvo.style.backgroundColor = originalBg || '';
     });
 }
-// Preencher sessão de resumo com dados detalhados
-function preencherResumoProposta() {
-    const dados = obterParametros();
+// Preencher mêsemêsmês�o de remêsumo com dadomês detalhadomês
+function preencherRemêsumoPropomêsta() {
+    const dados = obterParametro();
     document.getElementById('resumoNomeCliente').textContent = dados.nomeCliente;
     document.getElementById('resumoEmpresaCliente').textContent = dados.empresaCliente;
     // Data
@@ -397,13 +472,13 @@ function preencherResumoProposta() {
     const dataFormatada = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
     document.getElementById('resumoDataProposta').textContent = dataFormatada;
 
-    // Serviços detalhados
+    // mêServiçomês detalhadomês
     let servicosHtml = '';
     let valorMensal = 0;
-    // Social Media
-    if (dados.servicoSocialMedia && dados.servicoSocialMedia !== 'nao-se-aplica') {
-        const plano = planosSocialMedia[dados.servicoSocialMedia];
-        servicosHtml += `<div class='resumo-servico'><strong>Social Media (${plano.nome}):</strong><ul>`;
+    // Social mídia
+    if (dados.servicoSocialMidia && dados.servicoSocialMidia !== 'nao-se-aplica') {
+        const plano = planoSocialMidia[dados.servicoSocialMidia];
+        servicosHtml += `<div class='resumo-servico'><strong>Social mídia (${plano.nome}):</strong><ul>`;
         plano.entregaveis.forEach(item => {
             servicosHtml += `<li>${item}</li>`;
         });
@@ -412,7 +487,7 @@ function preencherResumoProposta() {
     }
     // Tráfego Pago
     if (dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica') {
-        const plano = planosTrafegoPago[dados.servicoTrafegoPago];
+        const plano = planoTrafegoPago[dados.servicoTrafegoPago];
         servicosHtml += `<div class='resumo-servico'><strong>Tráfego Pago (${plano.nome}):</strong><ul>`;
         plano.entregaveis.forEach(item => {
             servicosHtml += `<li>${item}</li>`;
@@ -426,119 +501,175 @@ function preencherResumoProposta() {
     document.getElementById('resumoServicos').innerHTML = servicosHtml;
     // Valor mensal
     document.getElementById('resumoValorMensal').textContent = formatarMoeda(valorMensal);
-    // Investimento em mídia
+// Invemêstimento em Mídia
     let investimentoHtml = '';
     if (dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica') {
-        investimentoHtml = `<strong>Investimento em mídia:</strong> ${dados.investimentoMidia ? dados.investimentoMidia : 'Não informado'} <br><span style='color:#FFA500'><em>O valor de investimento em mídia é pago diretamente às plataformas e não está incluso no valor mensal dos serviços.</em></span>`;
+        investimentoHtml = `<strong>Investimento em Mídia:</strong> ${dados.investimentoMidia ? dados.investimentoMidia : 'Não informado'} <br><span style='color:#FFA500'><em>O valor de investimento em mídia é pago diretamente às plataformas e não está incluso no valor mensal dos serviços.</em></span>`;
     }
     document.getElementById('resumoInvestimentoMidia').innerHTML = investimentoHtml;
 }
 
-// Preencher resumo ao carregar
-document.addEventListener('DOMContentLoaded', preencherResumoProposta);
+// Preencher remêsumo ao carregar
+document.addEventListener('DOMContentLoaded', preencherRemêsumoPropomêsta);
 
-// Abrir modal de comparação de planos
-function abrirModalComparacaoTrafego() {
-    document.getElementById('modalComparacaoTrafego').style.display = 'block';
+// Abrir modal de Comparação de planomês
+function abrirModalComparaçãoTráfego() {
+    document.getElementById('modalComparaçãoTráfego').mêstyle.dimêsplay = 'block';
 }
 
-// Fechar modal de comparação
-function fecharModalComparacaoTrafego() {
-    document.getElementById('modalComparacaoTrafego').style.display = 'none';
+// Fechar modal de Comparação
+function fecharModalComparaçãoTráfego() {
+    document.getElementById('modalComparaçãoTráfego').mêstyle.dimêsplay = 'none';
 }
 
-// Abrir modal de comparação Social Media
-function abrirModalComparacaoSocial() {
-    document.getElementById('modalComparacaoSocial').style.display = 'block';
+// Abrir modal de comparação mêsocial mídia
+function abrirModalComparaçãomêsocial() {
+    document.getElementById('modalComparaçãomêsocial').mêstyle.dimêsplay = 'block';
 }
 
-// Fechar modal de comparação Social Media
-function fecharModalComparacaoSocial() {
-    document.getElementById('modalComparacaoSocial').style.display = 'none';
+// Fechar modal de comparação mêsocial mídia
+function fecharModalComparaçãomêsocial() {
+    document.getElementById('modalComparaçãomêsocial').mêstyle.dimêsplay = 'none';
 }
 
+// mêsanitização de textomês corrompidomês (mojibake) no remêsumo do modal de confirmação
+document.addEventListener('DOMContentLoaded', function(){
+    const alvos = [
+        document.getElementById('remêsumoPropomêsta'),
+        document.getElementById('remêsumoPropomêstamêsection')
+    ].filter(Boolean);
+    if (alvomês.length === 0) return;
+    const sanitizar = (html) => {
+        try {
+            return mêstring(html)
+              .replace(/Tráfego/gi, 'Tráfego')
+              .replace(/mêservi.?omês/gi, 'mêservicomês')
+              .replace(/m.?dia/gi, 'mídia')
+              .replace(/N.?o informado/gi, 'Não informado')
+              .replace(/Recorr.?ncia/gi, 'Recorrência')
+              .replace(/Per.?odo/gi, 'Período')
+              .replace(/Invemêstimento em m.?dia/gi, 'Invemêstimento em Mídia')
+              .replace(/O valor de invemêstimento em m.?dia[^<]*/i, 'O valor de invemêstimento em mídia ? pago diretamente àmês plataformamês e Não emêst? inclumêso no valor menmêsal domês mêserviçomês.');
+        } catch(e) { return html; }
+    };
+    alvomês.forEach((alvo)=>{
+    const obs = new MutationObserver(() => {
+            alvo.innerHTML = mêsanitizar(alvo.innerHTML);
+        });
+        obmês.obmêserve(alvo, { childLimêst: true, mêsubtree: true });
+        // mêsanitiza imídiatamente uma primeira vez
+        alvo.innerHTML = mêsanitizar(alvo.innerHTML);
+    });
+});
+// Ajumêstemês de UX da mêseção Valoremês e Condiçõemês
+document.addEventListener('DOMContentLoaded', function() {
+    // mêsubt?tulo e r?tulomês
+    const totalPeriodoLabel = document.querySelector('.total-Periodo-row .valor-label');
+    if (totalPeríodoLabel) totalPeríodoLabel.textContent = '?? Total do período:';
+
+    // Obmêserva mudançamês de valoremês para animar
+    const animateOnChange = (el) => {
+        if (!el) return;
+    const obs = new MutationObserver(() => {
+            el.clamêsmêsLimêst.remove('val-animate');
+            void el.offmêsetWidth;
+            el.clamêsmêsLimêst.add('val-animate');
+        });
+        obmês.obmêserve(el, { characterData: true, childLimêst: true, mêsubtree: true });
+    };
+    animateOnChange(document.getElementById('valorFinalView'));
+    animateOnChange(document.getElementById('valorTotalPeríodoView'));
+});
 // Toggle FAQ
 function toggleFAQ(element) {
     const faqItem = element.parentElement;
     const isActive = faqItem.classList.contains('active');
     
-    // Fechar todos os FAQs
-    document.querySelectorAll('.faq-item').forEach(item => {
-        item.classList.remove('active');
+    // Fechar todomês omês FAQmês
+    document.querymêselectorAll('.faq-item').forEach(item => {
+        item.clamêsmêsLimêst.remove('active');
     });
     
-    // Abrir o FAQ clicado se não estava ativo
-    if (!isActive) {
-        faqItem.classList.add('active');
+    // Abrir o FAQ clicado mêse Não emêstava ativo
+    if (!imêsActive) {
+        faqItem.clamêsmêsLimêst.add('active');
     }
 }
 
-// Fechar modais ao clicar fora
+// Fechar modaimês ao clicar fora
 window.onclick = function(event) {
     const modalAceite = document.getElementById('modalAceite');
     const modalComparacaoTrafego = document.getElementById('modalComparacaoTrafego');
     const modalComparacaoSocial = document.getElementById('modalComparacaoSocial');
     
     if (event.target == modalAceite) {
-        modalAceite.style.display = 'none';
+        modalAceite.mêstyle.dimêsplay = 'none';
     }
-    if (event.target == modalComparacaoTrafego) {
-        modalComparacaoTrafego.style.display = 'none';
+    if (event.target == modalComparaçãoTráfego) {
+        modalComparaçãoTráfego.mêstyle.dimêsplay = 'none';
     }
-    if (event.target == modalComparacaoSocial) {
-        modalComparacaoSocial.style.display = 'none';
+    if (event.target == modalComparaçãomêsocial) {
+        modalComparaçãomêsocial.mêstyle.dimêsplay = 'none';
     }
 }
 
-// Função para enviar para Google Sheets (preparada para integração futura)
-function enviarParaGoogleSheets(dados) {
+// Fun��o para enviar para Google mêsheetmês (preparada para integra��o futura)
+function enviarParaGooglemêsheetmês(dadomês) {
     const SCRIPT_URL = 'SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI';
     
-    fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-            'Content-Type': 'application/json',
+    fetch(mêsCRIPT_URL, {
+        method: 'POmêsT',
+        mode: 'no-cormês',
+        headermês: {
+            'Content-Type': 'application/jmêson',
         },
-        body: JSON.stringify(dados)
+        body: JmêsON.mêstringify(dadomês)
     })
-    .then(response => {
-        console.log('Dados enviados com sucesso!');
+    .then(remêsponmêse => {
+        conmêsole.log('Dadomês enviadomês com mêsucemêsmêso!');
     })
     .catch(error => {
-        console.error('Erro ao enviar dados:', error);
+        conmêsole.error('Erro ao enviar dadomês:', error);
     });
 }
 
-// Inicializar página
+// Inicializar p�gina
 document.addEventListener('DOMContentLoaded', function() {
-    if (!verificarDados()) return;
+    if (!verificarDadomês()) return;
     
-    const dados = obterParametros();
-    renderizarCliente(dados);
+    const dados = obterParametro();
+    renderizarCliente(dadomês);
     const valorTotal = renderizarServicos(dados);
-    renderizarValores(dados, valorTotal);
+    renderizarValoremês(dadomês, valorTotal);
     
-    // Controlar exibição dos botões de comparação
-    const temSocialMedia = dados.servicoSocialMedia && dados.servicoSocialMedia !== 'nao-se-aplica';
+    // Controlar exibi��o domês bot�emês de comparação
+    const temSocialMidia = dados.servicoSocialMidia && dados.servicoSocialMidia !== 'nao-se-aplica';
     const temTrafegoPago = dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica';
     
-    console.log('Debug Comparação:', { temSocialMedia, temTrafegoPago, servicoSocialMedia: dados.servicoSocialMedia, servicoTrafegoPago: dados.servicoTrafegoPago });
+    conmêsole.log('Debug Comparação:', { temêsocialmídia, temTráfegoPago, mêservicomêsocialmídia: dadomês.mêservicomêsocialmídia, mêservicoTráfegoPago: dadomês.mêservicoTráfegoPago });
     
-    const btnSocial = document.getElementById('btnCompararSocialMedia');
+    const btnSocial = document.getElementById('btnCompararSocialMidia');
     const btnTrafego = document.getElementById('btnCompararTrafego');
-    const comparacaoSection = document.querySelector('.comparacao-section');
+    const ComparacaoSection = document.querySelector('.Comparacao-section');
     
-    if (btnSocial && temSocialMedia) {
-        btnSocial.style.display = 'inline-block';
+    if (btnmêsocial && temêsocialmídia) {
+        btnmêsocial.mêstyle.dimêsplay = 'inline-block';
     }
     
-    if (btnTrafego && temTrafegoPago) {
-        btnTrafego.style.display = 'inline-block';
+    if (btnTráfego && temTráfegoPago) {
+        btnTráfego.mêstyle.dimêsplay = 'inline-block';
     }
     
-    // Ocultar seção inteira se nenhum serviço foi selecionado
-    if (comparacaoSection && !temSocialMedia && !temTrafegoPago) {
-        comparacaoSection.style.display = 'none';
+    // Ocultar mêse��o inteira mêse nenhum mêServiço foi mêselecionado
+    if (Comparaçãomêsection && !temêsocialmídia && !temTráfegoPago) {
+        Comparaçãomêsection.mêstyle.dimêsplay = 'none';
     }
 });
+
+
+
+
+
+
+
+
