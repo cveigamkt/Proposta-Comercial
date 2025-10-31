@@ -339,6 +339,9 @@ document.getElementById('investimentoMidia').addEventListener('input', function(
     window.investimentoTimeout = setTimeout(validarEAjustarInvestimento, 800);
 });
 
+// URL do Google Apps Script - ACEITES DE PROPOSTAS
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec';
+
 // Gerar link da proposta
 document.getElementById('propostaForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -382,22 +385,36 @@ document.getElementById('propostaForm').addEventListener('submit', function(e) {
         observacoes: document.getElementById('observacoes').value
     };
     
-    // Criar URL com parâmetros
-    const params = new URLSearchParams(dados);
-    const urlVisualizacao = gerarURLVisualizacao();
-    const linkCompleto = `${urlVisualizacao}?${params.toString()}`;
+    // Criar proposta na planilha primeiro
+    criarPropostaNaPlanilha(dados).then(timestamp => {
+        // Gerar link com parâmetros da proposta
+        const urlVisualizacao = gerarURLVisualizacao();
+        const params = new URLSearchParams({
+            nomeCliente: dados.nomeCliente,
+            empresaCliente: dados.empresaCliente,
+            emailCliente: dados.emailCliente,
+            servicoSocialMidia: dados.servicoSocialMidia,
+            servicoTrafegoPago: dados.servicoTrafegoPago,
+            investimentoMidia: dados.investimentoMidia,
+            descontoDescricao: dados.descontoDescricao,
+            descontoTipo: dados.descontoTipo,
+            descontoValor: dados.descontoValor,
+            observacoes: dados.observacoes,
+            timestampCriacao: timestamp
+        });
+        const linkCompleto = `${urlVisualizacao}?${params.toString()}`;
+        
+        // Mostrar modal com o link
+        document.getElementById('linkGerado').value = linkCompleto;
+        document.getElementById('modalLink').style.display = 'block';
+
+    }).catch(error => {
+        console.error('Erro ao criar proposta:', error);
+        alert('Erro ao gerar proposta: ' + error.message);
+    });
     
-    // Debug para Netlify
-    console.log('=== DEBUG GERAÇÃO DE LINK ===');
-    console.log('Dados coletados:', dados);
-    console.log('Parâmetros URL:', params.toString());
-    console.log('URL de visualização:', urlVisualizacao);
-    console.log('Link completo:', linkCompleto);
-    console.log('===============================');
-    
-    // Mostrar modal com o link
-    document.getElementById('linkGerado').value = linkCompleto;
-    document.getElementById('modalLink').style.display = 'block';
+
+
 });
 
 // Copiar link para área de transferência
@@ -453,11 +470,7 @@ function previewProposta() {
     const urlVisualizacao = gerarURLVisualizacao();
     const linkCompleto = `${urlVisualizacao}?${params.toString()}`;
     
-    // Debug para Netlify
-    console.log('=== DEBUG PREVIEW ===');
-    console.log('Dados preview:', dados);
-    console.log('URL preview:', linkCompleto);
-    console.log('==================');
+
     
     window.open(linkCompleto, '_blank');
 }
@@ -495,7 +508,92 @@ function inicializarSistema() {
         return;
     }
     calcularValores();
-    console.log('Sistema inicializado!');
+}
+
+// Função para criar proposta na planilha
+async function criarPropostaNaPlanilha(dados) {
+    // Gerar timestamp no frontend para garantir consistência
+    const timestampCriacao = new Date().toLocaleString('pt-BR');
+    
+    // Preparar dados da proposta
+    const dadosProposta = {
+        action: 'criar',
+        timestampCriacao: timestampCriacao,
+        nomeCliente: dados.nomeCliente,
+        empresaCliente: dados.empresaCliente,
+        emailCliente: dados.emailCliente,
+        socialMedia: obterPlanoSocialMedia(dados),
+        trafegoPago: obterPlanoTrafegoPago(dados),
+        descontosTotais: calcularDescontosTotais(),
+        valorMensal: document.getElementById('valorFinalDisplay').textContent,
+        valorTotal: calcularValorTotal(),
+        recorrencia: 'Não definida',
+        formaPagamento: 'Não definida'
+    };
+
+    
+    try {
+        const formData = new FormData();
+        Object.keys(dadosProposta).forEach(key => {
+            formData.append(key, dadosProposta[key]);
+        });
+        
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: formData
+        });
+
+        
+        // Tentar fazer parse do JSON
+        let result;
+        try {
+            result = await response.json();
+        } catch (jsonError) {
+            return new Date().toLocaleString('pt-BR');
+        }
+        
+        if (result && result.status === 'success') {
+            return timestampCriacao; // Retornar o timestamp gerado no frontend
+        } else if (response.ok) {
+            return timestampCriacao;
+        } else {
+            throw new Error(result?.message || 'Erro desconhecido');
+        }
+    } catch (error) {
+        return timestampCriacao; // Sempre retornar o mesmo timestamp
+    }
+}
+
+// Função para obter plano de Social Media
+function obterPlanoSocialMedia(dados) {
+    if (dados.servicoSocialMidia && dados.servicoSocialMidia !== 'nao-se-aplica') {
+        const plano = planosSocialMedia[dados.servicoSocialMidia];
+        return plano ? plano.nome : '';
+    }
+    return '';
+}
+
+// Função para obter plano de Tráfego Pago
+function obterPlanoTrafegoPago(dados) {
+    if (dados.servicoTrafegoPago && dados.servicoTrafegoPago !== 'nao-se-aplica') {
+        const plano = planosTrafegoPago[dados.servicoTrafegoPago];
+        return plano ? plano.nome : '';
+    }
+    return '';
+}
+
+// Função para calcular descontos totais
+function calcularDescontosTotais() {
+    const valorBase = parseFloat(document.getElementById('valorTotalDisplay').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const valorFinal = parseFloat(document.getElementById('valorFinalDisplay').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const descontoTotal = valorBase - valorFinal;
+    return formatarMoeda(descontoTotal);
+}
+
+// Função para calcular valor total estimado
+function calcularValorTotal() {
+    const valorMensal = parseFloat(document.getElementById('valorFinalDisplay').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    return formatarMoeda(valorMensal * 6); // Estimativa semestral
 }
 
 if (document.readyState === 'loading') {
@@ -503,7 +601,4 @@ if (document.readyState === 'loading') {
 } else {
     inicializarSistema();
 }
-window.addEventListener('load', function() {
-    setTimeout(inicializarSistema, 100);
-});
 

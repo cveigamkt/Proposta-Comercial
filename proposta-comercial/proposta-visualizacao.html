@@ -867,23 +867,23 @@
                 <div class="recorrencia-options">
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="1">
-                        <div class="title">Mensal</div>
+                        <div class="title">1 mês</div>
                         <div class="discount">0% desconto</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="3">
-                        <div class="title">Trimestral</div>
+                        <div class="title">3 meses</div>
                         <div class="discount">5% desconto</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="6" checked>
-                        <div class="title">Semestral</div>
+                        <div class="title">6 meses</div>
                         <div class="discount">10% desconto</div>
                         <div class="badge-recomendado">RECOMENDADO</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="12">
-                        <div class="title">Anual</div>
+                        <div class="title">12 meses</div>
                         <div class="discount">15% desconto</div>
                     </label>
                 </div>
@@ -1245,13 +1245,26 @@
         let valorBase = 0;
         let servicosContratados = [];
 
+        // URL do Google Apps Script - ACEITES DE PROPOSTAS
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec';
+        
         // Inicializar página
         document.addEventListener('DOMContentLoaded', function() {
+            // Sempre carregar dados da URL
             carregarDados();
+            
             configurarEventListeners();
             calcularValores();
             configurarComparacao();
             verificarSelecoes();
+            
+            // Corrigir seleção visual inicial
+            setTimeout(() => {
+                const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+                if (recorrenciaSelecionada) {
+                    recorrenciaSelecionada.closest('.option-card').classList.add('selected');
+                }
+            }, 100);
         });
 
         function carregarDados() {
@@ -1260,7 +1273,15 @@
             // Dados do cliente
             document.getElementById('nomeCliente').textContent = params.get('nomeCliente') || 'Cliente';
             document.getElementById('empresaCliente').textContent = params.get('empresaCliente') || 'Empresa';
-            document.getElementById('dataProposta').textContent = new Date().toLocaleDateString('pt-BR');
+            document.getElementById('dataProposta').textContent = params.get('timestampCriacao') || new Date().toLocaleDateString('pt-BR');
+            
+            // Armazenar dados para aceite
+            window.dadosProposta = {
+                nomeCliente: params.get('nomeCliente') || '',
+                empresaCliente: params.get('empresaCliente') || '',
+                emailCliente: params.get('emailCliente') || '',
+                timestampCriacao: params.get('timestampCriacao') || ''
+            };
             
             // Carregar serviços
             const socialMidia = params.get('servicoSocialMidia');
@@ -1534,8 +1555,32 @@
             document.getElementById('modalConfirmacao').style.display = 'block';
         }
 
-        function confirmarProposta() {
+        async function confirmarProposta() {
+            // Coletar dados da proposta aceita
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            const dadosAceite = {
+                nomeCliente: document.getElementById('nomeCliente').textContent,
+                empresaCliente: document.getElementById('empresaCliente').textContent,
+                emailCliente: new URLSearchParams(window.location.search).get('emailCliente') || '',
+                valorMensal: document.getElementById('valorFinalMensal').textContent,
+                valorTotal: document.getElementById('valorTotalPeriodo').textContent,
+                recorrencia: recorrenciaSelecionada?.value || '',
+                formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || ''
+            };
+            
+            // Fechar modal de confirmação
             document.getElementById('modalConfirmacao').style.display = 'none';
+            
+            try {
+                // Registrar aceite na planilha
+                await registrarAceiteNaPlanilha(dadosAceite);
+            } catch (error) {
+                console.error('Erro no aceite:', error);
+            }
+            
+            // Sempre mostrar modal de sucesso
             document.getElementById('modalSucesso').style.display = 'block';
         }
 
@@ -1759,6 +1804,108 @@
             `;
         }
 
+
+        
+        // Funções para obter planos no aceite
+        function obterPlanoSocialMediaAceite(params) {
+            const servicoSocial = params.get('servicoSocialMidia');
+            if (servicoSocial && servicoSocial !== 'nao-se-aplica') {
+                const planos = { start: 'START', scale: 'SCALE', heat: 'HEAT' };
+                return planos[servicoSocial] || '';
+            }
+            return '';
+        }
+        
+        function obterPlanoTrafegoAceite(params) {
+            const servicoTrafego = params.get('servicoTrafegoPago');
+            if (servicoTrafego && servicoTrafego !== 'nao-se-aplica') {
+                const planos = { foco: 'FOCO', aceleracao: 'ACELERAÇÃO', heat: 'DESTAQUE' };
+                return planos[servicoTrafego] || '';
+            }
+            return '';
+        }
+        
+        function calcularDescontosTotaisAceite() {
+            const valorBase = parseFloat(document.getElementById('valorBase').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            const valorFinal = parseFloat(document.getElementById('valorFinalMensal').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            const descontoTotal = valorBase - valorFinal;
+            return descontoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        
+        // Função para registrar aceite na planilha
+        async function registrarAceiteNaPlanilha(dados) {
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = SCRIPT_URL;
+            form.style.display = 'none';
+            
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            
+            const params = new URLSearchParams(window.location.search);
+            
+            const camposAceite = {
+                action: 'aceitar',
+                nomeCliente: window.dadosProposta?.nomeCliente || dados.nomeCliente,
+                empresaCliente: window.dadosProposta?.empresaCliente || dados.empresaCliente,
+                emailCliente: window.dadosProposta?.emailCliente || '',
+                socialMedia: obterPlanoSocialMediaAceite(params),
+                trafegoPago: obterPlanoTrafegoAceite(params),
+                valorMensal: dados.valorMensal,
+                valorTotal: dados.valorTotal,
+                descontosTotais: calcularDescontosTotaisAceite(),
+                recorrencia: recorrenciaSelecionada?.value || '',
+                formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || '',
+                timestampCriacao: window.dadosProposta?.timestampCriacao || ''
+            };
+            
+            console.log('=== DEBUG FRONTEND ===');
+            console.log('Dados enviados:', camposAceite);
+            console.log('URL Params:', params.toString());
+            console.log('Window dados:', window.dadosProposta);
+            console.log('==================');
+            
+            Object.keys(camposAceite).forEach(key => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = camposAceite[key];
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                document.body.removeChild(form);
+                
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    return true;
+                }
+                
+                if (result.status === 'success' || response.ok) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (error) {
+                if (document.body.contains(form)) {
+                    document.body.removeChild(form);
+                }
+                return true;
+            }
+        }
+
+        
         // Fechar modal ao clicar fora
         window.onclick = function(event) {
             const modalConfirmacao = document.getElementById('modalConfirmacao');
