@@ -378,9 +378,6 @@ async function previewProposta() {
     // Mostrar modal com o link
     document.getElementById('linkGerado').value = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '') + urlVisualizacao;
     document.getElementById('modalLink').style.display = 'block';
-    
-    // Também abrir em nova aba para preview
-    window.open(urlVisualizacao, '_blank');
 }
 
 // Inicializar

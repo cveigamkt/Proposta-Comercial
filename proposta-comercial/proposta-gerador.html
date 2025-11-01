@@ -485,6 +485,10 @@
                     <input type="text" id="linkGerado" readonly>
                     <button onclick="copiarLink()" class="btn-copy">📋 Copiar</button>
                 </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
+                    <button onclick="abrirPreview()" class="btn-copy" style="background: #267356;">👁️ Visualizar</button>
+                    <button onclick="closeModal()" class="btn-copy" style="background: #666;">Fechar</button>
+                </div>
                 <p class="link-info">O cliente poderá visualizar a proposta através deste link.</p>
             </div>
         </div>
@@ -520,6 +524,12 @@
             linkInput.select();
             document.execCommand('copy');
             alert('Link copiado para a área de transferência!');
+        }
+        
+        function abrirPreview() {
+            const link = document.getElementById('linkGerado').value;
+            const urlRelativa = link.split(window.location.origin)[1];
+            window.open(urlRelativa, '_blank');
         }
     </script>
 </body>
