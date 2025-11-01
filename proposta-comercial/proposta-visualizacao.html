@@ -2363,7 +2363,9 @@
                 descontosTotais: calcularDescontosTotaisAceite(),
                 recorrencia: recorrenciaSelecionada?.value || '',
                 formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || '',
-                timestampCriacao: window.dadosProposta?.timestampCriacao || ''
+                timestampCriacao: window.dadosProposta?.timestampCriacao || '',
+                responsavelProposta: window.dadosProposta?.responsavelProposta || '',
+                validadeProposta: window.dadosProposta?.diasValidade || '7'
             };
             
 

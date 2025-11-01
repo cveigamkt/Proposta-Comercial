@@ -12,17 +12,17 @@ function doPost(e) {
     
     if (!sheetEnviadas) {
       sheetEnviadas = spreadsheet.insertSheet('Propostas Enviadas');
-      sheetEnviadas.getRange(1, 1, 1, 11).setValues([[
+      sheetEnviadas.getRange(1, 1, 1, 13).setValues([[
         'Data/Hora Criação', 'Nome Cliente', 'Empresa', 'Email', 'Social Media', 
-        'Tráfego Pago', 'Valor Mensal', 'Valor Total', 'Descontos Totais', 'Recorrência (Mês)', 'Forma Pagamento'
+        'Tráfego Pago', 'Valor Mensal', 'Valor Total', 'Descontos Totais', 'Recorrência (Mês)', 'Forma Pagamento', 'Responsável', 'Validade (Dias)'
       ]]);
     }
     
     if (!sheetAceitas) {
       sheetAceitas = spreadsheet.insertSheet('Propostas Aceitas');
-      sheetAceitas.getRange(1, 1, 1, 12).setValues([[
+      sheetAceitas.getRange(1, 1, 1, 14).setValues([[
         'Data/Hora Aceite', 'Nome Cliente', 'Empresa', 'Email', 'Social Media', 
-        'Tráfego Pago', 'Valor Mensal', 'Valor Total', 'Descontos Totais', 'Recorrência (Mês)', 'Forma Pagamento', 'Data Criação Original'
+        'Tráfego Pago', 'Valor Mensal', 'Valor Total', 'Descontos Totais', 'Recorrência (Mês)', 'Forma Pagamento', 'Data Criação Original', 'Responsável', 'Validade (Dias)'
       ]]);
     }
     
@@ -90,7 +90,9 @@ function criarProposta(sheet, formData) {
     formData.valorTotal || '',
     formData.descontosTotais || '',
     formData.recorrencia || '',
-    formData.formaPagamento || ''
+    formData.formaPagamento || '',
+    formData.responsavelProposta || '',
+    formData.validadeProposta || ''
   ]);
   
   return ContentService
@@ -131,7 +133,9 @@ function aceitarProposta(sheet, formData) {
     formData.descontosTotais || '',
     formData.recorrencia || '',
     formData.formaPagamento || '',
-    timestampCriacaoOriginal
+    timestampCriacaoOriginal,
+    formData.responsavelProposta || '',
+    formData.validadeProposta || ''
   ]);
   
   console.log('Linha adicionada na planilha com sucesso!');
