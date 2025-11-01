@@ -1594,7 +1594,6 @@
                 // Para exemplo/teste - usar timestamp atual
                 const agora = new Date();
                 const timestampExemplo = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
-                console.log('Timer de exemplo iniciado:', timestampExemplo, 'Validade:', diasValidade);
                 iniciarTimer(timestampExemplo, diasValidade);
             }
             
@@ -2419,7 +2418,6 @@
             
             // Converter timestamp para data
             let dataCriacao;
-            console.log('Timestamp recebido:', timestampCriacao);
             
             if (timestampCriacao.includes('/')) {
                 // Formato brasileiro: dd/mm/aaaa hh:mm:ss
@@ -2428,19 +2426,12 @@
                 const hora = partes[1] || '00:00:00';
                 // Criar data no formato ISO: aaaa-mm-dd hh:mm:ss
                 const dataISO = `${data[2]}-${data[1].padStart(2, '0')}-${data[0].padStart(2, '0')} ${hora}`;
-                console.log('Data ISO criada:', dataISO);
                 dataCriacao = new Date(dataISO);
             } else {
                 dataCriacao = new Date(timestampCriacao);
             }
             
-            console.log('Data de criação:', dataCriacao);
-            console.log('Dias de validade:', diasValidade);
-            
             const dataExpiracao = new Date(dataCriacao.getTime() + (diasValidade * 24 * 60 * 60 * 1000));
-            
-            console.log('Data de expiração:', dataExpiracao);
-            console.log('Agora:', new Date());
             
             timerElement.style.display = 'block';
             document.body.classList.add('timer-ativo');
