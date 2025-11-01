@@ -4,38 +4,39 @@ const planosSocialMedia = {
         nome: 'START',
         valor: 1500.00,
         entregaveis: [
-            '3 posts semanais',
-            'Manual de comunicação',
-            '8 artes/mês',
-            'Copywriting',
-            'Organização via Notion',
-            'Análise de concorrentes'
+            '3 posts semanais (até 12/mês)',
+            'Linha editorial e manual de comunicação',
+            'Até 8 artes/mês (feed + stories)',
+            'Copywriting (legendas e chamadas)',
+            'Organização via plataforma (Notion/Monday)',
+            'Análise de Concorrentes'
         ]
     },
     'scale': {
         nome: 'SCALE',
         valor: 2200.00,
         entregaveis: [
-            '5 posts semanais',
-            'Manual de comunicação',
-            '12 artes/mês',
-            'Copywriting',
+            '5 posts semanais (até 20/mês)',
+            'Linha editorial + manual de comunicação',
+            'Até 12 artes/mês',
+            'Copywriting (legendas e chamadas)',
             'Relatório mensal',
-            'Organização via Notion',
-            'Análise de concorrentes'
+            'Organização via plataforma (Notion/Monday)',
+            'Análise de Concorrentes'
         ]
     },
     'heat': {
         nome: 'HEAT',
         valor: 3200.00,
         entregaveis: [
-            '7 posts semanais',
-            'Linha editorial premium',
-            '16 artes/mês',
+            '7 posts semanais (28/mês)',
+            'Linha editorial premium + engajamento avançado',
+            'Até 16 artes (feed, stories e carrosséis)',
             'Copywriting estratégico',
-            'Relatório completo',
-            'Monitoramento de tendências',
-            'Suporte em tempo real'
+            'Relatórios completos com insights de crescimento',
+            'Monitoramento de concorrentes e tendências',
+            'Suporte estratégico em tempo real',
+            'Calendário de campanhas'
         ]
     }
 };
@@ -47,87 +48,45 @@ const planosTrafegoPago = {
         valor: 2400.00,
         investimentoMin: 0,
         investimentoMax: 5000,
-        secoes: {
-            'Execução': [
-                '3 criativos estáticos (imagem) por mês',
-                '1 reunião mensal'
-            ],
-            'Gestão e Acompanhamento': [
-                'Planejamento de campanhas',
-                'Rastreamento de leads',
-                'Relatórios semanais de performance',
-                'Dashboard de resultados'
-            ],
-            'Estratégia e Configuração': [
-                'Script de vendas',
-                'Análise de concorrência',
-                'Definição de ICP (público ideal)',
-                'Landing Page de alta conversão',
-                'Configuração inicial de BM + Tags (Meta/Google)'
-            ],
-            'Suporte': [
-                'Suporte direto (grupo de acompanhamento)'
-            ]
-        }
+        entregaveis: [
+            '3 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 1 reunião mensal com o cliente'
+        ]
     },
     'aceleracao': {
         nome: 'ACELERAÇÃO',
         valor: 2800.00,
         investimentoMin: 5001,
         investimentoMax: 10000,
-        secoes: {
-            'Execução': [
-                '5 criativos estáticos (imagem) por mês',
-                '2 reuniões mensais'
-            ],
-            'Gestão e Acompanhamento': [
-                'Planejamento de campanhas',
-                'Rastreamento de leads',
-                'Relatórios semanais de performance',
-                'Dashboard de resultados'
-            ],
-            'Estratégia e Configuração': [
-                'Script de vendas',
-                'Análise de concorrência',
-                'Definição de ICP (público ideal)',
-                'Landing Page de alta conversão',
-                'Configuração inicial de BM + Tags (Meta/Google)'
-            ],
-            'Suporte': [
-                'Suporte direto (grupo de acompanhamento)'
-            ]
-        }
+        entregaveis: [
+            '5 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 2 reuniões mensais com o cliente'
+        ]
     },
     'heat': {
         nome: 'DESTAQUE',
         valor: 3500.00,
         investimentoMin: 10001,
         investimentoMax: null,
-        secoes: {
-            'Execução': [
-                '8 criativos estáticos (imagem) por mês',
-                '4 reuniões mensais'
-            ],
-            'Gestão e Acompanhamento': [
-                'Planejamento de campanhas',
-                'Rastreamento de leads',
-                'Relatórios semanais de performance',
-                'Dashboard de resultados'
-            ],
-            'Estratégia e Configuração': [
-                'Script de vendas',
-                'Análise de concorrência',
-                'Definição de ICP (público ideal)',
-                'Landing Page de alta conversão',
-                'Configuração inicial de BM + Tags (Meta/Google)',
-                'Consultoria estratégica de crescimento',
-                'Ajustes contínuos de LP e otimização de conversão (CRO)'
-            ],
-            'Suporte': [
-                'Suporte direto (grupo de acompanhamento)',
-                'Suporte prioritário via WhatsApp'
-            ]
-        }
+        entregaveis: [
+            '8 Criativos em imagem (briefing + produção)',
+            'Rastreamento e acompanhamento de leads',
+            'Planejamento de campanhas',
+            'Script de vendas',
+            'Análise de concorrência',
+            'Definição de público-alvo (ICP)',
+            'Acompanhamento: 4 reuniões mensais com o cliente + suporte estratégico direto do Head de Tráfego'
+        ]
     }
 };
 
@@ -226,9 +185,12 @@ document.getElementById('servicoSocialMidia').addEventListener('change', functio
         
         const dados = planosSocialMedia[plano];
         let html = `<h4>${dados.nome} - ${formatarMoeda(dados.valor)}/mês</h4><ul>`;
-        dados.entregaveis.forEach(item => {
+        dados.entregaveis.slice(0, 4).forEach(item => {
             html += `<li>✅ ${item}</li>`;
         });
+        if (dados.entregaveis.length > 4) {
+            html += `<li style="color: #888; font-style: italic;">+ ${dados.entregaveis.length - 4} outros entregáveis</li>`;
+        }
         html += '</ul>';
         info.innerHTML = html;
     }
@@ -272,19 +234,14 @@ document.getElementById('servicoTrafegoPago').addEventListener('change', functio
             html += `<p><strong>Mídia:</strong> Acima de ${formatarMoeda(dados.investimentoMin)}</p>`;
         }
         
-        // Mostrar todas as seções organizadas
-        const secoes = Object.keys(dados.secoes);
-        
-        html += '<div style="margin-top: 15px;">';
-        secoes.forEach(secaoNome => {
-            html += `<div style="margin-bottom: 8px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong></div>`;
-            html += '<ul style="margin-left: 15px; margin-bottom: 8px;">';
-            dados.secoes[secaoNome].forEach(item => {
-                html += `<li style="font-size: 0.85rem; margin-bottom: 3px;">✅ ${item}</li>`;
-            });
-            html += '</ul>';
+        html += '<ul>';
+        dados.entregaveis.slice(0, 4).forEach(item => {
+            html += `<li>✅ ${item}</li>`;
         });
-        html += '</div>';
+        if (dados.entregaveis.length > 4) {
+            html += `<li style="color: #888; font-style: italic;">+ ${dados.entregaveis.length - 4} outros entregáveis</li>`;
+        }
+        html += '</ul>';
         info.innerHTML = html;
     }
     calcularValores();
@@ -294,53 +251,6 @@ document.getElementById('servicoTrafegoPago').addEventListener('change', functio
 document.getElementById('descontoDescricao').addEventListener('input', calcularValores);
 document.getElementById('descontoTipo').addEventListener('change', calcularValores);
 document.getElementById('descontoValor').addEventListener('input', calcularValores);
-
-// Função para visualizar proposta
-function previewProposta() {
-    // Validar campos obrigatórios
-    const nomeCliente = document.getElementById('nomeCliente').value.trim();
-    const empresaCliente = document.getElementById('empresaCliente').value.trim();
-    const responsavelProposta = document.getElementById('responsavelProposta').value.trim();
-    const diasValidade = document.getElementById('diasValidade').value;
-    
-    if (!nomeCliente || !empresaCliente || !responsavelProposta) {
-        alert('Por favor, preencha todos os campos obrigatórios (Nome do Cliente, Empresa e Responsável).');
-        return;
-    }
-    
-    // Verificar se pelo menos um serviço foi selecionado
-    const socialMedia = document.getElementById('servicoSocialMidia').value;
-    const trafegoPago = document.getElementById('servicoTrafegoPago').value;
-    
-    if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
-        alert('Por favor, selecione pelo menos um serviço (Social Media ou Tráfego Pago).');
-        return;
-    }
-    
-    // Coletar todos os dados do formulário
-    const dadosProposta = {
-        nomeCliente: nomeCliente,
-        empresaCliente: empresaCliente,
-        emailCliente: document.getElementById('emailCliente').value.trim(),
-        responsavelProposta: responsavelProposta,
-        diasValidade: diasValidade,
-        servicoSocialMidia: socialMedia,
-        servicoTrafegoPago: trafegoPago,
-        investimentoMidia: document.getElementById('investimentoMidia')?.value || '',
-        descontoDescricao: document.getElementById('descontoDescricao').value.trim(),
-        descontoTipo: document.getElementById('descontoTipo').value,
-        descontoValor: document.getElementById('descontoValor').value.trim(),
-        observacoes: document.getElementById('observacoes').value.trim(),
-        timestampCriacao: new Date().toLocaleString('pt-BR')
-    };
-    
-    // Criar URL com parâmetros
-    const params = new URLSearchParams(dadosProposta);
-    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
-    
-    // Abrir em nova aba
-    window.open(urlVisualizacao, '_blank');
-}
 
 // Inicializar
 if (document.readyState === 'loading') {

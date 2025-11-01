@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparação Otimizada - Heat Digital</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            padding: 40px 20px 80px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1E5942;
+            margin-bottom: 32px;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.1rem;
+            margin-top: 24px;
+        }
+
+        .aviso-investimento {
+            background: rgba(255, 193, 7, 0.1);
+            border: 2px solid #FFC107;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 48px;
+            text-align: center;
+        }
+
+        .comparacao-table {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 80px;
+        }
+
+        .plano-comparacao {
+            background: linear-gradient(180deg, #1a1a1a 0%, #151515 100%);
+            border-radius: 15px;
+            padding: 40px 25px;
+            border: 2px solid #333;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .plano-comparacao.destaque {
+            border-color: #00FF9C;
+            transform: scale(1.08);
+            box-shadow: 0 15px 40px rgba(0, 255, 156, 0.25);
+            z-index: 2;
+            margin-top: 20px;
+        }
+
+        .plano-comparacao h4 {
+            color: #1E5942;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            padding-top: 8px;
+        }
+
+        .plano-comparacao .preco {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #00E388;
+            margin-bottom: 20px;
+        }
+
+        .plano-comparacao ul {
+            list-style: none;
+            text-align: left;
+        }
+
+        .plano-comparacao li {
+            padding: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            border-bottom: 1px solid #333;
+            font-size: 0.9rem;
+        }
+
+        .plano-comparacao li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #1E5942;
+            font-weight: 700;
+        }
+
+        .section-title {
+            margin: 20px 0 12px 0;
+            color: #00FF9C;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #1E5942;
+            padding-bottom: 2px;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+
+        .subtitle-text {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-bottom: 12px;
+            font-style: italic;
+            padding-bottom: 4px;
+        }
+
+        .badge-escolhido {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #D4A93A;
+            color: #000;
+            padding: 6px 16px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .rodape-nota {
+            text-align: center;
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 60px;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .comparacao-table {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                margin-top: 40px;
+            }
+            
+            .plano-comparacao.destaque {
+                transform: scale(1.02);
+                margin-top: 0;
+            }
+            
+            .plano-comparacao {
+                padding: 30px 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 20px 15px 60px 15px;
+            }
+            
+            .header {
+                margin-bottom: 40px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+                margin-bottom: 20px;
+            }
+            
+            .aviso-investimento {
+                padding: 15px;
+                margin-bottom: 30px;
+            }
+            
+            .comparacao-table {
+                margin-top: 30px;
+                gap: 15px;
+            }
+            
+            .plano-comparacao {
+                padding: 25px 15px;
+            }
+            
+            .plano-comparacao.destaque {
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 COMPARE OS PLANOS DE TRÁFEGO PAGO</h1>
+            <p>Versão otimizada com melhorias de espaçamento e hierarquia visual</p>
+        </div>
+
+        <div class="aviso-investimento">
+            <h4 style="color: #FFC107; margin-bottom: 10px; font-size: 1.1rem;">💰 Planos por Faixa de Investimento</h4>
+            <p style="color: #E0E0E0; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px;">Cada plano é recomendado para uma faixa específica de investimento mensal em mídia:</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 25px;">
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; color: #00E388;">
+                    <strong>FOCO:</strong> Até R$ 5.000/mês
+                </div>
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; color: #00E388;">
+                    <strong>ACELERAÇÃO:</strong> R$ 5.001 - R$ 10.000
+                </div>
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; color: #00E388;">
+                    <strong>DESTAQUE:</strong> Acima de R$ 10.000
+                </div>
+            </div>
+        </div>
+
+        <div class="comparacao-table">
+            <div class="plano-comparacao">
+                <h4>FOCO</h4>
+                <div class="preco">R$ 2.400*</div>
+                <div class="subtitle-text">Para validar campanhas com segurança</div>
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 8px 12px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; font-weight: 600; color: #00E388;">
+                    💰 Até R$ 5.000/mês em mídia
+                </div>
+                <div class="section-title">Execução:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>3 criativos estáticos (imagem) por mês</li>
+                    <li>1 reunião mensal</li>
+                </ul>
+                <div class="section-title">Gestão e Acompanhamento:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Planejamento de campanhas</li>
+                    <li>Rastreamento de leads</li>
+                    <li>Relatórios semanais de performance</li>
+                    <li>Dashboard de resultados</li>
+                </ul>
+                <div class="section-title">Estratégia e Configuração:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Script de vendas</li>
+                    <li>Análise de concorrência</li>
+                    <li>Definição de ICP (público ideal)</li>
+                    <li>Landing Page de alta conversão</li>
+                    <li>Configuração inicial de BM + Tags (Meta/Google)</li>
+                </ul>
+                <div class="section-title">Suporte:</div>
+                <ul style="margin-left: 15px;">
+                    <li>Suporte direto (grupo de acompanhamento)</li>
+                </ul>
+            </div>
+            
+            <div class="plano-comparacao destaque">
+                <div class="badge-escolhido">⭐ MAIS ESCOLHIDO</div>
+                <h4>ACELERAÇÃO</h4>
+                <div class="preco">R$ 2.800*</div>
+                <div class="subtitle-text">Equilíbrio entre custo e performance</div>
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 8px 12px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; font-weight: 600; color: #00E388;">
+                    💰 R$ 5.001 - R$ 10.000/mês
+                </div>
+                <div class="section-title">Execução:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>5 criativos estáticos (imagem) por mês</li>
+                    <li>2 reuniões mensais</li>
+                </ul>
+                <div class="section-title">Gestão e Acompanhamento:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Planejamento de campanhas</li>
+                    <li>Rastreamento de leads</li>
+                    <li>Relatórios semanais de performance</li>
+                    <li>Dashboard de resultados</li>
+                </ul>
+                <div class="section-title">Estratégia e Configuração:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Script de vendas</li>
+                    <li>Análise de concorrência</li>
+                    <li>Definição de ICP (público ideal)</li>
+                    <li>Landing Page de alta conversão</li>
+                    <li>Configuração inicial de BM + Tags (Meta/Google)</li>
+                </ul>
+                <div class="section-title">Suporte:</div>
+                <ul style="margin-left: 15px;">
+                    <li>Suporte direto (grupo de acompanhamento)</li>
+                </ul>
+            </div>
+            
+            <div class="plano-comparacao">
+                <h4>DESTAQUE</h4>
+                <div class="preco">R$ 3.500*</div>
+                <div class="subtitle-text">Para escalar e dominar o funil</div>
+                <div style="background: rgba(30, 89, 66, 0.2); padding: 8px 12px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; font-weight: 600; color: #00E388;">
+                    💰 Acima de R$ 10.000/mês
+                </div>
+                <div class="section-title">Execução:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>8 criativos estáticos (imagem) por mês</li>
+                    <li>4 reuniões mensais</li>
+                </ul>
+                <div class="section-title">Gestão e Acompanhamento:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Planejamento de campanhas</li>
+                    <li>Rastreamento de leads</li>
+                    <li>Relatórios semanais de performance</li>
+                    <li>Dashboard de resultados</li>
+                </ul>
+                <div class="section-title">Estratégia e Configuração:</div>
+                <ul style="margin-left: 15px; margin-bottom: 10px;">
+                    <li>Script de vendas</li>
+                    <li>Análise de concorrência</li>
+                    <li>Definição de ICP (público ideal)</li>
+                    <li>Landing Page de alta conversão</li>
+                    <li>Configuração inicial de BM + Tags (Meta/Google)</li>
+                    <li>Consultoria estratégica de crescimento</li>
+                    <li>Ajustes contínuos de LP e otimização de conversão (CRO)</li>
+                </ul>
+                <div class="section-title">Suporte:</div>
+                <ul style="margin-left: 15px;">
+                    <li>Suporte direto (grupo de acompanhamento)</li>
+                    <li>Suporte prioritário via WhatsApp</li>
+                </ul>
+            </div>
+        </div>
+        
+        <p class="rodape-nota">*Valores podem variar conforme investimento em mídia</p>
+    </div>
+</body>
+</html>

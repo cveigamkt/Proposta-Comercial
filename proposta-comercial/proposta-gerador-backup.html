@@ -33,57 +33,30 @@
         .link-container input { flex: 1; }
         .btn-copy { padding: 10px 20px; background: #1E5942; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
         
-        /* Grid para cliente e serviços */
-        .cliente-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        
-        .servicos-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        .servico-card {
-            background: #1a1a1a;
+        /* Info box */
+        .info-box {
+            background: rgba(30, 89, 66, 0.1);
+            border: 1px solid #1E5942;
+            border-radius: 10px;
             padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
+            margin-top: 20px;
         }
         
-        .servico-card h3 {
-            color: #1E5942;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-        
-        .entregaveis-info {
-            background: #111;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        
-        .entregaveis-info h4 {
-            color: #1E5942;
-            font-size: 1rem;
+        .info-box p {
             margin-bottom: 10px;
+            color: #E0E0E0;
         }
         
-        .entregaveis-info ul {
-            list-style: none;
-            padding: 0;
+        .info-box ul {
+            margin-left: 20px;
+            color: #CFCFCF;
         }
         
-        .entregaveis-info li {
-            padding: 4px 0;
-            font-size: 0.9rem;
-            color: #ccc;
+        .info-box li {
+            margin-bottom: 5px;
         }
         
-        /* Simulador de períodos */
+        /* Simulador de períodos melhorado */
         .simulador-periodos {
             background: #111;
             padding: 25px;
@@ -183,7 +156,7 @@
             font-weight: 800;
         }
         
-        /* Desconto customizado */
+        /* Desconto customizado melhorado */
         .desconto-customizado-group {
             background: #111;
             padding: 20px;
@@ -222,65 +195,43 @@
             outline: none;
         }
         
-        /* Info box */
-        .info-box {
-            background: rgba(30, 89, 66, 0.1);
-            border: 1px solid #1E5942;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .info-box p {
-            margin-bottom: 10px;
-            color: #E0E0E0;
-        }
-        
-        .info-box ul {
-            margin-left: 20px;
-            color: #CFCFCF;
-        }
-        
-        .info-box li {
-            margin-bottom: 5px;
-        }
-        
-        /* Botão toggle entregáveis */
-        .btn-toggle-entregaveis {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            color: #E0E0E0;
-            border: 1px solid #555;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-        
-        .btn-toggle-entregaveis:hover {
-            background: #444;
-            border-color: #1E5942;
-        }
-        
-        .btn-toggle-entregaveis.active {
-            background: #1E5942;
-            color: white;
+        @media (max-width: 1024px) {
+            .periodos-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
         }
         
         @media (max-width: 768px) {
-            .cliente-grid {
-                grid-template-columns: 1fr;
+            .gerador-container {
+                padding: 15px;
             }
             
-            .servicos-grid {
-                grid-template-columns: 1fr;
+            .proposta-form {
+                padding: 20px;
+            }
+            
+            .form-section {
+                padding: 20px;
             }
             
             .periodos-grid {
                 grid-template-columns: 1fr;
                 gap: 12px;
+            }
+            
+            .periodo-card {
+                padding: 15px 12px;
+            }
+            
+            .periodo-mensal {
+                font-size: 1.2rem;
+                word-break: break-word;
+            }
+            
+            .periodo-total {
+                font-size: 0.85rem;
+                word-break: break-word;
             }
             
             .desconto-controls {
@@ -293,6 +244,122 @@
                 width: 100%;
                 font-size: 16px;
                 padding: 14px 12px;
+            }
+            
+            .simulador-periodos {
+                padding: 15px;
+            }
+            
+            .resumo-valores {
+                padding: 12px !important;
+            }
+            
+            .valor-row {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 4px;
+            }
+            
+            .valor-row strong {
+                font-size: 1.1rem;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .btn-preview, .btn-generate {
+                width: 100%;
+                padding: 18px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Grid para cliente e serviços */
+        .cliente-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .servicos-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .servico-card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        
+        .servico-card h3 {
+            color: #1E5942;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .entregaveis-info {
+            background: #111;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .entregaveis-info h4 {
+            color: #1E5942;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        .entregaveis-info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .entregaveis-info li {
+            padding: 4px 0;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        @media (max-width: 768px) {
+            .cliente-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .servicos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gerador-header h1 {
+                font-size: 2rem;
+            }
+            
+            .form-section h2 {
+                font-size: 1.3rem;
+            }
+            
+            .periodo-header {
+                font-size: 1rem;
+            }
+            
+            .periodo-mensal {
+                font-size: 1.1rem;
+            }
+            
+            .periodo-total {
+                font-size: 0.8rem;
+            }
+            
+            .badge-recomendado {
+                font-size: 0.65rem;
+                padding: 2px 6px;
             }
         }
     </style>
@@ -321,76 +388,52 @@
                         <label for="emailCliente">E-mail do Cliente</label>
                         <input type="email" id="emailCliente" name="emailCliente" placeholder="contato@empresa.com">
                     </div>
-                    <div class="form-group">
-                        <label for="responsavelProposta">Responsável pela Proposta *</label>
-                        <input type="text" id="responsavelProposta" name="responsavelProposta" required placeholder="Ex: João Silva - Heat Digital">
-                    </div>
-                    <div class="form-group">
-                        <label for="diasValidade">Dias de Validade da Proposta *</label>
-                        <select id="diasValidade" name="diasValidade" required>
-                            <option value="3">3 dias</option>
-                            <option value="5">5 dias</option>
-                            <option value="7" selected>7 dias</option>
-                            <option value="10">10 dias</option>
-                            <option value="15">15 dias</option>
-                            <option value="30">30 dias</option>
-                        </select>
-                    </div>
                 </div>
             </section>
 
-            <!-- Serviços -->
+            <!-- Serviço 1: Social Media -->
             <section class="form-section">
-                <h2>🎯 Serviços Contratados</h2>
-                <div class="servicos-grid">
-                    <!-- Social Media -->
-                    <div class="servico-card">
-                        <h3>🧑💻 Social Media</h3>
-                        <div class="form-group">
-                            <label for="servicoSocialMidia">Selecione o Plano</label>
-                            <select id="servicoSocialMidia" name="servicoSocialMidia">
-                                <option value="nao-se-aplica">Não se aplica</option>
-                                <option value="start">START - R$ 1.500,00</option>
-                                <option value="scale">SCALE - R$ 2.200,00</option>
-                                <option value="heat">HEAT - R$ 3.200,00</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn-toggle-entregaveis" id="toggleSocialMedia" onclick="toggleEntregaveis('SocialMedia')" style="display: none;">
-                            📋 Ver Entregáveis
-                        </button>
-                        <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
-                            <div class="entregaveis-info" id="infoSocialMedia"></div>
-                        </div>
-                    </div>
+                <h2>🧑‍💻 Serviço 1: Social Media</h2>
+                <div class="form-group">
+                    <label for="servicoSocialMidia">Selecione o Plano</label>
+                    <select id="servicoSocialMidia" name="servicoSocialMidia">
+                        <option value="nao-se-aplica">Não se aplica</option>
+                        <option value="start">START - R$ 1.500,00</option>
+                        <option value="scale">SCALE - R$ 2.200,00</option>
+                        <option value="heat">HEAT - R$ 3.200,00</option>
+                    </select>
+                </div>
+                <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
+                    <label>Entregáveis do Plano</label>
+                    <div class="entregaveis-info" id="infoSocialMedia"></div>
+                </div>
+            </section>
 
-                    <!-- Tráfego Pago -->
-                    <div class="servico-card">
-                        <h3>🎯 Tráfego Pago</h3>
-                        <div class="form-group">
-                            <label for="servicoTrafegoPago">Selecione o Plano</label>
-                            <select id="servicoTrafegoPago" name="servicoTrafegoPago">
-                                <option value="nao-se-aplica">Não se aplica</option>
-                                <option value="foco">FOCO - R$ 2.400,00</option>
-                                <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
-                                <option value="heat">DESTAQUE - R$ 3.500,00</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn-toggle-entregaveis" id="toggleTrafegoPago" onclick="toggleEntregaveis('TrafegoPago')" style="display: none;">
-                            📋 Ver Entregáveis
-                        </button>
-                        <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
-                            <div class="entregaveis-info" id="infoTrafegoPago"></div>
-                        </div>
-                        <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
-                            <label for="investimentoMidia">💵 Investimento em Mídia *</label>
-                            <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00">
-                            <small id="limiteInvestimento" class="info-investimento">
-                                <strong>⚠️ Importante:</strong> Valor que o cliente investirá em anúncios (não inclui nossa gestão).
-                            </small>
-                            <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
-                            <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
-                        </div>
-                    </div>
+            <!-- Serviço 2: Tráfego Pago -->
+            <section class="form-section">
+                <h2>🎯 Serviço 2: Tráfego Pago</h2>
+                <div class="form-group">
+                    <label for="servicoTrafegoPago">Selecione o Plano</label>
+                    <select id="servicoTrafegoPago" name="servicoTrafegoPago">
+                        <option value="nao-se-aplica">Não se aplica</option>
+                        <option value="foco">FOCO - R$ 2.400,00</option>
+                        <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
+                        <option value="heat">DESTAQUE - R$ 3.500,00</option>
+                    </select>
+                </div>
+                <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
+                    <label>Entregáveis do Plano</label>
+                    <div class="entregaveis-info" id="infoTrafegoPago"></div>
+                </div>
+                <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
+                    <label for="investimentoMidia">💵 Investimento em Mídia (Orçamento do Cliente) *</label>
+                    <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00">
+                    <small id="limiteInvestimento" class="info-investimento">
+                        <strong>⚠️ Importante:</strong> Este é o valor que o cliente investirá mensalmente em anúncios (Meta Ads, Google Ads, etc.).
+                        Este valor NÃO inclui nosso valor mensal de gestão.
+                    </small>
+                    <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
+                    <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
                 </div>
             </section>
 
@@ -448,6 +491,8 @@
                     </div>
                 </div>
 
+
+
                 <div class="form-group">
                     <label for="observacoes">Observações Adicionais</label>
                     <textarea id="observacoes" name="observacoes" rows="4" placeholder="Observações ou condições especiais para esta proposta..."></textarea>
@@ -491,21 +536,5 @@
     </div>
 
     <script src="proposta-gerador.js"></script>
-    <script>
-        function toggleEntregaveis(servico) {
-            const container = document.getElementById(`entregaveis${servico}`);
-            const button = document.getElementById(`toggle${servico}`);
-            
-            if (container.style.display === 'none') {
-                container.style.display = 'block';
-                button.textContent = '🔼 Ocultar Entregáveis';
-                button.classList.add('active');
-            } else {
-                container.style.display = 'none';
-                button.textContent = '📋 Ver Entregáveis';
-                button.classList.remove('active');
-            }
-        }
-    </script>
 </body>
 </html>

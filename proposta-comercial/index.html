@@ -214,7 +214,7 @@
                     🧾 Criar Nova Proposta
                 </a>
                 <a href="javascript:void(0)" onclick="mostrarExemplo()" class="btn btn-secondary">
-                    👀 Ver Exemplo de Proposta
+                    👀 Ver Exemplo (1h de validade)
                 </a>
             </div>
             
@@ -245,18 +245,24 @@
 
     <script>
         function mostrarExemplo() {
-            // Dados de exemplo para demonstração
+            // Dados de exemplo para demonstração (NÃO cria linha na planilha)
+            const agora = new Date();
+            const timestampExemplo = agora.toLocaleDateString('pt-BR') + ', ' + agora.toLocaleTimeString('pt-BR');
+            
             const dadosExemplo = {
                 nomeCliente: 'João Silva',
                 empresaCliente: 'Silva Comércio Digital',
                 emailCliente: 'joao@silvacomercio.com.br',
-                servicoSocialMedia: 'scale',
+                servicoSocialMidia: 'scale',
                 servicoTrafegoPago: 'foco',
                 investimentoMidia: 'R$ 3.000,00',
                 descontoDescricao: 'Primeira Contratação',
                 descontoTipo: 'percentual',
                 descontoValor: '10',
-                observacoes: 'Proposta de exemplo - demonstração do sistema'
+                observacoes: 'Proposta de exemplo - demonstração do sistema',
+                responsavelProposta: 'Maria Santos - Heat Digital',
+                diasValidade: '0.042', // 1 hora em dias (1/24 = 0.042)
+                timestampCriacao: timestampExemplo
             };
             
             const params = new URLSearchParams(dadosExemplo);
