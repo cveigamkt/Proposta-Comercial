@@ -469,7 +469,7 @@
                 <button type="button" class="btn-preview" onclick="previewProposta()">
                     👀 Visualizar Proposta
                 </button>
-                <button type="submit" class="btn-generate">
+                <button type="button" class="btn-generate" onclick="gerarLinkProposta()">
                     🔗 Gerar Link da Proposta
                 </button>
             </div>
@@ -505,6 +505,21 @@
                 button.textContent = '📋 Ver Entregáveis';
                 button.classList.remove('active');
             }
+        }
+        
+        function gerarLinkProposta() {
+            previewProposta();
+        }
+        
+        function closeModal() {
+            document.getElementById('modalLink').style.display = 'none';
+        }
+        
+        function copiarLink() {
+            const linkInput = document.getElementById('linkGerado');
+            linkInput.select();
+            document.execCommand('copy');
+            alert('Link copiado para a área de transferência!');
         }
     </script>
 </body>

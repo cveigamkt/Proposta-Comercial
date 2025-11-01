@@ -296,7 +296,7 @@ document.getElementById('descontoTipo').addEventListener('change', calcularValor
 document.getElementById('descontoValor').addEventListener('input', calcularValores);
 
 // Função para visualizar proposta
-function previewProposta() {
+async function previewProposta() {
     // Validar campos obrigatórios
     const nomeCliente = document.getElementById('nomeCliente').value.trim();
     const empresaCliente = document.getElementById('empresaCliente').value.trim();
@@ -317,8 +317,50 @@ function previewProposta() {
         return;
     }
     
-    // Coletar todos os dados do formulário
-    const dadosProposta = {
+    // Calcular valores
+    let valorTotal = 0;
+    if (socialMedia !== 'nao-se-aplica') valorTotal += planosSocialMedia[socialMedia].valor;
+    if (trafegoPago !== 'nao-se-aplica') valorTotal += planosTrafegoPago[trafegoPago].valor;
+    
+    const timestampCriacao = new Date().toLocaleString('pt-BR');
+    
+    // Dados para enviar ao Google Apps Script
+    const dadosScript = {
+        action: 'criar',
+        nomeCliente: nomeCliente,
+        empresaCliente: empresaCliente,
+        emailCliente: document.getElementById('emailCliente').value.trim(),
+        socialMedia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : '',
+        trafegoPago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : '',
+        valorMensal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
+        valorTotal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
+        descontosTotais: 'R$ 0,00',
+        recorrencia: '6',
+        formaPagamento: 'À Vista',
+        responsavelProposta: responsavelProposta,
+        validadeProposta: diasValidade,
+        timestampCriacao: timestampCriacao
+    };
+    
+    // Enviar para Google Apps Script (em background)
+    try {
+        const formData = new FormData();
+        Object.keys(dadosScript).forEach(key => {
+            formData.append(key, dadosScript[key]);
+        });
+        
+        fetch('https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec', {
+            method: 'POST',
+            body: formData
+        }).catch(error => {
+            console.log('Proposta salva localmente (erro de rede):', error);
+        });
+    } catch (error) {
+        console.log('Erro ao salvar proposta:', error);
+    }
+    
+    // Dados para URL de visualização
+    const dadosVisualizacao = {
         nomeCliente: nomeCliente,
         empresaCliente: empresaCliente,
         emailCliente: document.getElementById('emailCliente').value.trim(),
@@ -326,19 +368,18 @@ function previewProposta() {
         diasValidade: diasValidade,
         servicoSocialMidia: socialMedia,
         servicoTrafegoPago: trafegoPago,
-        investimentoMidia: document.getElementById('investimentoMidia')?.value || '',
-        descontoDescricao: document.getElementById('descontoDescricao').value.trim(),
-        descontoTipo: document.getElementById('descontoTipo').value,
-        descontoValor: document.getElementById('descontoValor').value.trim(),
-        observacoes: document.getElementById('observacoes').value.trim(),
-        timestampCriacao: new Date().toLocaleString('pt-BR')
+        timestampCriacao: timestampCriacao
     };
     
     // Criar URL com parâmetros
-    const params = new URLSearchParams(dadosProposta);
+    const params = new URLSearchParams(dadosVisualizacao);
     const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
     
-    // Abrir em nova aba
+    // Mostrar modal com o link
+    document.getElementById('linkGerado').value = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '') + urlVisualizacao;
+    document.getElementById('modalLink').style.display = 'block';
+    
+    // Também abrir em nova aba para preview
     window.open(urlVisualizacao, '_blank');
 }
 
