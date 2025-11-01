@@ -1545,56 +1545,11 @@
 
             
             // Configurar timer de validade
-            const diasValidade = parseInt(params.get('diasValidade') || '7');
+            const diasValidade = parseFloat(params.get('diasValidade') || '7');
             const timestampCriacao = params.get('timestampCriacao');
-            if (timestampCriacao && diasValidade) {
-                // Verificar se já está expirada antes de iniciar o timer
-                let dataCriacao;
-                if (timestampCriacao.includes('/')) {
-                    // Formato brasileiro: dd/mm/aaaa hh:mm:ss
-                    const partes = timestampCriacao.split(' ');
-                    const data = partes[0].split('/');
-                    const hora = partes[1] || '00:00:00';
-                    // Criar data no formato ISO: aaaa-mm-dd hh:mm:ss
-                    dataCriacao = new Date(`${data[2]}-${data[1]}-${data[0]} ${hora}`);
-                } else {
-                    dataCriacao = new Date(timestampCriacao);
-                }
-                
-                const dataExpiracao = new Date(dataCriacao.getTime() + (diasValidade * 24 * 60 * 60 * 1000));
-                const agora = new Date();
-                
-                if (agora >= dataExpiracao) {
-                    // Proposta já expirada
-                    propostaExpirada = true;
-                    const timerElement = document.getElementById('timerValidade');
-                    const textoElement = document.getElementById('textoTimer');
-                    
-                    timerElement.style.display = 'block';
-                    timerElement.classList.add('expirada');
-                    textoElement.textContent = 'Proposta Expirada - Esta proposta não é mais válida';
-                    document.getElementById('timerContador').style.display = 'none';
-                    document.body.classList.add('timer-ativo');
-                    
-                    // Desabilitar botões imediatamente
-                    const btnPrincipal = document.getElementById('btnAceitarPrincipal');
-                    const btnFlutuante = document.getElementById('btnAceitarFlutuante');
-                    if (btnPrincipal) {
-                        btnPrincipal.disabled = true;
-                        btnPrincipal.textContent = '❌ Proposta Expirada';
-                    }
-                    if (btnFlutuante) {
-                        btnFlutuante.disabled = true;
-                        btnFlutuante.innerHTML = '<span class="btn-icon">❌</span><span class="btn-text">Expirada</span>';
-                    }
-                } else {
-                    iniciarTimer(timestampCriacao, diasValidade);
-                }
-            } else {
-                // Para exemplo/teste - usar timestamp atual
-                const agora = new Date();
-                const timestampExemplo = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
-                iniciarTimer(timestampExemplo, diasValidade);
+            
+            if (timestampCriacao) {
+                iniciarTimer(timestampCriacao, diasValidade);
             }
             
             // Carregar serviços
