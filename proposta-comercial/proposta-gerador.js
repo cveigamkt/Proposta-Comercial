@@ -363,6 +363,9 @@ async function gerarLinkProposta() {
     document.getElementById('modalLink').style.display = 'block';
 }
 
+// Variável global para armazenar timestamp da proposta
+let timestampPropostaAtual = null;
+
 // Função auxiliar para coletar dados do formulário
 function coletarDadosFormulario() {
     // Validar campos obrigatórios
@@ -385,7 +388,11 @@ function coletarDadosFormulario() {
         return null;
     }
     
-    const timestampCriacao = new Date().toLocaleString('pt-BR');
+    // Criar timestamp apenas uma vez por sessão de proposta
+    if (!timestampPropostaAtual) {
+        const agora = new Date();
+        timestampPropostaAtual = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+    }
     
     return {
         nomeCliente: nomeCliente,
@@ -395,9 +402,23 @@ function coletarDadosFormulario() {
         diasValidade: diasValidade,
         servicoSocialMidia: socialMedia,
         servicoTrafegoPago: trafegoPago,
-        timestampCriacao: timestampCriacao
+        timestampCriacao: timestampPropostaAtual
     };
 }
+
+// Função para resetar timestamp quando dados importantes mudarem
+function resetarTimestamp() {
+    timestampPropostaAtual = null;
+}
+
+// Listeners para resetar timestamp quando dados importantes mudarem
+document.addEventListener('DOMContentLoaded', function() {
+    // Resetar timestamp quando cliente ou serviços mudarem
+    document.getElementById('nomeCliente').addEventListener('input', resetarTimestamp);
+    document.getElementById('empresaCliente').addEventListener('input', resetarTimestamp);
+    document.getElementById('servicoSocialMidia').addEventListener('change', resetarTimestamp);
+    document.getElementById('servicoTrafegoPago').addEventListener('change', resetarTimestamp);
+});
 
 // Inicializar
 if (document.readyState === 'loading') {
