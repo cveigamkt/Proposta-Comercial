@@ -295,8 +295,76 @@ document.getElementById('descontoDescricao').addEventListener('input', calcularV
 document.getElementById('descontoTipo').addEventListener('change', calcularValores);
 document.getElementById('descontoValor').addEventListener('input', calcularValores);
 
-// Função para visualizar proposta
-async function previewProposta() {
+// Função para visualizar proposta (SEM salvar)
+function previewProposta() {
+    const dadosVisualizacao = coletarDadosFormulario();
+    if (!dadosVisualizacao) return;
+    
+    // Criar URL com parâmetros
+    const params = new URLSearchParams(dadosVisualizacao);
+    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
+    
+    // Abrir diretamente (sem salvar)
+    window.open(urlVisualizacao, '_blank');
+}
+
+// Função para gerar link da proposta (COM salvar)
+async function gerarLinkProposta() {
+    const dadosVisualizacao = coletarDadosFormulario();
+    if (!dadosVisualizacao) return;
+    
+    // Calcular valores para o script
+    let valorTotal = 0;
+    const socialMedia = dadosVisualizacao.servicoSocialMidia;
+    const trafegoPago = dadosVisualizacao.servicoTrafegoPago;
+    
+    if (socialMedia !== 'nao-se-aplica') valorTotal += planosSocialMedia[socialMedia].valor;
+    if (trafegoPago !== 'nao-se-aplica') valorTotal += planosTrafegoPago[trafegoPago].valor;
+    
+    // Dados para enviar ao Google Apps Script
+    const dadosScript = {
+        action: 'criar',
+        nomeCliente: dadosVisualizacao.nomeCliente,
+        empresaCliente: dadosVisualizacao.empresaCliente,
+        emailCliente: dadosVisualizacao.emailCliente,
+        socialMedia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : '',
+        trafegoPago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : '',
+        valorMensal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
+        valorTotal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
+        descontosTotais: 'R$ 0,00',
+        recorrencia: '6',
+        formaPagamento: 'À Vista',
+        responsavelProposta: dadosVisualizacao.responsavelProposta,
+        validadeProposta: dadosVisualizacao.diasValidade,
+        timestampCriacao: dadosVisualizacao.timestampCriacao
+    };
+    
+    // Enviar para Google Apps Script
+    try {
+        const formData = new FormData();
+        Object.keys(dadosScript).forEach(key => {
+            formData.append(key, dadosScript[key]);
+        });
+        
+        await fetch('https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec', {
+            method: 'POST',
+            body: formData
+        });
+    } catch (error) {
+        console.log('Erro ao salvar proposta:', error);
+    }
+    
+    // Criar URL com parâmetros
+    const params = new URLSearchParams(dadosVisualizacao);
+    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
+    
+    // Mostrar modal com o link
+    document.getElementById('linkGerado').value = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '') + urlVisualizacao;
+    document.getElementById('modalLink').style.display = 'block';
+}
+
+// Função auxiliar para coletar dados do formulário
+function coletarDadosFormulario() {
     // Validar campos obrigatórios
     const nomeCliente = document.getElementById('nomeCliente').value.trim();
     const empresaCliente = document.getElementById('empresaCliente').value.trim();
@@ -305,7 +373,7 @@ async function previewProposta() {
     
     if (!nomeCliente || !empresaCliente || !responsavelProposta) {
         alert('Por favor, preencha todos os campos obrigatórios (Nome do Cliente, Empresa e Responsável).');
-        return;
+        return null;
     }
     
     // Verificar se pelo menos um serviço foi selecionado
@@ -314,53 +382,12 @@ async function previewProposta() {
     
     if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
         alert('Por favor, selecione pelo menos um serviço (Social Media ou Tráfego Pago).');
-        return;
+        return null;
     }
-    
-    // Calcular valores
-    let valorTotal = 0;
-    if (socialMedia !== 'nao-se-aplica') valorTotal += planosSocialMedia[socialMedia].valor;
-    if (trafegoPago !== 'nao-se-aplica') valorTotal += planosTrafegoPago[trafegoPago].valor;
     
     const timestampCriacao = new Date().toLocaleString('pt-BR');
     
-    // Dados para enviar ao Google Apps Script
-    const dadosScript = {
-        action: 'criar',
-        nomeCliente: nomeCliente,
-        empresaCliente: empresaCliente,
-        emailCliente: document.getElementById('emailCliente').value.trim(),
-        socialMedia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : '',
-        trafegoPago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : '',
-        valorMensal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
-        valorTotal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
-        descontosTotais: 'R$ 0,00',
-        recorrencia: '6',
-        formaPagamento: 'À Vista',
-        responsavelProposta: responsavelProposta,
-        validadeProposta: diasValidade,
-        timestampCriacao: timestampCriacao
-    };
-    
-    // Enviar para Google Apps Script (em background)
-    try {
-        const formData = new FormData();
-        Object.keys(dadosScript).forEach(key => {
-            formData.append(key, dadosScript[key]);
-        });
-        
-        fetch('https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec', {
-            method: 'POST',
-            body: formData
-        }).catch(error => {
-            console.log('Proposta salva localmente (erro de rede):', error);
-        });
-    } catch (error) {
-        console.log('Erro ao salvar proposta:', error);
-    }
-    
-    // Dados para URL de visualização
-    const dadosVisualizacao = {
+    return {
         nomeCliente: nomeCliente,
         empresaCliente: empresaCliente,
         emailCliente: document.getElementById('emailCliente').value.trim(),
@@ -370,14 +397,6 @@ async function previewProposta() {
         servicoTrafegoPago: trafegoPago,
         timestampCriacao: timestampCriacao
     };
-    
-    // Criar URL com parâmetros
-    const params = new URLSearchParams(dadosVisualizacao);
-    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
-    
-    // Mostrar modal com o link
-    document.getElementById('linkGerado').value = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '') + urlVisualizacao;
-    document.getElementById('modalLink').style.display = 'block';
 }
 
 // Inicializar
