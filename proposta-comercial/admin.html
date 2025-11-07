@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin — Propostas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0a0a0a; --card:#151515; --muted:#9aa0a6; --fg:#fff; --brand:#1E5942; --brand-2:#00E388; --danger:#FF6B6B;
+      --border:#262626; --chip:#202020;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--fg)}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:1.55rem;margin:0;font-weight:800}
+    .filters{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;grid-template-columns:2fr 1.2fr 1.5fr auto;gap:12px}
+    .filters input{background:#111;border:1px solid var(--border);color:var(--fg);padding:10px 12px;border-radius:8px}
+    .btn{background:var(--brand);border:none;color:#fff;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer}
+    .btn.secondary{background:#333}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .table{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:left;background:#131313}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+    tbody tr:hover{background:#181818}
+    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.75rem;border:1px solid var(--border);background:var(--chip)}
+    .status-aceita{color:#0bd47e;border-color:#0bd47e33;background:#0bd47e14}
+    .status-pendente{color:#ffd666;border-color:#ffd66633;background:#ffd66614}
+    .status-recusada{color:#ff8f8f;border-color:#ff8f8f33;background:#ff8f8f14}
+    .status-expirada{color:#bbb;border-color:#bbb3;background:#bbb1}
+    .muted{color:var(--muted)}
+    .right{text-align:right}
+    .nowrap{white-space:nowrap}
+    .link{color:var(--brand-2);text-decoration:none}
+    .toolbar{display:flex;gap:10px;align-items:center}
+    .footer{margin-top:16px;color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between}
+    @media (max-width:900px){.filters{grid-template-columns:1fr 1fr}.toolbar{margin-top:8px}}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Painel de Propostas</h1>
+      <div class="toolbar">
+        <button id="btnRecarregar" class="btn secondary">Recarregar</button>
+        <a class="btn" href="proposta-gerador.html">+ Nova Proposta</a>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input id="filtroNome" placeholder="Pesquisar por nome do cliente" />
+      <input id="filtroCPF" placeholder="Pesquisar por CPF/CNPJ" />
+      <input id="filtroEmpresa" placeholder="Pesquisar por empresa" />
+      <button id="btnBuscar" class="btn">Buscar</button>
+    </div>
+
+    <div class="table">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Empresa</th>
+            <th>CPF/CNPJ</th>
+            <th>Serviços</th>
+            <th class="right">Valores</th>
+            <th>Recorrência</th>
+            <th>Pagamento</th>
+            <th>Status</th>
+            <th>Proposta</th>
+            <th>Contrato</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyPropostas">
+          <tr><td colspan="11" class="muted" id="estadoLista">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <span id="resumoQtd" class="muted">—</span>
+      <span class="muted">Ordenado por data (mais recentes primeiro)</span>
+    </div>
+  </div>
+
+  <script>
+    let client;
+    const baseLink = () => window.location.origin + window.location.pathname.replace(/admin\.html$/,'');
+
+    function fmtMoeda(n){
+      if (n === null || n === undefined || isNaN(n)) return '—';
+      return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    }
+    function statusChip(s, expirada){
+      const cls = s === 'aceita' ? 'status-aceita' : s === 'recusada' ? 'status-recusada' : expirada ? 'status-expirada' : 'status-pendente';
+      const texto = expirada && s==='pendente' ? 'Expirada' : (s||'pendente');
+      return `<span class="chip ${cls}">${texto}</span>`;
+    }
+
+    async function queryResumo(filtros){
+      // Tenta usar a view resumo_propostas; se falhar, faz fallback manual
+      try {
+        let q = client.from('resumo_propostas').select('*').order('criada_em', { ascending:false }).limit(200);
+        if (filtros.termoNome) q = q.ilike('nome_cliente', `%${filtros.termoNome}%`);
+        if (filtros.termoCPF) q = q.ilike('cpf_cnpj', `%${filtros.termoCPF}%`);
+        if (filtros.termoEmpresa) q = q.ilike('empresa_cliente', `%${filtros.termoEmpresa}%`);
+        const { data, error } = await q;
+        if (error) throw error;
+        return data || [];
+      } catch (e) {
+        console.warn('View resumo_propostas indisponível. Aplicando fallback.', e.message);
+        // Fallback: buscar em propostas_criadas e, depois, relacionar com propostas/contratos
+        let q = client.from('propostas_criadas').select('*').order('criada_em', { ascending:false }).limit(200);
+        if (filtros.termoNome || filtros.termoCPF || filtros.termoEmpresa) {
+          const terms = [];
+          if (filtros.termoNome) terms.push(`nome_cliente.ilike.%${filtros.termoNome}%`);
+          if (filtros.termoCPF) terms.push(`cpf_cnpj.ilike.%${filtros.termoCPF}%`);
+          if (filtros.termoEmpresa) terms.push(`empresa_cliente.ilike.%${filtros.termoEmpresa}%`);
+          q = q.or(terms.join(','));
+        }
+        const { data: base, error: e1 } = await q;
+        if (e1) throw e1;
+        const ids = base.map(r => r.id);
+        if (ids.length===0) return [];
+        // Buscar propostas aceitas vinculadas
+        const { data: props, error: e2 } = await client.from('propostas').select('id, proposta_criada_id').in('proposta_criada_id', ids);
+        const mapProp = new Map((props||[]).map(p => [p.proposta_criada_id, p.id]));
+        const propIds = (props||[]).map(p => p.id);
+        let contratosMap = new Map();
+        if (propIds.length>0) {
+          const { data: contratos } = await client.from('contratos').select('proposta_id, pdf_url').in('proposta_id', propIds);
+          contratosMap = new Map((contratos||[]).map(c => [c.proposta_id, c.pdf_url]));
+        }
+        return base.map(pc => ({
+          id: pc.id,
+          nome_cliente: pc.nome_cliente,
+          empresa_cliente: pc.empresa_cliente,
+          cpf_cnpj: pc.cpf_cnpj,
+          servico_social_midia: pc.servico_social_midia,
+          servico_trafego_pago: pc.servico_trafego_pago,
+          valor_social_midia: pc.valor_social_midia,
+          valor_trafego_pago: pc.valor_trafego_pago,
+          investimento_midia: pc.investimento_midia,
+          valor_mensal: pc.valor_mensal,
+          valor_total: pc.valor_total,
+          recorrencia: pc.recorrencia,
+          forma_pagamento: pc.forma_pagamento,
+          status: pc.status,
+          criada_em: pc.criada_em,
+          expira_em: pc.expira_em,
+          aceita_em: pc.aceita_em,
+          proposta_aceita_id: mapProp.get(pc.id) || null,
+          contrato_pdf_url: contratosMap.get(mapProp.get(pc.id)) || null,
+          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
+        }));
+      }
+    }
+
+    function linhaServico(r){
+      const parts = [];
+      
+      // Social Media com valor
+      if (r.servico_social_midia) {
+        const valorSM = r.valor_social_midia ? ` (${fmtMoeda(r.valor_social_midia)})` : '';
+        parts.push(`📱 ${String(r.servico_social_midia).toUpperCase()}${valorSM}`);
+      }
+      
+      // Tráfego Pago com valor
+      if (r.servico_trafego_pago) {
+        const valorTP = r.valor_trafego_pago ? ` (${fmtMoeda(r.valor_trafego_pago)})` : '';
+        parts.push(`🎯 ${String(r.servico_trafego_pago).toUpperCase()}${valorTP}`);
+      }
+      
+      // Investimento em mídia
+      if (r.investimento_midia) {
+        parts.push(`💰 Mídia: ${r.investimento_midia}`);
+      }
+      
+      return parts.join('<br>') || '<span class="muted">—</span>';
+    }
+
+    function renderTabela(rows){
+      const tb = document.getElementById('tbodyPropostas');
+      const estado = document.getElementById('estadoLista');
+      tb.innerHTML = '';
+      if (!rows || rows.length===0){
+        tb.innerHTML = `<tr><td colspan="11" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        document.getElementById('resumoQtd').textContent = '0 propostas';
+        return;
+      }
+      document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
+      for (const r of rows){
+        const url = `${baseLink()}proposta-visualizacao.html?id=${r.id}`;
+        
+        // Mostrar recorrência e pagamento apenas se o contrato foi assinado (status = aceita)
+        const recorrenciaFinal = (r.status === 'aceita' && r.recorrencia_assinada) 
+          ? r.recorrencia_assinada 
+          : '<span class="muted">—</span>';
+        const pagamentoFinal = (r.status === 'aceita' && r.forma_pagamento_assinada) 
+          ? r.forma_pagamento_assinada 
+          : '<span class="muted">—</span>';
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="nowrap">${r.criada_em ? new Date(r.criada_em).toLocaleString('pt-BR') : '—'}</td>
+          <td>${r.nome_cliente || '—'}</td>
+          <td>${r.empresa_cliente || '—'}</td>
+          <td class="nowrap">${r.cpf_cnpj || '—'}</td>
+          <td>${linhaServico(r)}</td>
+          <td class="right">
+            <div><strong>${fmtMoeda(r.valor_mensal)}/mês</strong></div>
+            <div class="muted" style="font-size:.85rem">Total: ${fmtMoeda(r.valor_total)}</div>
+          </td>
+          <td class="nowrap">${recorrenciaFinal}</td>
+          <td class="nowrap">${pagamentoFinal}</td>
+          <td>${statusChip(r.status, r.expirada)}</td>
+          <td>
+            <a class="link" href="${url}" target="_blank">Abrir</a>
+          </td>
+          <td>${r.contrato_pdf_url ? `<a class="link" href="${r.contrato_pdf_url}" target="_blank">PDF</a>` : '<span class="muted">—</span>'}</td>
+        `;
+        tb.appendChild(tr);
+      }
+    }
+
+    async function carregar(){
+      const btn = document.getElementById('btnBuscar');
+      btn.disabled = true; btn.textContent = 'Buscando…';
+      try{
+        client = window.supabaseConfig.initSupabase();
+        const filtros = {
+          termoNome: document.getElementById('filtroNome').value.trim(),
+          termoCPF: document.getElementById('filtroCPF').value.trim(),
+          termoEmpresa: document.getElementById('filtroEmpresa').value.trim()
+        };
+        const rows = await queryResumo(filtros);
+        renderTabela(rows);
+      }catch(e){
+        console.error(e);
+        const tb = document.getElementById('tbodyPropostas');
+        tb.innerHTML = `<tr><td colspan="9" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+      }finally{
+        btn.disabled = false; btn.textContent = 'Buscar';
+      }
+    }
+
+    document.getElementById('btnBuscar').addEventListener('click', carregar);
+    document.getElementById('btnRecarregar').addEventListener('click', carregar);
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter') carregar();
+    });
+    window.addEventListener('DOMContentLoaded', carregar);
+  </script>
+  
+</body>
+</html>

@@ -154,7 +154,19 @@ function calcularValores() {
     }
     
     if (trafegoPago !== 'nao-se-aplica') {
-        total += planosTrafegoPago[trafegoPago].valor;
+        const modeloCobranca = document.getElementById('modeloCobranca').value;
+        
+        if (modeloCobranca === 'fixo') {
+            // Valor fixo do plano
+            total += planosTrafegoPago[trafegoPago].valor;
+        } else if (modeloCobranca === 'comissao') {
+            // Apenas comissão - não adiciona valor fixo (será explicado na proposta)
+            // total += 0;
+        } else if (modeloCobranca === 'hibrido') {
+            // Fixo customizado
+            const valorFixo = parseFloat(document.getElementById('valorFixoTrafego').value) || 0;
+            total += valorFixo;
+        }
     }
     
     // Desconto customizado (opcional)
@@ -183,6 +195,15 @@ function calcularValores() {
     atualizarSimulador(totalAposDesconto, descontoCustomizado);
 }
 
+// Wrapper para eventos que esperam atualizarValores
+function atualizarValores() {
+    try {
+        calcularValores();
+    } catch (e) {
+        console.error('Erro ao atualizar valores:', e);
+    }
+}
+
 // Atualizar simulador de períodos
 function atualizarSimulador(valorBase, descontoCustomizado = 0) {
     const periodos = [1, 3, 6, 12];
@@ -208,48 +229,63 @@ function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Atualizar entregáveis de Social Media
-document.getElementById('servicoSocialMidia').addEventListener('change', function() {
-    const plano = this.value;
-    const container = document.getElementById('entregaveisSocialMedia');
-    const info = document.getElementById('infoSocialMedia');
-    const toggleBtn = document.getElementById('toggleSocialMedia');
+// ==================== INICIALIZAÇÃO ====================
+// Aguardar DOM carregar antes de adicionar event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado - Inicializando event listeners');
     
-    if (plano === 'nao-se-aplica') {
-        container.style.display = 'none';
-        toggleBtn.style.display = 'none';
-    } else {
-        toggleBtn.style.display = 'block';
-        container.style.display = 'none'; // Começa oculto
-        toggleBtn.textContent = '📋 Ver Entregáveis';
-        toggleBtn.classList.remove('active');
-        
-        const dados = planosSocialMedia[plano];
-        let html = `<h4>${dados.nome} - ${formatarMoeda(dados.valor)}/mês</h4><ul>`;
-        dados.entregaveis.forEach(item => {
-            html += `<li>✅ ${item}</li>`;
+    // Atualizar entregáveis de Social Media
+    const servicoSocialMidia = document.getElementById('servicoSocialMidia');
+    if (servicoSocialMidia) {
+        servicoSocialMidia.addEventListener('change', function() {
+            const plano = this.value;
+            const container = document.getElementById('entregaveisSocialMedia');
+            const info = document.getElementById('infoSocialMedia');
+            const toggleBtn = document.getElementById('toggleSocialMedia');
+            
+            if (plano === 'nao-se-aplica') {
+                container.style.display = 'none';
+                toggleBtn.style.display = 'none';
+            } else {
+                toggleBtn.style.display = 'block';
+                container.style.display = 'none'; // Começa oculto
+                toggleBtn.textContent = '📋 Ver Entregáveis';
+                toggleBtn.classList.remove('active');
+                
+                const dados = planosSocialMedia[plano];
+                let html = `<h4>${dados.nome} - ${formatarMoeda(dados.valor)}/mês</h4><ul>`;
+                dados.entregaveis.forEach(item => {
+                    html += `<li>✅ ${item}</li>`;
+                });
+                html += '</ul>';
+                info.innerHTML = html;
+            }
+            calcularValores();
         });
-        html += '</ul>';
-        info.innerHTML = html;
     }
-    calcularValores();
-});
 
 // Atualizar entregáveis de Tráfego Pago
-document.getElementById('servicoTrafegoPago').addEventListener('change', function() {
+const servicoTrafegoPago = document.getElementById('servicoTrafegoPago');
+if (servicoTrafegoPago) {
+    servicoTrafegoPago.addEventListener('change', function() {
     const plano = this.value;
     const container = document.getElementById('entregaveisTrafegoPago');
     const info = document.getElementById('infoTrafegoPago');
     const investimentoContainer = document.getElementById('investimentoMidiaContainer');
     const limiteTexto = document.getElementById('limiteInvestimento');
     const toggleBtn = document.getElementById('toggleTrafegoPago');
+    const modeloContainer = document.getElementById('modeloCobrancaContainer');
+    const badgeWrapper = document.getElementById('badgeComissaoWrapper');
     
     if (plano === 'nao-se-aplica') {
         container.style.display = 'none';
         investimentoContainer.style.display = 'none';
         toggleBtn.style.display = 'none';
+        modeloContainer.style.display = 'none';
+        if (badgeWrapper) badgeWrapper.style.display = 'none';
     } else {
         toggleBtn.style.display = 'block';
+        modeloContainer.style.display = 'block';
         container.style.display = 'none'; // Começa oculto
         toggleBtn.textContent = '📋 Ver Entregáveis';
         toggleBtn.classList.remove('active');
@@ -287,80 +323,303 @@ document.getElementById('servicoTrafegoPago').addEventListener('change', functio
         html += '</div>';
         info.innerHTML = html;
     }
-    calcularValores();
+    
+    atualizarValores();
+    atualizarBadgeComissao();
 });
-
-// Listeners para desconto customizado
-document.getElementById('descontoDescricao').addEventListener('input', calcularValores);
-document.getElementById('descontoTipo').addEventListener('change', calcularValores);
-document.getElementById('descontoValor').addEventListener('input', calcularValores);
-
-// Função para visualizar proposta (SEM salvar)
-function previewProposta() {
-    const dadosVisualizacao = coletarDadosFormulario();
-    if (!dadosVisualizacao) return;
-    
-    // Criar URL com parâmetros
-    const params = new URLSearchParams(dadosVisualizacao);
-    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
-    
-    // Abrir diretamente (sem salvar)
-    window.open(urlVisualizacao, '_blank');
 }
 
-// Função para gerar link da proposta (COM salvar)
-async function gerarLinkProposta() {
-    const dadosVisualizacao = coletarDadosFormulario();
-    if (!dadosVisualizacao) return;
-    
-    // Calcular valores para o script
-    let valorTotal = 0;
-    const socialMedia = dadosVisualizacao.servicoSocialMidia;
-    const trafegoPago = dadosVisualizacao.servicoTrafegoPago;
-    
-    if (socialMedia !== 'nao-se-aplica') valorTotal += planosSocialMedia[socialMedia].valor;
-    if (trafegoPago !== 'nao-se-aplica') valorTotal += planosTrafegoPago[trafegoPago].valor;
-    
-    // Dados para enviar ao Google Apps Script
-    const dadosScript = {
-        action: 'criar',
-        nomeCliente: dadosVisualizacao.nomeCliente,
-        empresaCliente: dadosVisualizacao.empresaCliente,
-        emailCliente: dadosVisualizacao.emailCliente,
-        socialMedia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : '',
-        trafegoPago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : '',
-        valorMensal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
-        valorTotal: `R$ ${valorTotal.toLocaleString('pt-BR')},00`,
-        descontosTotais: 'R$ 0,00',
-        recorrencia: '6',
-        formaPagamento: 'À Vista',
-        responsavelProposta: dadosVisualizacao.responsavelProposta,
-        validadeProposta: dadosVisualizacao.diasValidade,
-        timestampCriacao: dadosVisualizacao.timestampCriacao
-    };
-    
-    // Enviar para Google Apps Script
-    try {
-        const formData = new FormData();
-        Object.keys(dadosScript).forEach(key => {
-            formData.append(key, dadosScript[key]);
+    // Event listener para modelo de cobrança
+    const modeloCobranca = document.getElementById('modeloCobranca');
+    if (modeloCobranca) {
+        modeloCobranca.addEventListener('change', function() {
+            const modelo = this.value;
+            const percentualContainer = document.getElementById('percentualComissaoContainer');
+            const valorFixoContainer = document.getElementById('valorFixoTrafegoContainer');
+            const tipoComissaoHibridoContainer = document.getElementById('tipoComissaoHibridoContainer');
+            const valorComissaoFixaContainer = document.getElementById('valorComissaoFixaContainer');
+            
+            if (modelo === 'fixo') {
+                // Apenas valor fixo do plano
+                percentualContainer.style.display = 'none';
+                valorFixoContainer.style.display = 'none';
+                tipoComissaoHibridoContainer.style.display = 'none';
+                valorComissaoFixaContainer.style.display = 'none';
+            } else if (modelo === 'comissao') {
+                // Apenas comissão percentual
+                percentualContainer.style.display = 'block';
+                valorFixoContainer.style.display = 'none';
+                tipoComissaoHibridoContainer.style.display = 'none';
+                valorComissaoFixaContainer.style.display = 'none';
+            } else if (modelo === 'hibrido') {
+                // Fixo + Comissão (mostra seletor de tipo)
+                valorFixoContainer.style.display = 'block';
+                tipoComissaoHibridoContainer.style.display = 'block';
+                // Aplica o tipo de comissão selecionado
+                const tipoComissao = document.getElementById('tipoComissaoHibrido')?.value || 'percentual';
+                if (tipoComissao === 'percentual') {
+                    percentualContainer.style.display = 'block';
+                    valorComissaoFixaContainer.style.display = 'none';
+                } else {
+                    percentualContainer.style.display = 'none';
+                    valorComissaoFixaContainer.style.display = 'block';
+                }
+            }
+            
+            atualizarValores();
+            atualizarBadgeComissao();
         });
-        
-        await fetch('https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec', {
-            method: 'POST',
-            body: formData
+    }
+
+    // Event listener para tipo de comissão no híbrido
+    const tipoComissaoHibrido = document.getElementById('tipoComissaoHibrido');
+    if (tipoComissaoHibrido) {
+        tipoComissaoHibrido.addEventListener('change', function() {
+            const tipoComissao = this.value;
+            const percentualContainer = document.getElementById('percentualComissaoContainer');
+            const valorComissaoFixaContainer = document.getElementById('valorComissaoFixaContainer');
+            
+            if (tipoComissao === 'percentual') {
+                percentualContainer.style.display = 'block';
+                valorComissaoFixaContainer.style.display = 'none';
+                const valorComissaoFixaEl = document.getElementById('valorComissaoFixa');
+                if (valorComissaoFixaEl) valorComissaoFixaEl.value = ''; // Limpa o valor fixo
+            } else {
+                percentualContainer.style.display = 'none';
+                valorComissaoFixaContainer.style.display = 'block';
+                const percentualComissaoEl = document.getElementById('percentualComissao');
+                if (percentualComissaoEl) percentualComissaoEl.value = ''; // Limpa o percentual
+            }
+            
+            atualizarValores();
+            atualizarBadgeComissao();
         });
-    } catch (error) {
-        console.log('Erro ao salvar proposta:', error);
+    }
+
+    // Event listeners para atualizar valores quando mudar comissão/fixo
+    const percentualComissao = document.getElementById('percentualComissao');
+    if (percentualComissao) {
+        percentualComissao.addEventListener('input', function(){
+            atualizarValores();
+            atualizarBadgeComissao();
+        });
+    }
+
+    const valorFixoTrafego = document.getElementById('valorFixoTrafego');
+    if (valorFixoTrafego) {
+        valorFixoTrafego.addEventListener('input', function(){
+            atualizarValores();
+            atualizarBadgeComissao();
+        });
+    }
+
+    const valorComissaoFixa = document.getElementById('valorComissaoFixa');
+    if (valorComissaoFixa) {
+        valorComissaoFixa.addEventListener('input', function(){
+            atualizarValores();
+            atualizarBadgeComissao();
+        });
+    }
+
+    // Listeners para desconto customizado
+    const descontoDescricao = document.getElementById('descontoDescricao');
+    if (descontoDescricao) {
+        descontoDescricao.addEventListener('input', calcularValores);
+    }
+
+    const descontoTipo = document.getElementById('descontoTipo');
+    if (descontoTipo) {
+        descontoTipo.addEventListener('change', calcularValores);
+    }
+
+    const descontoValor = document.getElementById('descontoValor');
+    if (descontoValor) {
+        descontoValor.addEventListener('input', calcularValores);
+    }
+
+    // Resetar timestamp quando cliente ou serviços mudarem
+    const empresaCliente = document.getElementById('empresaCliente');
+    if (empresaCliente) {
+        empresaCliente.addEventListener('input', resetarTimestamp);
     }
     
-    // Criar URL com parâmetros
-    const params = new URLSearchParams(dadosVisualizacao);
-    const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
+    // Garantir que UI reflita estado atual do Tráfego Pago
+    try {
+        const selectTrafego = document.getElementById('servicoTrafegoPago');
+        if (selectTrafego) {
+            selectTrafego.dispatchEvent(new Event('change'));
+        }
+    } catch (e) {
+        console.warn('Não foi possível inicializar a visualização do Tráfego Pago:', e);
+    }
     
-    // Mostrar modal com o link
-    document.getElementById('linkGerado').value = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '') + urlVisualizacao;
-    document.getElementById('modalLink').style.display = 'block';
+    // Inicializa badge de comissão
+    try { atualizarBadgeComissao(); } catch(e) { console.warn('Erro ao inicializar badge:', e); }
+    
+    // Inicializar valores
+    try { calcularValores(); } catch(e) { console.warn('Erro ao calcular valores:', e); }
+});
+
+// Função para visualizar proposta (SEM salvar)
+window.previewProposta = function() {
+    try {
+        const dadosVisualizacao = coletarDadosFormulario();
+        if (!dadosVisualizacao) return;
+        
+        // Criar URL com parâmetros
+        const params = new URLSearchParams(dadosVisualizacao);
+        const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
+        
+        // Abrir diretamente (sem salvar)
+        window.open(urlVisualizacao, '_blank');
+    } catch (error) {
+        console.error('Erro ao visualizar proposta:', error);
+        alert('Erro ao visualizar proposta: ' + error.message);
+    }
+}
+
+// Função para gerar link da proposta (COM salvar no Supabase)
+window.gerarLinkProposta = async function() {
+    try {
+        const dadosVisualizacao = coletarDadosFormulario();
+        if (!dadosVisualizacao) return;
+        
+        // Calcular valores
+        let valorMensal = 0;
+        const socialMedia = dadosVisualizacao.servicoSocialMidia;
+        const trafegoPago = dadosVisualizacao.servicoTrafegoPago;
+        
+        if (socialMedia !== 'nao-se-aplica') valorMensal += planosSocialMedia[socialMedia].valor;
+        
+        // Calcular valores separados e considerar modelo de cobrança
+        let valorSocialMidia = 0;
+        let valorTrafegoPago = 0;
+        let temComissaoVendas = false;
+        let percentualComissao = 0;
+        let valorFixoTrafego = 0;
+        
+        if (socialMedia !== 'nao-se-aplica' && planosSocialMedia[socialMedia]) {
+            valorSocialMidia = planosSocialMedia[socialMedia].valor;
+        }
+        
+        if (trafegoPago !== 'nao-se-aplica') {
+            const modeloCobranca = dadosVisualizacao.modeloCobranca || 'fixo';
+            
+            if (modeloCobranca === 'fixo') {
+                valorTrafegoPago = planosTrafegoPago[trafegoPago].valor;
+                valorMensal += valorTrafegoPago;
+            } else if (modeloCobranca === 'comissao') {
+                temComissaoVendas = true;
+                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
+                valorTrafegoPago = 0;
+                // Não adiciona ao valor mensal fixo
+            } else if (modeloCobranca === 'hibrido') {
+                temComissaoVendas = true;
+                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
+                valorFixoTrafego = parseFloat(dadosVisualizacao.valorFixoTrafego) || 0;
+                valorTrafegoPago = valorFixoTrafego;
+                valorMensal += valorFixoTrafego;
+            }
+        }
+        
+        // Aplicar desconto customizado se houver
+        const descontoDescricao = document.getElementById('descontoDescricao').value.trim();
+        const descontoTipo = document.getElementById('descontoTipo').value;
+        const descontoValorInput = document.getElementById('descontoValor').value.trim();
+        
+        let descontoCustomizado = 0;
+        if (descontoDescricao && descontoValorInput) {
+            const valorDesconto = parseFloat(descontoValorInput.replace(',', '.'));
+            if (!isNaN(valorDesconto) && valorDesconto > 0) {
+                if (descontoTipo === 'percentual') {
+                    descontoCustomizado = valorMensal * (valorDesconto / 100);
+                } else {
+                    descontoCustomizado = valorDesconto;
+                }
+            }
+        }
+        
+        const valorMensalFinal = valorMensal - descontoCustomizado;
+        const valorTotal = valorMensalFinal; // Por enquanto sem recorrência
+        
+        // Inicializar Supabase
+        if (!window.supabaseConfig) {
+            throw new Error('supabase-config.js não foi carregado.');
+        }
+        
+        const supabase = window.supabaseConfig.initSupabase();
+        
+        // Calcular data de expiração
+        const dataExpiracao = new Date();
+        dataExpiracao.setDate(dataExpiracao.getDate() + parseInt(dadosVisualizacao.diasValidade));
+        
+        // Preparar dados para inserção
+        const dadosInsercao = {
+            nome_cliente: dadosVisualizacao.nomeCliente,
+            empresa_cliente: dadosVisualizacao.empresaCliente,
+            email_cliente: dadosVisualizacao.emailCliente || 'sem-email@proposta.com',
+            telefone_cliente: dadosVisualizacao.telefoneCliente || 'Não informado',
+            cpf_cnpj: dadosVisualizacao.cpfCnpj || null,
+            servico_social_midia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : null,
+            servico_trafego_pago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : null,
+            valor_social_midia: valorSocialMidia,
+            valor_trafego_pago: valorTrafegoPago,
+            tem_comissao_vendas: temComissaoVendas,
+            percentual_comissao: percentualComissao,
+            valor_fixo_trafego: valorFixoTrafego,
+            tipo_comissao_hibrido: dadosVisualizacao.tipoComissaoHibrido || 'percentual',
+            valor_comissao_fixa: parseFloat(dadosVisualizacao.valorComissaoFixa) || 0,
+            investimento_midia: dadosVisualizacao.investimentoMidia || null,
+            endereco_cliente: dadosVisualizacao.enderecoCliente || null,
+            representante_cliente: dadosVisualizacao.representanteLegalCliente || null,
+            valor_mensal: valorMensalFinal,
+            valor_total: valorTotal,
+            desconto_aplicado: descontoCustomizado,
+            recorrencia: 'Mensal', // Padrão por enquanto
+            forma_pagamento: 'À Vista', // Padrão por enquanto
+            responsavel_proposta: dadosVisualizacao.responsavelProposta,
+            dias_validade: parseInt(dadosVisualizacao.diasValidade),
+            expira_em: dataExpiracao.toISOString(),
+            observacoes: descontoDescricao || null,
+            status: 'pendente'
+        };
+        
+        // Inserir no Supabase e obter UUID
+        console.log('=== DADOS PARA INSERÇÃO ===');
+        console.table(dadosInsercao);
+        console.log('Objeto completo:', JSON.stringify(dadosInsercao, null, 2));
+        
+        const { data, error } = await supabase
+            .from('propostas_criadas')
+            .insert(dadosInsercao)
+            .select('id')
+            .single();
+        
+        if (error) {
+            console.error('=== ERRO SUPABASE ===');
+            console.error('Objeto de erro completo:', JSON.stringify(error, null, 2));
+            console.error('Código:', error.code);
+            console.error('Mensagem:', error.message);
+            console.error('Detalhes:', error.details);
+            console.error('Hint:', error.hint);
+            throw new Error('Erro ao salvar proposta no banco de dados: ' + error.message);
+        }
+        
+        // Gerar link com UUID
+        const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '');
+        const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${data.id}`;
+        
+        // Mostrar modal com o link
+        document.getElementById('linkGerado').value = linkProposta;
+        document.getElementById('modalLink').style.display = 'block';
+        
+        // Resetar timestamp para próxima proposta
+        timestampPropostaAtual = null;
+        
+    } catch (error) {
+        console.error('Erro completo:', error);
+        alert('Erro ao gerar proposta: ' + error.message + '\n\nVerifique se:\n1. O SQL foi executado no Supabase\n2. As políticas RLS estão ativas\n3. Você tem conexão com a internet');
+    }
 }
 
 // Variável global para armazenar timestamp da proposta
@@ -369,19 +628,58 @@ let timestampPropostaAtual = null;
 // Função auxiliar para coletar dados do formulário
 function coletarDadosFormulario() {
     // Validar campos obrigatórios
-    const nomeCliente = document.getElementById('nomeCliente').value.trim();
-    const empresaCliente = document.getElementById('empresaCliente').value.trim();
-    const responsavelProposta = document.getElementById('responsavelProposta').value.trim();
-    const diasValidade = document.getElementById('diasValidade').value;
+    const empresaClienteEl = document.getElementById('empresaCliente');
+    const responsavelPropostaEl = document.getElementById('responsavelProposta');
+    const enderecoClienteEl = document.getElementById('enderecoCliente');
+    const diasValidadeEl = document.getElementById('diasValidade');
     
-    if (!nomeCliente || !empresaCliente || !responsavelProposta) {
-        alert('Por favor, preencha todos os campos obrigatórios (Nome do Cliente, Empresa e Responsável).');
+    if (!empresaClienteEl || !responsavelPropostaEl || !enderecoClienteEl || !diasValidadeEl) {
+        alert('Erro: Formulário incompleto. Recarregue a página.');
         return null;
     }
     
+    const empresaCliente = empresaClienteEl.value.trim();
+    const responsavelProposta = responsavelPropostaEl.value.trim();
+    const enderecoCliente = enderecoClienteEl.value.trim();
+    const diasValidade = diasValidadeEl.value;
+    
+    if (!empresaCliente || !responsavelProposta || !enderecoCliente) {
+        alert('Por favor, preencha todos os campos obrigatórios (Empresa, Responsável e Endereço).');
+        return null;
+    }
+    
+    // Validar CPF/CNPJ
+    const cpfCnpjClienteEl = document.getElementById('cpfCnpjCliente');
+    if (!cpfCnpjClienteEl) {
+        alert('Erro: Campo CPF/CNPJ não encontrado.');
+        return null;
+    }
+    
+    const cpfCnpjCliente = cpfCnpjClienteEl.value.trim();
+    if (!cpfCnpjCliente) {
+        alert('Por favor, preencha o CPF/CNPJ do cliente.');
+        return null;
+    }
+    
+    if (window.validacaoCPFCNPJ) {
+        const resultadoValidacao = window.validacaoCPFCNPJ.validarCPFouCNPJ(cpfCnpjCliente);
+        if (!resultadoValidacao.valido) {
+            alert(`Por favor, digite um ${resultadoValidacao.tipo} válido.`);
+            return null;
+        }
+    }
+    
     // Verificar se pelo menos um serviço foi selecionado
-    const socialMedia = document.getElementById('servicoSocialMidia').value;
-    const trafegoPago = document.getElementById('servicoTrafegoPago').value;
+    const servicoSocialMidiaEl = document.getElementById('servicoSocialMidia');
+    const servicoTrafegoPagoEl = document.getElementById('servicoTrafegoPago');
+    
+    if (!servicoSocialMidiaEl || !servicoTrafegoPagoEl) {
+        alert('Erro: Campos de serviço não encontrados.');
+        return null;
+    }
+    
+    const socialMedia = servicoSocialMidiaEl.value;
+    const trafegoPago = servicoTrafegoPagoEl.value;
     
     if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
         alert('Por favor, selecione pelo menos um serviço (Social Media ou Tráfego Pago).');
@@ -395,13 +693,23 @@ function coletarDadosFormulario() {
     }
     
     return {
-        nomeCliente: nomeCliente,
+        nomeCliente: empresaCliente, // Usar empresa como nome do cliente
         empresaCliente: empresaCliente,
-        emailCliente: document.getElementById('emailCliente').value.trim(),
+        emailCliente: 'sem-email@proposta.com', // Email placeholder (campo não está no formulário)
+        cpfCnpj: cpfCnpjCliente,
+        telefoneCliente: 'Não informado', // Campo não está no formulário
+        enderecoCliente: enderecoCliente,
+        representanteLegalCliente: '', // Será capturado no aceite
         responsavelProposta: responsavelProposta,
         diasValidade: diasValidade,
         servicoSocialMidia: socialMedia,
         servicoTrafegoPago: trafegoPago,
+        modeloCobranca: document.getElementById('modeloCobranca')?.value || 'fixo',
+        percentualComissao: document.getElementById('percentualComissao')?.value || '0',
+        valorFixoTrafego: document.getElementById('valorFixoTrafego')?.value || '0',
+        tipoComissaoHibrido: document.getElementById('tipoComissaoHibrido')?.value || 'percentual',
+        valorComissaoFixa: document.getElementById('valorComissaoFixa')?.value || '0',
+        investimentoMidia: (document.getElementById('investimentoMidia')?.value || '').trim(),
         timestampCriacao: timestampPropostaAtual
     };
 }
@@ -411,18 +719,34 @@ function resetarTimestamp() {
     timestampPropostaAtual = null;
 }
 
-// Listeners para resetar timestamp quando dados importantes mudarem
-document.addEventListener('DOMContentLoaded', function() {
-    // Resetar timestamp quando cliente ou serviços mudarem
-    document.getElementById('nomeCliente').addEventListener('input', resetarTimestamp);
-    document.getElementById('empresaCliente').addEventListener('input', resetarTimestamp);
-    document.getElementById('servicoSocialMidia').addEventListener('change', resetarTimestamp);
-    document.getElementById('servicoTrafegoPago').addEventListener('change', resetarTimestamp);
-});
-
-// Inicializar
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', calcularValores);
-} else {
-    calcularValores();
+// Atualiza a badge '+ X% sobre vendas' no gerador
+function atualizarBadgeComissao() {
+    const badgeWrapper = document.getElementById('badgeComissaoWrapper');
+    const badge = document.getElementById('badgeComissaoGenerator');
+    const planoTrafego = document.getElementById('servicoTrafegoPago')?.value || 'nao-se-aplica';
+    if (!badgeWrapper || !badge || planoTrafego === 'nao-se-aplica') {
+        if (badgeWrapper) badgeWrapper.style.display = 'none';
+        return;
+    }
+    const modelo = document.getElementById('modeloCobranca')?.value || 'fixo';
+    const pct = parseFloat(document.getElementById('percentualComissao')?.value || '0') || 0;
+    const valorComissaoFixa = parseFloat(document.getElementById('valorComissaoFixa')?.value || '0') || 0;
+    const tipoComissaoHibrido = document.getElementById('tipoComissaoHibrido')?.value || 'percentual';
+    
+    if (modelo === 'comissao' && pct > 0) {
+        badge.textContent = `+ ${pct}% sobre vendas`;
+        badgeWrapper.style.display = 'block';
+    } else if (modelo === 'hibrido') {
+        if (tipoComissaoHibrido === 'percentual' && pct > 0) {
+            badge.textContent = `+ ${pct}% sobre vendas`;
+            badgeWrapper.style.display = 'block';
+        } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+            badge.textContent = `+ R$ ${valorComissaoFixa.toFixed(2)} por venda`;
+            badgeWrapper.style.display = 'block';
+        } else {
+            badgeWrapper.style.display = 'none';
+        }
+    } else {
+        badgeWrapper.style.display = 'none';
+    }
 }

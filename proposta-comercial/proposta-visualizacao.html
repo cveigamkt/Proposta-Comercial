@@ -1505,16 +1505,13 @@
         // URL do Google Apps Script - ACEITES DE PROPOSTAS
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx49YFpXzfhzVWYI6OWDzgnYtQz9r17Hskfa_ve2ncbm-NPMQNyU-l2j5L_W5H9In8k/exec';
         
-        // Inicializar página
-        document.addEventListener('DOMContentLoaded', function() {
-            // Sempre carregar dados da URL
-            carregarDados();
-            
+        // Inicializar página (suporta carregamento por UUID via Supabase)
+        document.addEventListener('DOMContentLoaded', async function() {
+            await carregarDados();
             configurarEventListeners();
             calcularValores();
             configurarComparacao();
             verificarSelecoes();
-            
             // Corrigir seleção visual inicial
             setTimeout(() => {
                 const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
@@ -1524,8 +1521,119 @@
             }, 100);
         });
 
-        function carregarDados() {
+        // Mapear nomes de planos (exibidos) para as chaves internas
+        function mapearPlanoSocialParaKey(nome) {
+            if (!nome) return 'nao-se-aplica';
+            const n = nome.toString().toLowerCase();
+            if (n.includes('start')) return 'start';
+            if (n.includes('scale')) return 'scale';
+            if (n.includes('heat') || n.includes('premium')) return 'heat';
+            return 'nao-se-aplica';
+        }
+
+        function mapearPlanoTrafegoParaKey(nome) {
+            if (!nome) return 'nao-se-aplica';
+            const n = nome.toString().toLowerCase();
+            if (n.includes('foco')) return 'foco';
+            if (n.includes('acel')) return 'aceleracao';
+            if (n.includes('destaque') || n.includes('heat') || n.includes('domínio') || n.includes('dominio')) return 'heat';
+            return 'nao-se-aplica';
+        }
+
+    async function carregarDadosPorUUID(id) {
+            try {
+                console.log('=== CARREGANDO PROPOSTA ===');
+                console.log('UUID:', id);
+                
+                // Inicializa Supabase
+                if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+                    window.supabaseConfig.initSupabase();
+                }
+                if (!window.supabase) throw new Error('Supabase SDK não carregado');
+                const client = window.supabase;
+
+                const { data, error } = await client
+                    .from('propostas_criadas')
+                    .select('*')
+                    .eq('id', id)
+                    .maybeSingle();
+                    
+                console.log('Resposta Supabase:', { data, error });
+                
+                if (error) throw error;
+                if (!data) throw new Error('Proposta não encontrada');
+
+                window.propostaCarregada = data; // Disponível globalmente
+                console.log('Proposta carregada:', data);
+
+                // Cabeçalho
+                document.getElementById('nomeCliente').textContent = data.nome_cliente || 'Cliente';
+                document.getElementById('empresaCliente').textContent = data.empresa_cliente || 'Empresa';
+                const dataCriacao = data.criada_em ? new Date(data.criada_em) : new Date();
+                document.getElementById('dataProposta').textContent = dataCriacao.toLocaleDateString('pt-BR');
+
+                // Timer de validade
+                const diasValidade = parseInt(data.dias_validade || 7);
+                iniciarTimer(dataCriacao.toISOString(), diasValidade);
+
+                // Mapear planos
+                const socialKey = mapearPlanoSocialParaKey(data.servico_social_midia);
+                const trafegoKey = mapearPlanoTrafegoParaKey(data.servico_trafego_pago);
+                window.propostaCarregada.servico_social_midia_key = socialKey;
+                window.propostaCarregada.servico_trafego_pago_key = trafegoKey;
+
+                // Montar serviços contratados a partir dos planos + valores vindos do banco (respeitando comissão)
+                valorBase = 0;
+                servicosContratados = [];
+                if (socialKey && socialKey !== 'nao-se-aplica' && planos.socialMidia[socialKey]) {
+                    const plano = planos.socialMidia[socialKey];
+                    const valorSocial = typeof data.valor_social_midia === 'number' ? data.valor_social_midia : plano.valor;
+                    valorBase += valorSocial;
+                    servicosContratados.push({
+                        tipo: 'Social Mídia',
+                        plano: plano.nome,
+                        valor: valorSocial,
+                        entregaveis: plano.entregaveis
+                    });
+                }
+                if (trafegoKey && trafegoKey !== 'nao-se-aplica' && planos.trafegoPago[trafegoKey]) {
+                    const plano = planos.trafegoPago[trafegoKey];
+                    const valorTrafegoFixo = typeof data.valor_trafego_pago === 'number' ? data.valor_trafego_pago : plano.valor;
+                    // Em comissão pura, valor_trafego_pago virá 0 (não entra no valorBase)
+                    valorBase += valorTrafegoFixo;
+                    servicosContratados.push({
+                        tipo: 'Tráfego Pago',
+                        plano: plano.nome,
+                        valor: valorTrafegoFixo,
+                        secoes: plano.secoes
+                    });
+                }
+
+                // Dados auxiliares usados em outras partes
+                window.dadosProposta = {
+                    nomeCliente: data.nome_cliente || '',
+                    empresaCliente: data.empresa_cliente || '',
+                    emailCliente: data.email_cliente || '',
+                    timestampCriacao: dataCriacao.toLocaleDateString('pt-BR') + ' ' + dataCriacao.toLocaleTimeString('pt-BR'),
+                    responsavelProposta: data.responsavel_proposta || '',
+                    diasValidade: (data.dias_validade || 7).toString()
+                };
+
+                renderizarServicos();
+                atualizarResumo();
+            } catch (e) {
+                console.error('Erro ao carregar proposta por UUID:', e);
+                alert('Não foi possível carregar a proposta. Verifique o link e tente novamente.');
+            }
+        }
+
+        async function carregarDados() {
             const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (id) {
+                await carregarDadosPorUUID(id);
+                return;
+            }
             
             // Dados do cliente
             document.getElementById('nomeCliente').textContent = params.get('nomeCliente') || 'Cliente';
@@ -1572,11 +1680,20 @@
             
             if (trafegoPago && trafegoPago !== 'nao-se-aplica' && planos.trafegoPago[trafegoPago]) {
                 const plano = planos.trafegoPago[trafegoPago];
-                valorBase += plano.valor;
+                // Ajustar conforme modelo de cobrança recebido via URL (preview)
+                const modelo = params.get('modeloCobranca') || 'fixo';
+                let valorTrafegoFixo = plano.valor;
+                if (modelo === 'comissao') {
+                    valorTrafegoFixo = 0; // comissão pura não entra no fixo
+                } else if (modelo === 'hibrido') {
+                    const v = parseFloat(params.get('valorFixoTrafego') || '0') || 0;
+                    valorTrafegoFixo = v;
+                }
+                valorBase += valorTrafegoFixo;
                 servicosContratados.push({
                     tipo: 'Tráfego Pago',
                     plano: plano.nome,
-                    valor: plano.valor,
+                    valor: valorTrafegoFixo,
                     secoes: plano.secoes
                 });
             }
@@ -1610,6 +1727,36 @@
                     entregaveisHtml = `<ul>${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}</ul>`;
                 }
                 
+                // Informações de cobrança específicas para Tráfego Pago
+                let cobrancaHtml = '';
+                if (servico.tipo === 'Tráfego Pago') {
+                    const pctNum = window.propostaCarregada?.percentual_comissao ?? (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0);
+                    const valorFixo = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0);
+                    const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (new URLSearchParams(window.location.search).get('tipoComissaoHibrido') || 'percentual');
+                    const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(new URLSearchParams(window.location.search).get('valorComissaoFixa') || '0') || 0);
+                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'comissao' || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'hibrido');
+                    if (temComissao) {
+                        let desc = '';
+                        if (valorFixo > 0) {
+                            // Híbrido
+                            if (tipoComissaoHibrido === 'percentual' && pctNum > 0) {
+                                desc = `Híbrido: R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})} + ${pctNum}% sobre vendas`;
+                            } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+                                desc = `Híbrido: R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})} + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda`;
+                            }
+                        } else if (pctNum > 0) {
+                            // Comissão pura
+                            desc = `Comissão: ${pctNum}% sobre vendas`;
+                        }
+                        if (desc) {
+                            cobrancaHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #1E5942; border-radius: 8px; color: #CFCFCF; font-size: 0.95rem;"><strong>Modelo de Cobrança:</strong> ${desc}</div>`;
+                        }
+                    } else {
+                        // Modelo fixo
+                        cobrancaHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #1E5942; border-radius: 8px; color: #CFCFCF; font-size: 0.95rem;"><strong>Modelo de Cobrança:</strong> Fixo: R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês</div>`;
+                    }
+                }
+                
                 card.innerHTML = `
                     <div class="servico-header">
                         <h3>${servico.tipo}</h3>
@@ -1619,6 +1766,7 @@
                         <h4>Entregáveis:</h4>
                         ${entregaveisHtml}
                     </div>
+                    ${cobrancaHtml}
                 `;
                 container.appendChild(card);
             });
@@ -1635,29 +1783,56 @@
         }
 
         function configurarEventListeners() {
+            // Helper para aplicar seleção visual consistente
+            function aplicarSelecao(grupoSelector, cardSelector, input) {
+                document.querySelectorAll(`${grupoSelector} ${cardSelector}`).forEach(card => {
+                    card.classList.remove('selected');
+                });
+                const card = input.closest(cardSelector);
+                if (card) card.classList.add('selected');
+            }
             // Recorrência
             document.querySelectorAll('input[name="recorrencia"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    document.querySelectorAll('.recorrencia-options .option-card').forEach(card => {
-                        card.classList.remove('selected');
-                    });
-                    this.closest('.option-card').classList.add('selected');
+                    aplicarSelecao('.recorrencia-options', '.option-card', this);
                     calcularValores();
                     verificarSelecoes();
                 });
+                // Click direto no card
+                const card = radio.closest('.option-card');
+                if (card) {
+                    card.addEventListener('click', (e) => {
+                        if (!radio.checked) {
+                            radio.checked = true;
+                            radio.dispatchEvent(new Event('change'));
+                        }
+                    });
+                }
             });
 
             // Pagamento
             document.querySelectorAll('input[name="pagamento"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    document.querySelectorAll('.pagamento-options .option-card').forEach(card => {
-                        card.classList.remove('selected');
-                    });
-                    this.closest('.option-card').classList.add('selected');
+                    aplicarSelecao('.pagamento-options', '.option-card', this);
                     calcularValores();
                     verificarSelecoes();
                 });
+                const card = radio.closest('.option-card');
+                if (card) {
+                    card.addEventListener('click', () => {
+                        if (!radio.checked) {
+                            radio.checked = true;
+                            radio.dispatchEvent(new Event('change'));
+                        }
+                    });
+                }
             });
+
+            // Forçar estado visual inicial
+            const recSel = document.querySelector('input[name="recorrencia"]:checked');
+            if (recSel) aplicarSelecao('.recorrencia-options', '.option-card', recSel);
+            const pagSel = document.querySelector('input[name="pagamento"]:checked');
+            if (pagSel) aplicarSelecao('.pagamento-options', '.option-card', pagSel);
         }
 
         function calcularValores() {
@@ -1681,7 +1856,6 @@
             const valorFinal = valorBase - descontoRecorrencia - descontoCondicional - descontoPagamento;
             const valorTotal = valorFinal * recorrencia;
             
-            // Controlar opções de pagamento baseado na recorrência
             const opcaoAvista = document.getElementById('opcao-avista');
             const opcaoParcelado = document.getElementById('opcao-parcelado');
             const opcaoMensal = document.getElementById('opcao-mensal');
@@ -1709,7 +1883,33 @@
             // Criar detalhamento dos serviços para o valor base
             let detalhamentoServicos = '';
             servicosContratados.forEach(servico => {
-                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${servico.valor.toLocaleString('pt-BR')},00/mês<br>`;
+                if (servico.tipo === 'Tráfego Pago') {
+                    const params = new URLSearchParams(window.location.search);
+                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || (params.get('modeloCobranca') || '') === 'comissao' || (params.get('modeloCobranca') || '') === 'hibrido');
+                    const pct = window.propostaCarregada?.percentual_comissao ?? (parseFloat(params.get('percentualComissao') || '0') || 0);
+                    const valorFixo = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(params.get('valorFixoTrafego') || '0') || 0);
+                    const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (params.get('tipoComissaoHibrido') || 'percentual');
+                    const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(params.get('valorComissaoFixa') || '0') || 0);
+                    if (temComissao) {
+                        if (valorFixo > 0) {
+                            // Híbrido
+                            if (tipoComissaoHibrido === 'percentual' && pct > 0) {
+                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + ${pct}% sobre vendas<br>`;
+                            } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda<br>`;
+                            }
+                        } else if (pct > 0) {
+                            // Comissão pura
+                            detalhamentoServicos += `${servico.tipo} (${servico.plano}): ${pct}% sobre vendas (sem fixo mensal)<br>`;
+                        } else {
+                            detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<br>`;
+                        }
+                    } else {
+                        detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<br>`;
+                    }
+                } else {
+                    detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<br>`;
+                }
             });
             
             // Atualizar display
@@ -1735,7 +1935,7 @@
             
             atualizarResumo();
             verificarSelecoes();
-        }
+        } // FIM calcularValores
 
         function atualizarResumo() {
             const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
@@ -1790,10 +1990,37 @@
                     entregaveisHtml = `<ul>${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}</ul>`;
                 }
                 
+                // Linha com modelo de cobrança no resumo
+                let cobrancaLinha = '';
+                if (servico.tipo === 'Tráfego Pago') {
+                    const params = new URLSearchParams(window.location.search);
+                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || (params.get('modeloCobranca') || '') === 'comissao' || (params.get('modeloCobranca') || '') === 'hibrido');
+                    const pct = window.propostaCarregada?.percentual_comissao ?? (parseFloat(params.get('percentualComissao') || '0') || 0);
+                    const valorFixo = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(params.get('valorFixoTrafego') || '0') || 0);
+                    const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (params.get('tipoComissaoHibrido') || 'percentual');
+                    const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(params.get('valorComissaoFixa') || '0') || 0);
+                    if (temComissao) {
+                        if (valorFixo > 0) {
+                            // Híbrido
+                            if (tipoComissaoHibrido === 'percentual' && pct > 0) {
+                                cobrancaLinha = `<div style="margin-top: 5px;"><em>Modelo de Cobrança:</em> R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + ${pct}% sobre vendas</div>`;
+                            } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+                                cobrancaLinha = `<div style="margin-top: 5px;"><em>Modelo de Cobrança:</em> R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda</div>`;
+                            }
+                        } else if (pct > 0) {
+                            // Comissão pura
+                            cobrancaLinha = `<div style="margin-top: 5px;"><em>Modelo de Cobrança:</em> ${pct}% sobre vendas (sem fixo mensal)</div>`;
+                        }
+                    } else {
+                        cobrancaLinha = `<div style="margin-top: 5px;"><em>Modelo de Cobrança:</em> Fixo R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês</div>`;
+                    }
+                }
+                
                 return `
                     <div class="resumo-servico">
                         <strong>${servico.tipo} (${servico.plano})</strong>
                         ${entregaveisHtml}
+                        ${cobrancaLinha}
                     </div>
                 `;
             }).join('');
@@ -1848,33 +2075,11 @@
                 document.getElementById('avisoSelecao').scrollIntoView({ behavior: 'smooth' });
                 return;
             }
-            
-            // Gerar resumo para o modal
-            const cliente = `${document.getElementById('nomeCliente').textContent} - ${document.getElementById('empresaCliente').textContent}`;
-            const valorFinal = document.getElementById('valorFinalMensal').textContent;
-            const valorTotal = document.getElementById('valorTotalPeriodo').textContent;
-            
-            // Obter textos das opções selecionadas
-            const recorrenciaTexto = recorrenciaSelecionada.closest('.option-card').querySelector('.title').textContent;
-            const pagamentoTexto = pagamentoSelecionado.closest('.option-card').querySelector('.title').textContent;
-            
-            let resumoServicos = '';
-            servicosContratados.forEach(servico => {
-                resumoServicos += `<p><strong>${servico.tipo}:</strong> ${servico.plano} - R$ ${servico.valor.toLocaleString('pt-BR')},00/mês</p>`;
-            });
-            
-            document.getElementById('resumoModal').innerHTML = `
-                <p><strong>Cliente:</strong> ${cliente}</p>
-                ${resumoServicos}
-                <hr style="border-color: #333; margin: 15px 0;">
-                <p><strong>Recorrência:</strong> ${recorrenciaTexto}</p>
-                <p><strong>Forma de Pagamento:</strong> ${pagamentoTexto}</p>
-                <hr style="border-color: #333; margin: 15px 0;">
-                <p><strong>Valor Mensal:</strong> ${valorFinal}</p>
-                <p><strong>Total do Período:</strong> ${valorTotal}</p>
-            `;
-            
-            document.getElementById('modalConfirmacao').style.display = 'block';
+            // Preencher resumo no modal de assinatura e abrir
+            if (typeof preencherResumoAceite === 'function') {
+                preencherResumoAceite();
+            }
+            document.getElementById('modalAssinaturaContrato').style.display = 'block';
         }
 
         async function confirmarProposta() {
@@ -1918,7 +2123,10 @@
         }
 
         function fecharModalSucesso() {
-            document.getElementById('modalSucesso').style.display = 'none';
+            const m1 = document.getElementById('modalSucesso');
+            const m2 = document.getElementById('modalContratoSucesso');
+            if (m1) m1.style.display = 'none';
+            if (m2) m2.style.display = 'none';
         }
 
         function exportarPDF() {
@@ -2452,12 +2660,1026 @@
         window.onclick = function(event) {
             const modalConfirmacao = document.getElementById('modalConfirmacao');
             const modalSucesso = document.getElementById('modalSucesso');
+            const modalAssinatura = document.getElementById('modalAssinaturaContrato');
             
             if (event.target === modalConfirmacao) {
                 modalConfirmacao.style.display = 'none';
             }
             if (event.target === modalSucesso) {
                 modalSucesso.style.display = 'none';
+            }
+            if (event.target === modalAssinatura) {
+                modalAssinatura.style.display = 'none';
+            }
+        }
+    </script>
+
+    <!-- Modal de Aceite/Assinatura de Contrato - Multi-etapas -->
+    <div id="modalAssinaturaContrato" class="modal" style="display:none;">
+        <div class="modal-content modal-assinatura">
+            <span class="close" onclick="fecharModalAssinatura()">&times;</span>
+            
+            <!-- Indicador de Etapas -->
+            <div class="etapas-indicador" style="display: flex; justify-content: center; gap: 30px; margin-bottom: 30px; padding: 0 20px;">
+                <div class="etapa" id="etapa1Indicator" style="text-align: center;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #1E5942; color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: 700; font-size: 1.1rem;">1</div>
+                    <div style="font-size: 0.75rem; color: #888;">Dados</div>
+                </div>
+                <div class="etapa" id="etapa2Indicator" style="text-align: center; opacity: 0.4;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #333; color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: 700; font-size: 1.1rem;">2</div>
+                    <div style="font-size: 0.75rem; color: #888;">Leitura</div>
+                </div>
+                <div class="etapa" id="etapa3Indicator" style="text-align: center; opacity: 0.4;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #333; color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: 700; font-size: 1.1rem;">3</div>
+                    <div style="font-size: 0.75rem; color: #888;">Assinar</div>
+                </div>
+            </div>
+            
+            <!-- ETAPA 1: Preenchimento de Dados -->
+            <div id="etapa1Dados" style="display: block;">
+                <h2 style="color: #1E5942; margin-bottom: 20px; text-align: center;">
+                    📝 Dados do Representante
+                </h2>
+                
+                <div class="resumo-proposta-aceite" style="background: rgba(30,89,66,0.1); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                    <h3 style="color: #00E388; margin-bottom: 15px; font-size: 1.1rem;">Resumo da Proposta</h3>
+                    <div id="resumoPropostaAceite" style="color: #E0E0E0; font-size: 0.95rem;"></div>
+                </div>
+                
+                <form id="formDadosRepresentante" onsubmit="return false;">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
+                            Nome do Representante *
+                        </label>
+                        <input type="text" id="nomeAssinatura" required 
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="Nome">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
+                            Sobrenome *
+                        </label>
+                        <input type="text" id="sobrenomeAssinatura" required 
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="Sobrenome">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
+                            CPF/CNPJ da Empresa *
+                        </label>
+                        <input type="text" id="cpfCnpjAssinatura" required maxlength="18"
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="000.000.000-00 ou 00.000.000/0000-00">
+                        <small id="feedbackCpfCnpjAssinatura" style="display:none; margin-top:5px; font-weight:600;"></small>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
+                            E-mail de Confirmação *
+                        </label>
+                        <input type="email" id="emailAssinatura" required 
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="seu@email.com">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
+                            Telefone de Contato *
+                        </label>
+                        <input type="tel" id="telefoneAssinatura" required 
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="(00) 00000-0000">
+                    </div>
+                    
+                    <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center; margin-top: 30px;">
+                        <button type="button" class="btn btn-primary" onclick="avancarParaLeituraContrato()">
+                            Continuar ➜
+                        </button>
+                        <button type="button" class="btn btn-ghost" onclick="fecharModalAssinatura()">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- ETAPA 2: Leitura do Contrato -->
+            <div id="etapa2Leitura" style="display: none;">
+                <h2 style="color: #1E5942; margin-bottom: 20px; text-align: center;">
+                    📄 Leia o Contrato Completo
+                </h2>
+                
+                <div style="background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: center;">
+                    <p style="color: #FFA500; font-size: 0.9rem; margin: 0; font-weight: 600;">
+                        ⚠️ Role até o final para liberar o botão de aceite
+                    </p>
+                </div>
+                
+                <div id="contratoTextoCompleto" style="background: #1a1a1a; border: 2px solid #333; border-radius: 12px; padding: 30px; max-height: 500px; overflow-y: auto; margin-bottom: 20px; line-height: 1.8; color: #E0E0E0; font-size: 0.95rem;">
+                    <!-- Contrato será inserido aqui via JS -->
+                </div>
+                
+                <div id="progressoLeitura" style="background: rgba(30,89,66,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; display: none;">
+                    <p style="color: #00E388; font-weight: 600; margin: 0;">
+                        ✅ Você rolou até o final do contrato
+                    </p>
+                </div>
+                
+                <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
+                    <button type="button" class="btn btn-ghost" onclick="voltarParaDados()">
+                        ← Voltar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnContinuarAceite" onclick="avancarParaAceite()" disabled style="opacity: 0.5; cursor: not-allowed;">
+                        Continuar ➜
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ETAPA 3: Aceite e Assinatura -->
+            <div id="etapa3Aceite" style="display: none;">
+                <h2 style="color: #1E5942; margin-bottom: 20px; text-align: center;">
+                    ✍️ Confirme sua Assinatura
+                </h2>
+                
+                <div style="background: rgba(30,89,66,0.1); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+                    <h3 style="color: #00E388; margin-bottom: 15px; font-size: 1.1rem;">Resumo dos Dados</h3>
+                    <div id="resumoDadosFinais" style="color: #E0E0E0; font-size: 0.95rem;"></div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="aceitoTermosContratoFinal" required 
+                               style="margin-top: 4px; width: 20px; height: 20px; cursor: pointer;">
+                        <span style="color: #E0E0E0; font-size: 0.95rem; line-height: 1.6; font-weight: 600;">
+                            Li e compreendi todos os termos do contrato apresentado e autorizo o tratamento dos meus dados pessoais conforme a LGPD.
+                        </span>
+                    </label>
+                </div>
+                
+                <div class="aviso-juridico" style="background: rgba(255,165,0,0.1); border: 1px solid rgba(255,165,0,0.3); border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+                    <p style="color: #FFA500; font-size: 0.85rem; line-height: 1.5; margin: 0;">
+                        ⚖️ <strong>Validade Jurídica:</strong> Esta assinatura eletrônica possui validade legal conforme MP 2.200-2/2001 e Lei 14.063/2020. 
+                        Seus dados serão registrados para fins contratuais.
+                    </p>
+                </div>
+                
+                <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
+                    <button type="button" class="btn btn-ghost" onclick="voltarParaLeitura()">
+                        ← Voltar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnAssinarContrato" onclick="assinarContrato()">
+                        ✍️ Assinar Contrato
+                    </button>
+                </div>
+                
+                <div id="statusAssinatura" style="margin-top: 20px; text-align: center; display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Sucesso -->
+    <div id="modalContratoSucesso" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalSucesso()">&times;</span>
+            <div style="text-align: center;">
+                <h2 style="color: #00E388; font-size: 2.5rem; margin-bottom: 20px;">🎉</h2>
+                <h2 style="color: #1E5942; margin-bottom: 20px;">Contrato Assinado com Sucesso!</h2>
+                <p style="color: #E0E0E0; margin-bottom: 25px; line-height: 1.6;">
+                    Obrigado por aceitar nossa proposta! Seu contrato foi gerado e enviado para o seu e-mail.
+                </p>
+                <div id="linkContratoGerado" style="margin-bottom: 25px;"></div>
+                <button class="btn btn-primary" onclick="fecharModalSucesso()">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .modal-assinatura {
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-assinatura::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal-assinatura::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        .modal-assinatura::-webkit-scrollbar-thumb {
+            background: #1E5942;
+            border-radius: 4px;
+        }
+        
+        .form-group input.valido {
+            border-color: #10B981 !important;
+            background: rgba(16, 185, 129, 0.1) !important;
+        }
+        
+        .form-group input.invalido {
+            border-color: #FF6B6B !important;
+            background: rgba(255, 107, 107, 0.1) !important;
+        }
+    </style>
+
+    <!-- Scripts necessários -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="validacao-cpf-cnpj.js?v=6"></script>
+    <script src="supabase-config.js?v=6"></script>
+    
+    <script>
+        // AceitarProposta e preencherResumoAceite já estão definidos anteriormente.
+        // Mantemos aqui apenas utilidades e confirmação de assinatura.
+
+        // Utilitário: fechar modal de assinatura
+        function fecharModalAssinatura() {
+            const modal = document.getElementById('modalAssinaturaContrato');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Preencher resumo da proposta no modal de assinatura (escopo global)
+        function preencherResumoAceite() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nome = document.getElementById('nomeCliente')?.textContent || urlParams.get('nomeCliente') || 'N/A';
+            const empresa = document.getElementById('empresaCliente')?.textContent || window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || 'N/A';
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            const recorrenciaTexto = recorrenciaSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || '—';
+            const pagamentoTexto = pagamentoSelecionado?.closest('.option-card')?.querySelector('.title')?.textContent || '—';
+            const valorMensal = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
+            const valorTotal = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
+
+            let resumoServicos = '';
+            if (Array.isArray(window.servicosContratados)) {
+                window.servicosContratados.forEach(servico => {
+                    resumoServicos += `<p>• ${servico.tipo} (${servico.plano})</p>`;
+                });
+            }
+
+            const html = `
+                <p><strong>Cliente:</strong> ${nome}</p>
+                <p><strong>Empresa:</strong> ${empresa}</p>
+                ${resumoServicos ? `<div style="margin:10px 0 0 0">${resumoServicos}</div>` : ''}
+                <hr style="margin: 12px 0; border: 1px solid rgba(255,255,255,0.1);">
+                <p><strong>Recorrência:</strong> ${recorrenciaTexto}</p>
+                <p><strong>Forma de Pagamento:</strong> ${pagamentoTexto}</p>
+                <p><strong>Valor Mensal:</strong> ${valorMensal}</p>
+                <p><strong>Valor Total:</strong> ${valorTotal}</p>
+            `;
+            const destino = document.getElementById('resumoPropostaAceite');
+            if (destino) destino.innerHTML = html;
+
+            // Preencher email automaticamente se veio na URL
+            const emailCliente = window.propostaCarregada?.email_cliente || urlParams.get('emailCliente');
+            if (emailCliente) {
+                const emailInput = document.getElementById('emailAssinatura');
+                if (emailInput) emailInput.value = emailCliente;
+            }
+        }
+
+        // Validação de CPF/CNPJ em tempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputCpfCnpj = document.getElementById('cpfCnpjAssinatura');
+            const feedback = document.getElementById('feedbackCpfCnpjAssinatura');
+            
+            if (inputCpfCnpj && window.validacaoCPFCNPJ) {
+                inputCpfCnpj.addEventListener('input', function() {
+                    window.validacaoCPFCNPJ.aplicarMascaraCPFouCNPJ(this);
+                });
+                
+                inputCpfCnpj.addEventListener('blur', function() {
+                    window.validacaoCPFCNPJ.validarCPFouCNPJComFeedback(this, feedback);
+                });
+            }
+        });
+        
+        // Confirmar assinatura e gerar contrato
+    async function confirmarAssinatura() {
+            const nomeAssinatura = document.getElementById('nomeAssinatura').value.trim();
+            const sobrenomeAssinatura = document.getElementById('sobrenomeAssinatura').value.trim();
+            const cpfCnpjAssinatura = document.getElementById('cpfCnpjAssinatura').value.trim();
+            const emailAssinatura = document.getElementById('emailAssinatura').value.trim();
+            const telefoneAssinatura = document.getElementById('telefoneAssinatura').value.trim();
+            const aceitoTermos = document.getElementById('aceitoTermos').checked;
+            
+            // Validações
+            if (!nomeAssinatura || !sobrenomeAssinatura || !cpfCnpjAssinatura || !emailAssinatura || !telefoneAssinatura) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            if (!aceitoTermos) {
+                alert('Você precisa aceitar os termos do contrato para continuar.');
+                return;
+            }
+            
+            // Validar CPF/CNPJ
+            const resultadoValidacao = window.validacaoCPFCNPJ.validarCPFouCNPJ(cpfCnpjAssinatura);
+            if (!resultadoValidacao.valido) {
+                alert('Por favor, digite um CPF ou CNPJ válido.');
+                return;
+            }
+            
+            // Validar se o CPF/CNPJ corresponde ao informado no gerador
+            const urlParams = new URLSearchParams(window.location.search);
+            const cpfCnpjGerador = urlParams.get('cpfCnpj') || '';
+            
+            // Normalizar ambos (remover pontuação)
+            const normalizarCpfCnpj = (str) => str.replace(/[^\d]/g, '');
+            const cpfCnpjAssinaturaLimpo = normalizarCpfCnpj(cpfCnpjAssinatura);
+            const cpfCnpjGeradorLimpo = normalizarCpfCnpj(cpfCnpjGerador);
+            
+            if (cpfCnpjGeradorLimpo && cpfCnpjAssinaturaLimpo !== cpfCnpjGeradorLimpo) {
+                alert('❌ O CPF/CNPJ informado não corresponde ao cadastrado na proposta. Por favor, verifique e digite corretamente.');
+                return;
+            }
+            
+            // Desabilitar botão e mostrar loading
+            const btnConfirmar = document.getElementById('btnConfirmarAssinatura');
+            const statusDiv = document.getElementById('statusAssinatura');
+            btnConfirmar.disabled = true;
+            btnConfirmar.textContent = '⏳ Processando...';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p style="color: #FFA500;">Gerando contrato e salvando dados...</p>';
+            
+            try {
+                // Obter dados da proposta
+                const urlParams = new URLSearchParams(window.location.search);
+                const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+                const formaPagamentoSelecionada = document.querySelector('input[name="pagamento"]:checked');
+
+                const valorMensalTexto = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
+                const valorTotalTexto = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
+                const valorMensal = valorMensalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
+                const valorTotal = valorTotalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
+                
+                // Obter IP do cliente
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                
+                const timestamp = new Date().toISOString();
+                const hashAssinatura = window.supabaseConfig.gerarHashAssinatura({
+                    nomeCliente: nomeAssinatura,
+                    cpfCnpj: cpfCnpjAssinatura,
+                    timestamp: timestamp
+                });
+                
+                // Preparar dados da proposta (usar nome completo como representante legal)
+                const nomeCompleto = `${nomeAssinatura} ${sobrenomeAssinatura}`;
+                // Calcular valores separados
+                let valorSocialMidia = 0;
+                let valorTrafegoPago = 0;
+                servicosContratados.forEach(s => {
+                    if (s.tipo === 'Social Mídia') valorSocialMidia = s.valor;
+                    if (s.tipo === 'Tráfego Pago') valorTrafegoPago = s.valor;
+                });
+                // Informações de comissão
+                const paramsLocal = new URLSearchParams(window.location.search);
+                const temComissaoVendas = !!(window.propostaCarregada?.tem_comissao_vendas || (paramsLocal.get('modeloCobranca') || '') === 'comissao' || (paramsLocal.get('modeloCobranca') || '') === 'hibrido');
+                const percentualComissao = window.propostaCarregada?.percentual_comissao ?? (parseFloat(paramsLocal.get('percentualComissao') || '0') || 0);
+                const valorFixoTrafego = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(paramsLocal.get('valorFixoTrafego') || '0') || 0);
+                const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (paramsLocal.get('tipoComissaoHibrido') || 'percentual');
+                const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(paramsLocal.get('valorComissaoFixa') || '0') || 0);
+                const dadosProposta = {
+                    nomeCliente: window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || nomeCompleto,
+                    empresaCliente: window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || '',
+                    emailCliente: emailAssinatura,
+                    telefoneCliente: telefoneAssinatura,
+                    cpfCnpj: cpfCnpjAssinatura,
+                    servicoSocialMidia: window.propostaCarregada?.servico_social_midia_key || urlParams.get('servicoSocialMidia') || 'nao-se-aplica',
+                    servicoTrafegoPago: window.propostaCarregada?.servico_trafego_pago_key || urlParams.get('servicoTrafegoPago') || 'nao-se-aplica',
+                    valorSocialMidia: valorSocialMidia,
+                    valorTrafegoPago: valorTrafegoPago,
+                    temComissaoVendas: temComissaoVendas,
+                    percentualComissao: percentualComissao,
+                    valorFixoTrafego: valorFixoTrafego,
+                    tipoComissaoHibrido: tipoComissaoHibrido,
+                    valorComissaoFixa: valorComissaoFixa,
+                    investimentoMidia: window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || '',
+                    recorrencia: recorrenciaSelecionada ? `${recorrenciaSelecionada.value} meses` : '6 meses',
+                    formaPagamento: formaPagamentoSelecionada ? (formaPagamentoSelecionada.closest('.option-card')?.querySelector('.title')?.textContent || '') : '',
+                    valorMensal: valorMensal,
+                    valorTotal: valorTotal,
+                    descontoAplicado: 0,
+                    observacoes: urlParams.get('observacoes') || '',
+                    propostaCriadaId: window.propostaCarregada?.id || null,
+                    enderecoCliente: window.propostaCarregada?.endereco_cliente || urlParams.get('enderecoCliente') || '',
+                    representanteLegalCliente: nomeCompleto // Capturado do aceite
+                };
+                
+                // Inicializar Supabase explicitamente
+                try {
+                    window.supabaseConfig.initSupabase();
+                } catch (e) {
+                    console.error('Erro ao inicializar Supabase:', e);
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Falha ao inicializar Supabase: ${e.message}</p>`;
+                    throw e;
+                }
+
+                // Salvar proposta no Supabase
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📊 Salvando proposta...</p>';
+                let propostaData;
+                try {
+                    propostaData = await window.supabaseConfig.salvarPropostaAceita(dadosProposta);
+                } catch (e) {
+                    console.error('Salvar proposta falhou:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao salvar proposta no Supabase.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
+                
+                // Gerar e armazenar contrato
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📄 Gerando contrato em PDF...</p>';
+                const dadosContrato = {
+                    ...dadosProposta,
+                    timestamp: timestamp,
+                    ipAssinatura: ipData.ip,
+                    hashAssinatura: hashAssinatura
+                };
+                
+                let contratoResult;
+                try {
+                    contratoResult = await window.supabaseConfig.gerarEArmazenarContrato(propostaData.id, dadosContrato);
+                } catch (e) {
+                    console.error('Gerar/armazenar contrato falhou:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido (verifique políticas do Storage e existência do bucket "contratos").';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao gerar ou enviar o contrato em PDF.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
+                
+                // Sucesso!
+                fecharModalAssinatura();
+                
+                // Mostrar modal de sucesso
+                const linkDiv = document.getElementById('linkContratoGerado');
+                linkDiv.innerHTML = `
+                    <a href="${contratoResult.pdfUrl}" target="_blank" class="btn btn-secondary" style="text-decoration: none;">
+                        📥 Baixar Contrato em PDF
+                    </a>
+                `;
+                document.getElementById('modalContratoSucesso').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Erro ao processar assinatura:', error);
+                const detalhes = error?.message || error?.error_description || error?.hint || '';
+                statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao processar. Por favor, tente novamente.<br><small>${detalhes}</small></p>`;
+                btnConfirmar.disabled = false;
+                btnConfirmar.textContent = '✍️ Confirmar Assinatura';
+            }
+        }
+
+        // ======================
+        // FUNÇÕES DO FLUXO MULTI-ETAPAS
+        // ======================
+        
+        let dadosAssinaturaTemp = {}; // Armazena dados entre etapas
+        let contratoLidoCompletamente = false;
+        
+        // Navegação entre etapas
+        function mostrarEtapa(numeroEtapa) {
+            // Esconder todas as etapas
+            document.getElementById('etapa1Dados').style.display = 'none';
+            document.getElementById('etapa2Leitura').style.display = 'none';
+            document.getElementById('etapa3Aceite').style.display = 'none';
+            
+            // Resetar indicadores
+            ['etapa1Indicator', 'etapa2Indicator', 'etapa3Indicator'].forEach(id => {
+                const el = document.getElementById(id);
+                el.style.opacity = '0.4';
+                el.querySelector('div:first-child').style.background = '#333';
+            });
+            
+            // Ativar etapa atual
+            const etapaAtual = document.getElementById(`etapa${numeroEtapa}Indicator`);
+            etapaAtual.style.opacity = '1';
+            etapaAtual.querySelector('div:first-child').style.background = '#1E5942';
+            
+            // Mostrar etapa correspondente
+            document.getElementById(`etapa${numeroEtapa}${numeroEtapa === 1 ? 'Dados' : numeroEtapa === 2 ? 'Leitura' : 'Aceite'}`).style.display = 'block';
+        }
+        
+        // ETAPA 1: Validação e avanço para leitura
+        async function avancarParaLeituraContrato() {
+            const nomeAssinatura = document.getElementById('nomeAssinatura').value.trim();
+            const sobrenomeAssinatura = document.getElementById('sobrenomeAssinatura').value.trim();
+            const cpfCnpjAssinatura = document.getElementById('cpfCnpjAssinatura').value.trim();
+            const emailAssinatura = document.getElementById('emailAssinatura').value.trim();
+            const telefoneAssinatura = document.getElementById('telefoneAssinatura').value.trim();
+            
+            // Validações
+            if (!nomeAssinatura || !sobrenomeAssinatura || !cpfCnpjAssinatura || !emailAssinatura || !telefoneAssinatura) {
+                alert('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+            
+            // Validar CPF/CNPJ
+            const resultadoValidacao = window.validacaoCPFCNPJ.validarCPFouCNPJ(cpfCnpjAssinatura);
+            if (!resultadoValidacao.valido) {
+                alert('Por favor, digite um CPF ou CNPJ válido.');
+                return;
+            }
+            
+            // Validar se o CPF/CNPJ corresponde ao informado no gerador
+            const urlParams = new URLSearchParams(window.location.search);
+            const cpfCnpjGerador = urlParams.get('cpfCnpj') || '';
+            
+            // Normalizar ambos (remover pontuação)
+            const normalizarCpfCnpj = (str) => str.replace(/[^\d]/g, '');
+            const cpfCnpjAssinaturaLimpo = normalizarCpfCnpj(cpfCnpjAssinatura);
+            const cpfCnpjGeradorLimpo = normalizarCpfCnpj(cpfCnpjGerador);
+            
+            if (cpfCnpjGeradorLimpo && cpfCnpjAssinaturaLimpo !== cpfCnpjGeradorLimpo) {
+                alert('❌ O CPF/CNPJ informado não corresponde ao cadastrado na proposta. Por favor, verifique e digite corretamente.');
+                return;
+            }
+            
+            // Armazenar dados temporariamente
+            dadosAssinaturaTemp = {
+                nomeCompleto: `${nomeAssinatura} ${sobrenomeAssinatura}`,
+                nome: nomeAssinatura,
+                sobrenome: sobrenomeAssinatura,
+                cpfCnpj: cpfCnpjAssinatura,
+                email: emailAssinatura,
+                telefone: telefoneAssinatura
+            };
+            
+            // Gerar contrato para exibição
+            await gerarTextoContratoParaLeitura();
+            
+            // Avançar para etapa 2
+            mostrarEtapa(2);
+            contratoLidoCompletamente = false;
+            document.getElementById('btnContinuarAceite').disabled = true;
+            document.getElementById('btnContinuarAceite').style.opacity = '0.5';
+            document.getElementById('btnContinuarAceite').style.cursor = 'not-allowed';
+            document.getElementById('progressoLeitura').style.display = 'none';
+        }
+        
+        function voltarParaDados() {
+            mostrarEtapa(1);
+        }
+        
+        // ETAPA 2: Renderização e rastreamento de leitura
+        async function gerarTextoContratoParaLeitura() {
+            const container = document.getElementById('contratoTextoCompleto');
+            if (!container) {
+                console.error('Container contratoTextoCompleto não encontrado!');
+                alert('Erro: elemento de exibição do contrato não encontrado.');
+                return;
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Mostrar loading
+            container.innerHTML = '<p style="text-align: center; color: #1E5942;">⏳ Carregando contrato...</p>';
+            
+            // Buscar template: tentar múltiplos caminhos para suportar servidor na raiz ou na subpasta
+            let textoContrato = '';
+            const caminhos = [
+                'contrato-template.md',
+                './contrato-template.md',
+                '/proposta-comercial/contrato-template.md',
+                'proposta-comercial/contrato-template.md'
+            ];
+            let ultimoErro = null;
+            for (const caminho of caminhos) {
+                try {
+                    console.log('Tentando carregar template em:', caminho);
+                    const resp = await fetch(caminho);
+                    console.log('Resposta do fetch:', resp.status, resp.statusText, 'para', caminho);
+                    if (resp.ok) {
+                        textoContrato = await resp.text();
+                        console.log('Template carregado com sucesso de', caminho, 'Tamanho:', textoContrato.length);
+                        ultimoErro = null;
+                        break;
+                    } else {
+                        ultimoErro = new Error(`Status ${resp.status} ${resp.statusText}`);
+                    }
+                } catch (e) {
+                    ultimoErro = e;
+                }
+            }
+            if (!textoContrato) {
+                console.error('Erro ao carregar template:', ultimoErro);
+                container.innerHTML = `
+                    <div style="padding: 20px; color: #FF6B6B; background: rgba(255,107,107,0.1); border-radius: 8px;">
+                        <h3>❌ Erro ao carregar o contrato</h3>
+                        <p>Não foi possível carregar o template do contrato.</p>
+                        <p><small>Detalhes: ${ultimoErro ? ultimoErro.message : 'desconhecido'}</small></p>
+                        <p><small>Tente acessar via http://localhost:8001/ ou use a URL com /proposta-comercial/ na porta 8000.</small></p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Substituir placeholders
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const formaPagamentoSelecionada = document.querySelector('input[name="pagamento"]:checked');
+            const valorMensalTexto = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
+            const valorTotalTexto = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
+            
+            // Definir entregáveis por plano de Social Media
+            const entregaveisSocialMedia = {
+                'start': `SOCIAL MEDIA - PLANO START:
+- 08 posts mensais (feed Instagram/Facebook)
+- 04 stories semanais (total de 16 stories/mês)
+- Planejamento de conteúdo mensal
+- Criação de artes e copies
+- Agendamento de publicações
+- Interação com seguidores (respostas a comentários e mensagens diretas)
+- Relatório mensal de desempenho`,
+                'scale': `SOCIAL MEDIA - PLANO SCALE:
+- 12 posts mensais (feed Instagram/Facebook)
+- 06 stories semanais (total de 24 stories/mês)
+- Planejamento de conteúdo mensal estratégico
+- Criação de artes e copies profissionais
+- Agendamento de publicações
+- Interação ativa com seguidores (respostas a comentários, mensagens diretas e engajamento proativo)
+- Análise de concorrência
+- Relatório mensal de desempenho com insights e recomendações
+- 01 vídeo/reels por mês`,
+                'premium': `SOCIAL MEDIA - PLANO PREMIUM:
+- 20 posts mensais (feed Instagram/Facebook)
+- 10 stories semanais (total de 40 stories/mês)
+- Planejamento de conteúdo mensal estratégico avançado
+- Criação de artes, copies e identidade visual personalizada
+- Agendamento de publicações em horários otimizados
+- Gestão completa de comunidade (respostas, engajamento proativo, moderação)
+- Análise detalhada de concorrência e tendências
+- Relatório mensal executivo com insights estratégicos e recomendações de crescimento
+- 02 vídeos/reels por mês
+- Consultoria estratégica mensal (1h)
+- Suporte prioritário`
+            };
+
+            // Definir entregáveis por plano de Tráfego Pago
+            const entregaveisTrafegoPago = {
+                'foco': `TRÁFEGO PAGO - PLANO FOCO:
+- Configuração e otimização de campanhas no Facebook/Instagram Ads
+- Criação de até 03 conjuntos de anúncios
+- Criação de até 05 criativos (imagens/vídeos fornecidos pelo cliente ou banco de imagens)
+- Segmentação de público-alvo detalhada
+- Testes A/B de criativos e audiências
+- Monitoramento diário de performance
+- Otimizações semanais para maximizar resultados
+- Relatório mensal de desempenho com métricas-chave (CPM, CPC, CTR, conversões)
+- Sugestões de melhorias mensais`,
+                'expansao': `TRÁFEGO PAGO - PLANO EXPANSÃO:
+- Configuração e otimização de campanhas no Facebook/Instagram Ads e Google Ads
+- Criação de até 05 conjuntos de anúncios
+- Criação de até 10 criativos (imagens/vídeos fornecidos pelo cliente, banco de imagens ou criação básica)
+- Segmentação avançada de público-alvo com lookalike audiences
+- Testes A/B de criativos, audiências e copies
+- Monitoramento diário de performance
+- Otimizações a cada 3 dias para maximizar resultados
+- Configuração de pixel de rastreamento e eventos de conversão
+- Relatório semanal simplificado + relatório mensal detalhado
+- Reunião mensal de alinhamento estratégico (30min)
+- Suporte via WhatsApp/e-mail`,
+                'dominio': `TRÁFEGO PAGO - PLANO DOMÍNIO:
+- Gestão completa de campanhas no Facebook/Instagram Ads, Google Ads e Google Shopping (quando aplicável)
+- Criação ilimitada de conjuntos de anúncios
+- Criação de até 20 criativos mensais (com apoio de designer para artes profissionais)
+- Segmentação avançada com públicos personalizados, lookalike e remarketing
+- Testes A/B contínuos de criativos, audiências, copies e landing pages
+- Monitoramento em tempo real de performance
+- Otimizações diárias para maximizar ROI
+- Configuração completa de pixel, eventos de conversão e Google Analytics 4
+- Relatório semanal detalhado + relatório mensal executivo com análise estratégica
+- Reunião semanal de alinhamento e ajustes (1h)
+- Consultoria estratégica para funis de vendas e jornada do cliente
+- Suporte prioritário via WhatsApp/e-mail
+- Landing page básica inclusa (opcional, quando necessário)`
+            };
+
+            // Montar textos dos entregáveis com base nos serviços contratados
+            let textoEntregaveisSocial = '';
+            let textoEntregaveisTrafego = '';
+
+            const servicoSocial = (window.propostaCarregada?.servico_social_midia_key || urlParams.get('servicoSocialMidia') || '').toLowerCase();
+            const servicoTrafego = (window.propostaCarregada?.servico_trafego_pago_key || urlParams.get('servicoTrafegoPago') || '').toLowerCase();
+
+            if (servicoSocial && servicoSocial !== 'nao-se-aplica' && entregaveisSocialMedia[servicoSocial]) {
+                textoEntregaveisSocial = entregaveisSocialMedia[servicoSocial];
+            }
+
+            if (servicoTrafego && servicoTrafego !== 'nao-se-aplica' && entregaveisTrafegoPago[servicoTrafego]) {
+                textoEntregaveisTrafego = entregaveisTrafegoPago[servicoTrafego];
+            }
+            
+            // Montar placeholders de comissão/descrição de cobrança
+            const params = new URLSearchParams(window.location.search);
+            const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || (params.get('modeloCobranca') || '') === 'comissao' || (params.get('modeloCobranca') || '') === 'hibrido');
+            const pctComissao = window.propostaCarregada?.percentual_comissao ?? (parseFloat(params.get('percentualComissao') || '0') || 0);
+            const valorFixoTrafego = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(params.get('valorFixoTrafego') || '0') || 0);
+            const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (params.get('tipoComissaoHibrido') || 'percentual');
+            const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(params.get('valorComissaoFixa') || '0') || 0);
+            
+            let cobrancaDescricao = '';
+            if (servicoTrafego && servicoTrafego !== 'nao-se-aplica') {
+                if (temComissao) {
+                    if (valorFixoTrafego > 0) {
+                        // Modelo Híbrido
+                        if (tipoComissaoHibrido === 'percentual' && pctComissao > 0) {
+                            cobrancaDescricao = `Híbrido: R$ ${valorFixoTrafego.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + ${pctComissao}% sobre vendas`;
+                        } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+                            cobrancaDescricao = `Híbrido: R$ ${valorFixoTrafego.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda`;
+                        }
+                    } else if (pctComissao > 0) {
+                        // Modelo Comissão pura
+                        cobrancaDescricao = `Comissão: ${pctComissao}% sobre vendas`;
+                    }
+                } else {
+                    // Modelo fixo: usar valor do serviço no resumo (se houver)
+                    const servTraf = servicosContratados.find(s => s.tipo === 'Tráfego Pago');
+                    if (servTraf) {
+                        cobrancaDescricao = `Fixo: R$ ${servTraf.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês`;
+                    }
+                }
+            }
+            
+            let clausulaComissao = '';
+            if (temComissao) {
+                if (pctComissao > 0) {
+                    // Comissão percentual
+                    clausulaComissao = `Para o serviço de Tráfego Pago, as partes acordam a remuneração adicional de ${pctComissao}% (por cento) sobre as vendas líquidas atribuídas às campanhas e esforços de mídia geridos pela CONTRATADA. Consideram-se vendas líquidas aquelas efetivamente faturadas, deduzidos cancelamentos, devoluções, estornos e tributos incidentes. O repasse da comissão ocorrerá até o dia 05 (cinco) do mês subsequente ao de competência, mediante relatório de vendas enviado pela CONTRATANTE e conferência da CONTRATADA. A CONTRATADA poderá solicitar evidências razoáveis para auditoria dos números reportados, respeitando-se a confidencialidade dos dados e o acesso limitado às informações estritamente necessárias. ${valorFixoTrafego > 0 ? `Esta comissão é devida cumulativamente ao valor fixo mensal de R$ ${valorFixoTrafego.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.` : ''}`;
+                } else if (valorComissaoFixa > 0) {
+                    // Comissão fixa por venda
+                    clausulaComissao = `Para o serviço de Tráfego Pago, as partes acordam a remuneração adicional de R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} (reais) por venda realizada e atribuída às campanhas e esforços de mídia geridos pela CONTRATADA. Consideram-se vendas válidas aquelas efetivamente faturadas, deduzidos cancelamentos, devoluções e estornos. O repasse da comissão ocorrerá até o dia 05 (cinco) do mês subsequente ao de competência, mediante relatório de vendas enviado pela CONTRATANTE e conferência da CONTRATADA. A CONTRATADA poderá solicitar evidências razoáveis para auditoria dos números reportados, respeitando-se a confidencialidade dos dados e o acesso limitado às informações estritamente necessárias. ${valorFixoTrafego > 0 ? `Esta comissão é devida cumulativamente ao valor fixo mensal de R$ ${valorFixoTrafego.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.` : ''}`;
+                }
+            }
+
+            const mapa = {
+                '{{NOME_CLIENTE}}': dadosAssinaturaTemp.nomeCompleto || window.propostaCarregada?.nome_cliente || '',
+                '{{CPF_CNPJ}}': dadosAssinaturaTemp.cpfCnpj || window.propostaCarregada?.cpf_cnpj || '',
+                '{{EMPRESA_CLIENTE}}': window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || '',
+                '{{EMAIL_CLIENTE}}': dadosAssinaturaTemp.email || window.propostaCarregada?.email_cliente || '',
+                '{{TELEFONE_CLIENTE}}': dadosAssinaturaTemp.telefone || window.propostaCarregada?.telefone_cliente || '',
+                '{{SERVICO_SOCIAL_MIDIA}}': (window.propostaCarregada?.servico_social_midia || urlParams.get('servicoSocialMidia') || 'Não se aplica'),
+                '{{SERVICO_TRAFEGO_PAGO}}': (window.propostaCarregada?.servico_trafego_pago || urlParams.get('servicoTrafegoPago') || 'Não se aplica'),
+                '{{INVESTIMENTO_MIDIA}}': window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || 'Não informado',
+                '{{RECORRENCIA}}': recorrenciaSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || '6 meses',
+                '{{FORMA_PAGAMENTO}}': formaPagamentoSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || 'À Vista',
+                '{{VALOR_MENSAL}}': valorMensalTexto.replace('R$', '').trim(),
+                '{{VALOR_TOTAL}}': valorTotalTexto.split('(')[0].replace('R$', '').trim(),
+                '{{DATA_ASSINATURA}}': new Date().toLocaleString('pt-BR'),
+                '{{HASH_ASSINATURA}}': '[Será gerado após assinatura]',
+                '{{IP_ASSINATURA}}': '[Será registrado após assinatura]',
+                '{{ENTREGAVEIS_SOCIAL_MIDIA}}': textoEntregaveisSocial,
+                '{{ENTREGAVEIS_TRAFEGO_PAGO}}': textoEntregaveisTrafego,
+                '{{COBRANCA_TRAFEGO_DESCRICAO}}': cobrancaDescricao,
+                '{{CLAUSULA_COMISSAO}}': clausulaComissao
+            };
+            
+            console.log('Substituindo placeholders...', mapa);
+            Object.keys(mapa).forEach(k => {
+                textoContrato = textoContrato.replaceAll(k, mapa[k]);
+            });
+            
+            // Converter markdown para HTML com melhor formatação
+            // Dividir por linhas e processar
+            const linhas = textoContrato.split('\n');
+            let html = '<div style="text-align: justify; line-height: 1.8; font-size: 14px;">';
+            
+            for (let i = 0; i < linhas.length; i++) {
+                const linha = linhas[i].trim();
+                
+                if (!linha) {
+                    // Linha vazia = espaçamento
+                    html += '<br>';
+                } else if (linha.startsWith('# ')) {
+                    // Título principal
+                    html += `<h2 style="margin-top: 20px; margin-bottom: 10px; font-size: 18px; font-weight: bold; color: #1E5942;">${linha.substring(2)}</h2>`;
+                } else if (linha.startsWith('## ')) {
+                    // Subtítulo
+                    html += `<h3 style="margin-top: 15px; margin-bottom: 8px; font-size: 16px; font-weight: bold;">${linha.substring(3)}</h3>`;
+                } else if (linha.startsWith('**') && linha.endsWith('**')) {
+                    // Negrito
+                    html += `<p style="margin: 8px 0; font-weight: bold;">${linha.replace(/\*\*/g, '')}</p>`;
+                } else if (linha.match(/^\d+\./)) {
+                    // Lista numerada
+                    html += `<p style="margin: 8px 0; padding-left: 20px;">${linha}</p>`;
+                } else if (linha.startsWith('- ')) {
+                    // Lista com marcadores
+                    html += `<p style="margin: 5px 0; padding-left: 30px;">• ${linha.substring(2)}</p>`;
+                } else {
+                    // Parágrafo normal
+                    html += `<p style="margin: 8px 0;">${linha}</p>`;
+                }
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            console.log('Contrato renderizado com sucesso!');
+            
+            // Adicionar rastreamento de scroll (remover listener anterior se existir)
+            container.removeEventListener('scroll', verificarLeituraCompleta);
+            container.addEventListener('scroll', verificarLeituraCompleta);
+        }
+        
+        function verificarLeituraCompleta() {
+            const container = document.getElementById('contratoTextoCompleto');
+            const scrollTop = container.scrollTop;
+            const scrollHeight = container.scrollHeight;
+            const clientHeight = container.clientHeight;
+            
+            // Verificar se chegou ao final (com margem de 10px)
+            if (scrollTop + clientHeight >= scrollHeight - 10) {
+                if (!contratoLidoCompletamente) {
+                    contratoLidoCompletamente = true;
+                    document.getElementById('progressoLeitura').style.display = 'block';
+                    const btnContinuar = document.getElementById('btnContinuarAceite');
+                    btnContinuar.disabled = false;
+                    btnContinuar.style.opacity = '1';
+                    btnContinuar.style.cursor = 'pointer';
+                }
+            }
+        }
+        
+        function avancarParaAceite() {
+            if (!contratoLidoCompletamente) {
+                alert('Por favor, role até o final do contrato antes de continuar.');
+                return;
+            }
+            
+            // Preencher resumo final
+            const urlParams = new URLSearchParams(window.location.search);
+            const resumo = `
+                <p><strong>Nome:</strong> ${dadosAssinaturaTemp.nomeCompleto}</p>
+                <p><strong>Empresa:</strong> ${window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || 'N/A'}</p>
+                <p><strong>CPF/CNPJ:</strong> ${dadosAssinaturaTemp.cpfCnpj}</p>
+                <p><strong>E-mail:</strong> ${dadosAssinaturaTemp.email}</p>
+                <p><strong>Telefone:</strong> ${dadosAssinaturaTemp.telefone}</p>
+            `;
+            document.getElementById('resumoDadosFinais').innerHTML = resumo;
+            
+            mostrarEtapa(3);
+        }
+        
+        function voltarParaLeitura() {
+            mostrarEtapa(2);
+        }
+        
+        // ETAPA 3: Assinatura final
+        async function assinarContrato() {
+            const aceitoFinal = document.getElementById('aceitoTermosContratoFinal').checked;
+            
+            if (!aceitoFinal) {
+                alert('Você precisa aceitar os termos do contrato para assinar.');
+                return;
+            }
+            
+            // Desabilitar botão e mostrar loading
+            const btnAssinar = document.getElementById('btnAssinarContrato');
+            const statusDiv = document.getElementById('statusAssinatura');
+            btnAssinar.disabled = true;
+            btnAssinar.textContent = '⏳ Processando...';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p style="color: #FFA500;">Gerando contrato e salvando dados...</p>';
+            
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+                const formaPagamentoSelecionada = document.querySelector('input[name="pagamento"]:checked');
+                
+                const valorMensalTexto = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
+                const valorTotalTexto = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
+                const valorMensal = valorMensalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
+                const valorTotal = valorTotalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
+                
+                // Calcular valores separados de Social Media e Tráfego Pago
+                let valorSocialMidia = 0;
+                let valorTrafegoPago = 0;
+                
+                servicosContratados.forEach(servico => {
+                    if (servico.tipo === 'Social Mídia') {
+                        valorSocialMidia = servico.valor;
+                    } else if (servico.tipo === 'Tráfego Pago') {
+                        valorTrafegoPago = servico.valor;
+                    }
+                });
+                
+                // Obter IP do cliente
+                let ipCliente = '0.0.0.0';
+                try {
+                    const ipResponse = await fetch('https://api.ipify.org?format=json');
+                    if (ipResponse.ok) {
+                        const ipData = await ipResponse.json();
+                        ipCliente = ipData.ip;
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível obter IP');
+                }
+                
+                const timestamp = new Date().toISOString();
+                const hashAssinatura = window.supabaseConfig.gerarHashAssinatura({
+                    nomeCliente: dadosAssinaturaTemp.nomeCompleto,
+                    cpfCnpj: dadosAssinaturaTemp.cpfCnpj,
+                    timestamp: timestamp
+                });
+                
+                // Preparar dados da proposta
+                const dadosProposta = {
+                    nomeCliente: dadosAssinaturaTemp.nomeCompleto,
+                    empresaCliente: window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || '',
+                    emailCliente: dadosAssinaturaTemp.email,
+                    telefoneCliente: dadosAssinaturaTemp.telefone,
+                    cpfCnpj: dadosAssinaturaTemp.cpfCnpj,
+                    servicoSocialMidia: window.propostaCarregada?.servico_social_midia_key || urlParams.get('servicoSocialMidia') || 'nao-se-aplica',
+                    servicoTrafegoPago: window.propostaCarregada?.servico_trafego_pago_key || urlParams.get('servicoTrafegoPago') || 'nao-se-aplica',
+                    valorSocialMidia: valorSocialMidia,
+                    valorTrafegoPago: valorTrafegoPago,
+                    temComissaoVendas: !!(window.propostaCarregada?.tem_comissao_vendas || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'comissao' || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'hibrido'),
+                    percentualComissao: window.propostaCarregada?.percentual_comissao ?? (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0),
+                    valorFixoTrafego: window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0),
+                    investimentoMidia: window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || '',
+                    recorrencia: recorrenciaSelecionada ? `${recorrenciaSelecionada.value} meses` : '6 meses',
+                    formaPagamento: formaPagamentoSelecionada ? (formaPagamentoSelecionada.closest('.option-card')?.querySelector('.title')?.textContent || '') : '',
+                    valorMensal: valorMensal,
+                    valorTotal: valorTotal,
+                    descontoAplicado: 0,
+                    observacoes: urlParams.get('observacoes') || '',
+                    propostaCriadaId: window.propostaCarregada?.id || null,
+                    enderecoCliente: window.propostaCarregada?.endereco_cliente || urlParams.get('enderecoCliente') || '',
+                    representanteLegalCliente: window.propostaCarregada?.representante_cliente || urlParams.get('representanteLegalCliente') || ''
+                };
+                
+                // Inicializar Supabase
+                try {
+                    window.supabaseConfig.initSupabase();
+                } catch (e) {
+                    console.error('Erro ao inicializar Supabase:', e);
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Falha ao inicializar Supabase: ${e.message}</p>`;
+                    throw e;
+                }
+                
+                // Salvar proposta
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📊 Salvando proposta...</p>';
+                let propostaData;
+                try {
+                    propostaData = await window.supabaseConfig.salvarPropostaAceita(dadosProposta);
+                } catch (e) {
+                    console.error('Salvar proposta falhou:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao salvar proposta no Supabase.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
+                
+                // Gerar e armazenar contrato
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📄 Gerando contrato em PDF...</p>';
+                const dadosContrato = {
+                    ...dadosProposta,
+                    timestamp: timestamp,
+                    ipAssinatura: ipCliente,
+                    hashAssinatura: hashAssinatura
+                };
+                
+                let contratoResult;
+                try {
+                    contratoResult = await window.supabaseConfig.gerarEArmazenarContrato(propostaData.id, dadosContrato);
+                } catch (e) {
+                    console.error('Gerar/armazenar contrato falhou:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao gerar ou enviar o contrato em PDF.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
+                
+                // Sucesso!
+                document.getElementById('modalAssinaturaContrato').style.display = 'none';
+                
+                // Resetar para etapa 1
+                mostrarEtapa(1);
+                dadosAssinaturaTemp = {};
+                contratoLidoCompletamente = false;
+                
+                // Limpar campos
+                document.getElementById('nomeAssinatura').value = '';
+                document.getElementById('sobrenomeAssinatura').value = '';
+                document.getElementById('cpfCnpjAssinatura').value = '';
+                document.getElementById('emailAssinatura').value = '';
+                document.getElementById('telefoneAssinatura').value = '';
+                document.getElementById('aceitoTermosContratoFinal').checked = false;
+                
+                // Mostrar modal de sucesso
+                const linkDiv = document.getElementById('linkContratoGerado');
+                linkDiv.innerHTML = `
+                    <a href="${contratoResult.pdfUrl}" target="_blank" class="btn btn-secondary" style="text-decoration: none;">
+                        📥 Baixar Contrato em PDF
+                    </a>
+                `;
+                document.getElementById('modalContratoSucesso').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Erro ao processar assinatura:', error);
+                const detalhes = error?.message || error?.error_description || error?.hint || '';
+                statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao processar. Por favor, tente novamente.<br><small>${detalhes}</small></p>`;
+                btnAssinar.disabled = false;
+                btnAssinar.textContent = '✍️ Assinar Contrato';
             }
         }
     </script>

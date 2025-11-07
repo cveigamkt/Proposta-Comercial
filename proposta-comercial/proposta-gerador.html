@@ -1,534 +1,442 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Proposta Comercial - Heat Digital</title>
-    <link rel="stylesheet" href="./proposta-styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        /* Estilos básicos para garantir funcionamento */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
-        .gerador-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .gerador-header { text-align: center; margin-bottom: 40px; }
-        .gerador-header h1 { font-size: 2.5rem; color: #1E5942; margin-bottom: 10px; }
-        .proposta-form { background: #1a1a1a; border-radius: 20px; padding: 40px; }
-        .form-section { margin-bottom: 40px; padding: 30px; background: #252525; border-radius: 15px; }
-        .form-section h2 { color: #1E5942; margin-bottom: 20px; font-size: 1.5rem; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 1rem; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1E5942; outline: none; }
-        .form-actions { display: flex; gap: 20px; justify-content: center; margin-top: 40px; }
-        .btn-preview, .btn-generate { padding: 15px 30px; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .btn-preview { background: #666; color: #fff; }
-        .btn-generate { background: #1E5942; color: #fff; }
-        .btn-preview:hover { background: #777; }
-        .btn-generate:hover { background: #267356; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
-        .modal-content { background: #1a1a1a; margin: 10% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 600px; }
-        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .link-container { display: flex; gap: 10px; margin: 20px 0; }
-        .link-container input { flex: 1; }
-        .btn-copy { padding: 10px 20px; background: #1E5942; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
-        
-        /* Grid para cliente e serviços */
-        .cliente-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        
-        .servicos-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        .servico-card {
-            background: #1a1a1a;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-        }
-        
-        .servico-card h3 {
-            color: #1E5942;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-        
-        .entregaveis-info {
-            background: #111;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        
-        .entregaveis-info h4 {
-            color: #1E5942;
-            font-size: 1rem;
-            margin-bottom: 10px;
-        }
-        
-        .entregaveis-info ul {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .entregaveis-info li {
-            padding: 4px 0;
-            font-size: 0.9rem;
-            color: #ccc;
-        }
-        
-        /* Simulador de períodos */
-        .simulador-periodos {
-            background: #111;
-            padding: 25px;
-            border-radius: 15px;
-            margin: 25px 0;
-            border: 1px solid #333;
-        }
-        
-        .simulador-periodos h4 {
-            color: #1E5942;
-            font-size: 1.3rem;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .simulador-subtitle {
-            color: #888;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-        }
-        
-        .periodos-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            max-width: 100%;
-            overflow-x: auto;
-        }
-        
-        .periodo-card {
-            background: #1a1a1a;
-            border: 2px solid #333;
-            border-radius: 12px;
-            padding: 18px 12px;
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            min-width: 0;
-            word-wrap: break-word;
-        }
-        
-        .periodo-card:hover {
-            border-color: #1E5942;
-            transform: translateY(-2px);
-        }
-        
-        .periodo-card.destaque {
-            border-color: #1E5942;
-            background: rgba(30, 89, 66, 0.1);
-        }
-        
-        .periodo-header {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: #fff;
-            margin-bottom: 5px;
-        }
-        
-        .periodo-desconto {
-            color: #00E388;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .periodo-economia {
-            color: #888;
-            font-size: 0.75rem;
-            margin-bottom: 8px;
-            font-style: italic;
-        }
-        
-        .periodo-mensal {
-            font-size: 1.2rem;
-            font-weight: 800;
-            color: #1E5942;
-            margin-bottom: 5px;
-            word-break: break-word;
-        }
-        
-        .periodo-total {
-            color: #888;
-            font-size: 0.9rem;
-        }
-        
-        .badge-recomendado {
-            position: absolute;
-            top: -8px;
-            right: 8px;
-            background: #FFD700;
-            color: #000;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 800;
-        }
-        
-        /* Desconto customizado */
-        .desconto-customizado-group {
-            background: #111;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            margin-bottom: 20px;
-        }
-        
-        .desconto-customizado-group label {
-            color: #1E5942;
-            font-weight: 600;
-            margin-bottom: 12px;
-            display: block;
-        }
-        
-        .desconto-controls {
-            display: grid;
-            grid-template-columns: 2fr auto 120px;
-            gap: 12px;
-            align-items: center;
-        }
-        
-        .desconto-controls input,
-        .desconto-controls select {
-            padding: 12px;
-            border: 2px solid #333;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: #fff;
-            font-size: 1rem;
-        }
-        
-        .desconto-controls input:focus,
-        .desconto-controls select:focus {
-            border-color: #1E5942;
-            outline: none;
-        }
-        
-        /* Info box */
-        .info-box {
-            background: rgba(30, 89, 66, 0.1);
-            border: 1px solid #1E5942;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .info-box p {
-            margin-bottom: 10px;
-            color: #E0E0E0;
-        }
-        
-        .info-box ul {
-            margin-left: 20px;
-            color: #CFCFCF;
-        }
-        
-        .info-box li {
-            margin-bottom: 5px;
-        }
-        
-        /* Botão toggle entregáveis */
-        .btn-toggle-entregaveis {
-            width: 100%;
-            padding: 10px;
-            background: #333;
-            color: #E0E0E0;
-            border: 1px solid #555;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-        
-        .btn-toggle-entregaveis:hover {
-            background: #444;
-            border-color: #1E5942;
-        }
-        
-        .btn-toggle-entregaveis.active {
-            background: #1E5942;
-            color: white;
-        }
-        
-        @media (max-width: 768px) {
-            .cliente-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .servicos-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .periodos-grid {
-                grid-template-columns: 1fr;
-                gap: 12px;
-            }
-            
-            .desconto-controls {
-                grid-template-columns: 1fr !important;
-                gap: 10px;
-            }
-            
-            .desconto-controls input,
-            .desconto-controls select {
-                width: 100%;
-                font-size: 16px;
-                padding: 14px 12px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Proposta Comercial - Heat Digital</title>
+  <link rel="stylesheet" href="./proposta-styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* Layout básico da página */
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
+    .gerador-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .gerador-header { text-align: center; margin-bottom: 40px; }
+    .gerador-header h1 { font-size: 2.5rem; color: #1E5942; margin-bottom: 10px; }
+    .proposta-form { background: #1a1a1a; border-radius: 20px; padding: 40px; }
+    .form-section { margin-bottom: 40px; padding: 30px; background: #252525; border-radius: 15px; }
+    .form-section h2 { color: #1E5942; margin-bottom: 20px; font-size: 1.5rem; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 1rem; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1E5942; outline: none; }
+
+    /* Grid 3x2 para Informações do Cliente */
+    .cliente-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+    /* Cards dos serviços e simulador */
+    .servicos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .servico-card { background: #1a1a1a; border: 2px solid #333; border-radius: 12px; padding: 18px; }
+
+    .simulador-periodos h4 { color: #1E5942; font-size: 1.2rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .simulador-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+    .periodos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+    .periodo-card { background: #1a1a1a; border: 2px solid #333; border-radius: 12px; padding: 18px 12px; text-align: center; position: relative; }
+    .periodo-card.destaque { border-color: #1E5942; background: rgba(30, 89, 66, 0.12); }
+    .periodo-header { font-weight: 800; font-size: 1rem; color: #fff; margin-bottom: 6px; }
+    .periodo-desconto { color: #00E388; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
+    .periodo-economia { color: #888; font-size: 0.8rem; margin-bottom: 8px; font-style: italic; }
+    .periodo-mensal { font-size: 1.1rem; font-weight: 800; color: #1E5942; margin-bottom: 6px; }
+    .periodo-total { color: #bbb; font-size: 0.9rem; }
+    .badge-recomendado { position: absolute; top: -8px; right: 8px; background: #FFD700; color: #000; padding: 3px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; }
+
+    /* Desconto customizado */
+    .desconto-customizado-group { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
+    .desconto-controls { display: grid; grid-template-columns: 2fr auto 120px; gap: 12px; align-items: center; }
+    .info-box { background: rgba(30, 89, 66, 0.1); border: 1px solid #1E5942; border-radius: 10px; padding: 16px; margin-top: 16px; }
+
+    /* Botão toggle entregáveis */
+    .btn-toggle-entregaveis { width: 100%; padding: 10px; background: #333; color: #E0E0E0; border: 1px solid #555; border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; }
+    .btn-toggle-entregaveis:hover { background: #444; border-color: #1E5942; }
+    .btn-toggle-entregaveis.active { background: #1E5942; color: white; }
+
+    /* Ações */
+    .form-actions { display: flex; gap: 16px; justify-content: center; margin-top: 8px; }
+    .btn-preview, .btn-generate { padding: 14px 24px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: .2s; }
+    .btn-preview { background: #666; color: #fff; }
+    .btn-generate { background: #1E5942; color: #fff; }
+    .btn-preview:hover { background: #777; }
+    .btn-generate:hover { background: #267356; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,0.8); }
+    .modal-content { background: #1a1a1a; margin: 10% auto; padding: 24px; border-radius: 14px; width: 90%; max-width: 640px; }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .link-container { display: flex; gap: 10px; margin: 20px 0; }
+
+    /* Responsivo */
+    @media (max-width: 900px) { .servicos-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .cliente-grid { grid-template-columns: 1fr; }
+      .periodos-grid { grid-template-columns: 1fr; gap: 12px; }
+      .desconto-controls { grid-template-columns: 1fr; gap: 10px; }
+    }
+  </style>
 </head>
 <body class="gerador-page">
-    <div class="gerador-container">
-        <header class="gerador-header">
-            <h1>🧾 Gerador de Proposta Comercial</h1>
-            <p>Configure todos os parâmetros da proposta para o cliente</p>
-        </header>
+  <div class="gerador-container">
+    <header class="gerador-header">
+      <h1>🧾 Gerador de Proposta Comercial</h1>
+      <p>Configure todos os parâmetros da proposta para o cliente</p>
+    </header>
 
-        <form id="propostaForm" class="proposta-form">
-            <!-- Informações do Cliente -->
-            <section class="form-section">
-                <h2>📋 Informações do Cliente</h2>
-                <div class="cliente-grid">
-                    <div class="form-group">
-                        <label for="nomeCliente">Nome do Cliente *</label>
-                        <input type="text" id="nomeCliente" name="nomeCliente" required placeholder="Ex: João Silva">
-                    </div>
-                    <div class="form-group">
-                        <label for="empresaCliente">Nome da Empresa *</label>
-                        <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Ex: Silva Comércio Ltda">
-                    </div>
-                    <div class="form-group">
-                        <label for="emailCliente">E-mail do Cliente</label>
-                        <input type="email" id="emailCliente" name="emailCliente" placeholder="contato@empresa.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="responsavelProposta">Responsável pela Proposta *</label>
-                        <input type="text" id="responsavelProposta" name="responsavelProposta" required placeholder="Ex: João Silva - Heat Digital">
-                    </div>
-                    <div class="form-group">
-                        <label for="diasValidade">Dias de Validade da Proposta *</label>
-                        <select id="diasValidade" name="diasValidade" required>
-                            <option value="3">3 dias</option>
-                            <option value="5">5 dias</option>
-                            <option value="7" selected>7 dias</option>
-                            <option value="10">10 dias</option>
-                            <option value="15">15 dias</option>
-                            <option value="30">30 dias</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Serviços -->
-            <section class="form-section">
-                <h2>🎯 Serviços Contratados</h2>
-                <div class="servicos-grid">
-                    <!-- Social Media -->
-                    <div class="servico-card">
-                        <h3>🧑💻 Social Media</h3>
-                        <div class="form-group">
-                            <label for="servicoSocialMidia">Selecione o Plano</label>
-                            <select id="servicoSocialMidia" name="servicoSocialMidia">
-                                <option value="nao-se-aplica">Não se aplica</option>
-                                <option value="start">START - R$ 1.500,00</option>
-                                <option value="scale">SCALE - R$ 2.200,00</option>
-                                <option value="heat">HEAT - R$ 3.200,00</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn-toggle-entregaveis" id="toggleSocialMedia" onclick="toggleEntregaveis('SocialMedia')" style="display: none;">
-                            📋 Ver Entregáveis
-                        </button>
-                        <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
-                            <div class="entregaveis-info" id="infoSocialMedia"></div>
-                        </div>
-                    </div>
-
-                    <!-- Tráfego Pago -->
-                    <div class="servico-card">
-                        <h3>🎯 Tráfego Pago</h3>
-                        <div class="form-group">
-                            <label for="servicoTrafegoPago">Selecione o Plano</label>
-                            <select id="servicoTrafegoPago" name="servicoTrafegoPago">
-                                <option value="nao-se-aplica">Não se aplica</option>
-                                <option value="foco">FOCO - R$ 2.400,00</option>
-                                <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
-                                <option value="heat">DESTAQUE - R$ 3.500,00</option>
-                            </select>
-                        </div>
-                        <button type="button" class="btn-toggle-entregaveis" id="toggleTrafegoPago" onclick="toggleEntregaveis('TrafegoPago')" style="display: none;">
-                            📋 Ver Entregáveis
-                        </button>
-                        <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
-                            <div class="entregaveis-info" id="infoTrafegoPago"></div>
-                        </div>
-                        <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
-                            <label for="investimentoMidia">💵 Investimento em Mídia *</label>
-                            <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00">
-                            <small id="limiteInvestimento" class="info-investimento">
-                                <strong>⚠️ Importante:</strong> Valor que o cliente investirá em anúncios (não inclui nossa gestão).
-                            </small>
-                            <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
-                            <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Valores e Pagamento -->
-            <section class="form-section">
-                <h2>💰 Valores e Condições de Pagamento</h2>
-
-                <!-- Desconto Customizado (Opcional) -->
-                <div class="form-group desconto-customizado-group">
-                    <label>Desconto Customizado (Opcional)</label>
-                    <div class="desconto-controls">
-                        <input type="text" id="descontoDescricao" placeholder="Ex: Primeira contratação">
-                        <select id="descontoTipo">
-                            <option value="percentual">% Percentual</option>
-                            <option value="valor">R$ Valor</option>
-                        </select>
-                        <input type="text" id="descontoValor" placeholder="Ex: 10 ou 200">
-                    </div>
-                </div>
-
-                <!-- Simulador de Períodos -->
-                <div class="simulador-periodos">
-                    <h4>🗓️ Simulação de Períodos (para sua análise)</h4>
-                    <p class="simulador-subtitle">Veja os valores finais para cada período e decida qual desconto adicionar</p>
-                    <div class="periodos-grid">
-                        <div class="periodo-card">
-                            <div class="periodo-header">1 mês</div>
-                            <div class="periodo-desconto">Apenas 5% condicional</div>
-                            <div class="periodo-economia" id="sim1Economia">Economia: R$ 0,00</div>
-                            <div class="periodo-mensal" id="sim1Mensal">R$ 0,00/mês</div>
-                            <div class="periodo-total" id="sim1Total">Total: R$ 0,00</div>
-                        </div>
-                        <div class="periodo-card">
-                            <div class="periodo-header">3 meses</div>
-                            <div class="periodo-desconto">10% total (5% + 5%)</div>
-                            <div class="periodo-economia" id="sim3Economia">Economia: R$ 0,00</div>
-                            <div class="periodo-mensal" id="sim3Mensal">R$ 0,00/mês</div>
-                            <div class="periodo-total" id="sim3Total">Total: R$ 0,00</div>
-                        </div>
-                        <div class="periodo-card destaque">
-                            <div class="periodo-header">6 meses</div>
-                            <div class="periodo-desconto">15% total (5% + 10%)</div>
-                            <div class="periodo-economia" id="sim6Economia">Economia: R$ 0,00</div>
-                            <div class="periodo-mensal" id="sim6Mensal">R$ 0,00/mês</div>
-                            <div class="periodo-total" id="sim6Total">Total: R$ 0,00</div>
-                            <span class="badge-recomendado">⭐ RECOMENDADO</span>
-                        </div>
-                        <div class="periodo-card">
-                            <div class="periodo-header">12 meses</div>
-                            <div class="periodo-desconto">20% total (5% + 15%)</div>
-                            <div class="periodo-economia" id="sim12Economia">Economia: R$ 0,00</div>
-                            <div class="periodo-mensal" id="sim12Mensal">R$ 0,00/mês</div>
-                            <div class="periodo-total" id="sim12Total">Total: R$ 0,00</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="observacoes">Observações Adicionais</label>
-                    <textarea id="observacoes" name="observacoes" rows="4" placeholder="Observações ou condições especiais para esta proposta..."></textarea>
-                </div>
-
-                <div class="info-box">
-                    <p><strong>💳 Formas de Pagamento:</strong></p>
-                    <p>O cliente escolherá a forma de pagamento ao aceitar a proposta. Opções disponíveis:</p>
-                    <ul>
-                        <li>À vista (Pix/Boleto)</li>
-                        <li>50% agora + 50% em 30 dias</li>
-                        <li>Mensalidade recorrente</li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Botões de Ação -->
-            <div class="form-actions">
-                <button type="button" class="btn-preview" onclick="previewProposta()">
-                    👀 Visualizar Proposta
-                </button>
-                <button type="button" class="btn-generate" onclick="gerarLinkProposta()">
-                    🔗 Gerar Link da Proposta
-                </button>
+    <form id="propostaForm" class="proposta-form">
+      <!-- Informações do Cliente -->
+      <section class="form-section">
+        <h2>📋 Informações do Cliente</h2>
+        <div class="cliente-grid">
+          <div class="form-group fg-cpfcnpj">
+            <label for="cpfCnpjCliente">CPF/CNPJ do Cliente *</label>
+            <input type="text" id="cpfCnpjCliente" name="cpfCnpjCliente" required placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18" />
+            <small id="feedbackCpfCnpj" style="display:none; margin-top:5px; font-weight:600;"></small>
+            <div class="cnpj-actions" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+              <button type="button" id="btnBuscarCNPJ" class="btn-preview" style="padding:8px 14px; font-size:0.75rem;">🔎 Pesquisar CNPJ</button>
+              <span id="cnpjLoading" style="display:none; color:#bbb; font-size:0.75rem;">Carregando…</span>
             </div>
-        </form>
-
-        <!-- Modal de Link Gerado -->
-        <div id="modalLink" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                <h2>🎉 Proposta Gerada com Sucesso!</h2>
-                <p>Copie o link abaixo e envie para o cliente:</p>
-                <div class="link-container">
-                    <input type="text" id="linkGerado" readonly>
-                    <button onclick="copiarLink()" class="btn-copy">📋 Copiar</button>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 15px; justify-content: center;">
-                    <button onclick="abrirPreview()" class="btn-copy" style="background: #267356;">👁️ Visualizar</button>
-                    <button onclick="closeModal()" class="btn-copy" style="background: #666;">Fechar</button>
-                </div>
-                <p class="link-info">O cliente poderá visualizar a proposta através deste link.</p>
+            <div id="cnpjResultado" class="info-box" style="display:none; margin-top:10px; font-size:0.75rem; line-height:1.4;">
+              <div><strong>Razão Social:</strong> <span id="cnpjRazao">—</span></div>
+              <div><strong>Nome Fantasia:</strong> <span id="cnpjFantasia" style="color:#9ad5bd;">—</span></div>
+              <div><strong>Sede:</strong> <span id="cnpjSedeTipo">—</span></div>
+              <div><strong>Endereço:</strong> <span id="cnpjEndereco">—</span></div>
+              <div><strong>Telefone:</strong> <span id="cnpjTelefone">—</span></div>
+              <div><strong>E-mail:</strong> <span id="cnpjEmail">—</span></div>
             </div>
+          </div>
+          <div class="form-group fg-empresa">
+            <label for="empresaCliente">Nome da Empresa *</label>
+            <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Ex: Silva Comércio Ltda" />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+          </div>
+          <div class="form-group fg-responsavel">
+            <label for="responsavelProposta">Responsável pela Proposta (Heat Digital) *</label>
+            <input type="text" id="responsavelProposta" name="responsavelProposta" required placeholder="Ex: João Silva - Heat Digital" />
+          </div>
+          <div class="form-group fg-endereco">
+            <label for="enderecoCliente">Endereço Completo *</label>
+            <input type="text" id="enderecoCliente" name="enderecoCliente" required placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+          </div>
+          <div class="form-group fg-validade">
+            <label for="diasValidade">Dias de Validade da Proposta *</label>
+            <select id="diasValidade" name="diasValidade" required>
+              <option value="3">3 dias</option>
+              <option value="5">5 dias</option>
+              <option value="7" selected>7 dias</option>
+              <option value="10">10 dias</option>
+              <option value="15">15 dias</option>
+              <option value="30">30 dias</option>
+            </select>
+          </div>
         </div>
-    </div>
+      </section>
 
-    <script src="proposta-gerador.js"></script>
-    <script>
-        function toggleEntregaveis(servico) {
-            const container = document.getElementById(`entregaveis${servico}`);
-            const button = document.getElementById(`toggle${servico}`);
+      <!-- Serviços -->
+      <section class="form-section">
+        <h2>🎯 Serviços Contratados</h2>
+        <div class="servicos-grid">
+          <!-- Social Media -->
+          <div class="servico-card">
+            <h3>🧑💻 Social Media</h3>
+            <div class="form-group">
+              <label for="servicoSocialMidia">Selecione o Plano</label>
+              <select id="servicoSocialMidia" name="servicoSocialMidia">
+                <option value="nao-se-aplica">Não se aplica</option>
+                <option value="start">START - R$ 1.500,00</option>
+                <option value="scale">SCALE - R$ 2.200,00</option>
+                <option value="heat">HEAT - R$ 3.200,00</option>
+              </select>
+            </div>
+            <button type="button" class="btn-toggle-entregaveis" id="toggleSocialMedia" onclick="toggleEntregaveis('SocialMedia')" style="display: none;">📋 Ver Entregáveis</button>
+            <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
+              <div class="entregaveis-info" id="infoSocialMedia"></div>
+            </div>
+          </div>
+
+          <!-- Tráfego Pago -->
+          <div class="servico-card">
+            <h3>🎯 Tráfego Pago</h3>
+            <div class="form-group">
+              <label for="servicoTrafegoPago">Selecione o Plano</label>
+              <select id="servicoTrafegoPago" name="servicoTrafegoPago">
+                <option value="nao-se-aplica">Não se aplica</option>
+                <option value="foco">FOCO - R$ 2.400,00</option>
+                <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
+                <option value="heat">DESTAQUE - R$ 3.500,00</option>
+              </select>
+            </div>
+            <!-- Badge dinâmica para comissão -->
+            <div class="form-group" id="badgeComissaoWrapper" style="display:none; margin-top:-6px;">
+              <span id="badgeComissaoGenerator" style="display:inline-block; background:#1E5942; color:#fff; padding:6px 12px; border-radius:14px; font-weight:700; font-size:0.85rem;">+ 0% sobre vendas</span>
+            </div>
             
-            if (container.style.display === 'none') {
-                container.style.display = 'block';
-                button.textContent = '🔼 Ocultar Entregáveis';
-                button.classList.add('active');
-            } else {
-                container.style.display = 'none';
-                button.textContent = '📋 Ver Entregáveis';
-                button.classList.remove('active');
-            }
-        }
+            <!-- Modelo de Cobrança -->
+            <div class="form-group" id="modeloCobrancaContainer" style="display: none;">
+              <label for="modeloCobranca">💳 Modelo de Cobrança</label>
+              <select id="modeloCobranca" name="modeloCobranca">
+                <option value="fixo">Valor Fixo Mensal</option>
+                <option value="comissao">Comissão sobre Vendas (%)</option>
+                <option value="hibrido">Fixo + Comissão (Híbrido)</option>
+              </select>
+              <small class="info-investimento">
+                <strong>Fixo:</strong> Valor mensal fixo do plano<br>
+                <strong>Comissão:</strong> Apenas % sobre vendas realizadas<br>
+                <strong>Híbrido:</strong> Fixo reduzido + % ou valor fixo sobre vendas
+              </small>
+            </div>
+            
+            <!-- Tipo de Comissão no Híbrido -->
+            <div class="form-group" id="tipoComissaoHibridoContainer" style="display: none;">
+              <label for="tipoComissaoHibrido">📋 Tipo de Comissão sobre Vendas (Híbrido)</label>
+              <select id="tipoComissaoHibrido" name="tipoComissaoHibrido">
+                <option value="percentual">Percentual (%)</option>
+                <option value="fixo">Valor Fixo (R$)</option>
+              </select>
+              <small class="info-investimento">Escolha se a comissão será percentual ou valor fixo por venda</small>
+            </div>
+            
+            <!-- Campos de Comissão -->
+            <div class="form-group" id="percentualComissaoContainer" style="display: none;">
+              <label for="percentualComissao">📊 Percentual de Comissão sobre Vendas</label>
+              <input type="number" id="percentualComissao" name="percentualComissao" min="0" max="100" step="0.1" placeholder="Ex: 5" />
+              <small class="info-investimento">Percentual que será cobrado sobre cada venda realizada</small>
+            </div>
+            
+            <div class="form-group" id="valorComissaoFixaContainer" style="display: none;">
+              <label for="valorComissaoFixa">💵 Valor Fixo por Venda (Híbrido)</label>
+              <input type="number" id="valorComissaoFixa" name="valorComissaoFixa" min="0" step="10" placeholder="Ex: 50" />
+              <small class="info-investimento">Valor fixo que será cobrado por cada venda realizada</small>
+            </div>
+            
+            <div class="form-group" id="valorFixoTrafegoContainer" style="display: none;">
+              <label for="valorFixoTrafego">💰 Valor Fixo Mensal (Híbrido)</label>
+              <input type="number" id="valorFixoTrafego" name="valorFixoTrafego" min="0" step="100" placeholder="Ex: 1500" />
+              <small class="info-investimento">Valor fixo mensal reduzido (complementado pela comissão)</small>
+            </div>
+            
+            <button type="button" class="btn-toggle-entregaveis" id="toggleTrafegoPago" onclick="toggleEntregaveis('TrafegoPago')" style="display: none;">📋 Ver Entregáveis</button>
+            <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
+              <div class="entregaveis-info" id="infoTrafegoPago"></div>
+            </div>
+            <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
+              <label for="investimentoMidia">💵 Investimento em Mídia *</label>
+              <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00" />
+              <small id="limiteInvestimento" class="info-investimento"><strong>⚠️ Importante:</strong> Valor que o cliente investirá em anúncios (não inclui nossa gestão).</small>
+              <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
+              <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Valores e Pagamento -->
+      <section class="form-section">
+        <h2>💰 Valores e Condições de Pagamento</h2>
+
+        <!-- Desconto Customizado (Opcional) -->
+        <div class="form-group desconto-customizado-group">
+          <label>Desconto Customizado (Opcional)</label>
+          <div class="desconto-controls">
+            <input type="text" id="descontoDescricao" placeholder="Ex: Primeira contratação" />
+            <select id="descontoTipo">
+              <option value="percentual">% Percentual</option>
+              <option value="valor">R$ Valor</option>
+            </select>
+            <input type="text" id="descontoValor" placeholder="Ex: 10 ou 200" />
+          </div>
+        </div>
+
+        <!-- Simulador de Períodos -->
+        <div class="simulador-periodos">
+          <h4>🗓️ Simulação de Períodos (para sua análise)</h4>
+          <p class="simulador-subtitle">Veja os valores finais para cada período e decida qual desconto adicionar</p>
+          <div class="periodos-grid">
+            <div class="periodo-card">
+              <div class="periodo-header">1 mês</div>
+              <div class="periodo-desconto">Apenas 5% condicional</div>
+              <div class="periodo-economia" id="sim1Economia">Economia: R$ 0,00</div>
+              <div class="periodo-mensal" id="sim1Mensal">R$ 0,00/mês</div>
+              <div class="periodo-total" id="sim1Total">Total: R$ 0,00</div>
+            </div>
+            <div class="periodo-card">
+              <div class="periodo-header">3 meses</div>
+              <div class="periodo-desconto">10% total (5% + 5%)</div>
+              <div class="periodo-economia" id="sim3Economia">Economia: R$ 0,00</div>
+              <div class="periodo-mensal" id="sim3Mensal">R$ 0,00/mês</div>
+              <div class="periodo-total" id="sim3Total">Total: R$ 0,00</div>
+            </div>
+            <div class="periodo-card destaque">
+              <div class="periodo-header">6 meses</div>
+              <div class="periodo-desconto">15% total (5% + 10%)</div>
+              <div class="periodo-economia" id="sim6Economia">Economia: R$ 0,00</div>
+              <div class="periodo-mensal" id="sim6Mensal">R$ 0,00/mês</div>
+              <div class="periodo-total" id="sim6Total">Total: R$ 0,00</div>
+              <span class="badge-recomendado">⭐ RECOMENDADO</span>
+            </div>
+            <div class="periodo-card">
+              <div class="periodo-header">12 meses</div>
+              <div class="periodo-desconto">20% total (5% + 15%)</div>
+              <div class="periodo-economia" id="sim12Economia">Economia: R$ 0,00</div>
+              <div class="periodo-mensal" id="sim12Mensal">R$ 0,00/mês</div>
+              <div class="periodo-total" id="sim12Total">Total: R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="observacoes">Observações Adicionais</label>
+          <textarea id="observacoes" name="observacoes" rows="4" placeholder="Observações ou condições especiais para esta proposta..."></textarea>
+        </div>
+
+        <div class="info-box">
+          <p><strong>💳 Formas de Pagamento:</strong></p>
+          <p>O cliente escolherá a forma de pagamento ao aceitar a proposta. Opções disponíveis:</p>
+          <ul>
+            <li>À vista (Pix/Boleto)</li>
+            <li>50% agora + 50% em 30 dias</li>
+            <li>Mensalidade recorrente</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Botões de Ação -->
+      <section class="form-section">
+        <div class="form-actions">
+          <button type="button" class="btn-preview" onclick="previewProposta()">👀 Visualizar Proposta</button>
+          <button type="button" class="btn-generate" onclick="gerarLinkProposta()">🔗 Gerar Link da Proposta</button>
+        </div>
+      </section>
+    </form>
+  </div>
+
+  <!-- Modal de Link Gerado -->
+  <div id="modalLink" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>🎉 Proposta Gerada com Sucesso!</h2>
+      <p>Copie o link abaixo e envie para o cliente:</p>
+      <div class="link-container">
+        <input type="text" id="linkGerado" readonly />
+        <button class="btn-copy" onclick="copiarLink()">Copiar</button>
+      </div>
+      <div class="footer-actions">
+        <button class="btn-preview" onclick="abrirPreview()">Abrir Visualização</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=3"></script>
+  <script src="validacao-cpf-cnpj.js?v=2"></script>
+  <script src="proposta-gerador.js?v=2"></script>
+  <script>
+    // Validação de CPF/CNPJ em tempo real no gerador
+    document.addEventListener('DOMContentLoaded', function() {
+      const inputCpfCnpj = document.getElementById('cpfCnpjCliente');
+      const feedback = document.getElementById('feedbackCpfCnpj');
+      if (!inputCpfCnpj) return;
+      inputCpfCnpj.addEventListener('input', function() {
+        window.validacaoCPFCNPJ.aplicarMascaraCPFouCNPJ(this);
+      });
+      inputCpfCnpj.addEventListener('blur', function() {
+        window.validacaoCPFCNPJ.validarCPFouCNPJComFeedback(this, feedback);
+      });
+
+      const btnBuscar = document.getElementById('btnBuscarCNPJ');
+      if (btnBuscar) btnBuscar.addEventListener('click', buscarCNPJ);
+
+      // Busca automática ao sair do campo se for CNPJ
+      if (inputCpfCnpj) {
+        inputCpfCnpj.addEventListener('blur', function () {
+          const digits = this.value.replace(/\D/g, '');
+          if (digits.length === 14) buscarCNPJ();
+        });
+      }
+    });
+
+    async function buscarCNPJ() {
+      const raw = document.getElementById('cpfCnpjCliente')?.value || '';
+      const digits = raw.replace(/\D/g, '');
+      if (digits.length !== 14) {
+        alert('Informe um CNPJ válido (14 dígitos) para pesquisar.');
+        return;
+      }
+      const loadingEl = document.getElementById('cnpjLoading');
+      const resultBox = document.getElementById('cnpjResultado');
+      const razaoEl = document.getElementById('cnpjRazao');
+      const fantasiaEl = document.getElementById('cnpjFantasia');
+      const sedeEl = document.getElementById('cnpjSedeTipo');
+      const endEl = document.getElementById('cnpjEndereco');
+      const telEl = document.getElementById('cnpjTelefone');
+      const emailEl = document.getElementById('cnpjEmail');
+      const endInput = document.getElementById('enderecoCliente');
+      const empresaInput = document.getElementById('empresaCliente');
+
+      loadingEl.style.display = 'inline';
+      resultBox.style.display = 'none';
+      try {
+        const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error('CNPJ não encontrado');
+        const d = await resp.json();
         
-        // Função gerarLinkProposta() já está definida no proposta-gerador.js
-        
-        function closeModal() {
-            document.getElementById('modalLink').style.display = 'none';
-        }
-        
-        function copiarLink() {
-            const linkInput = document.getElementById('linkGerado');
-            linkInput.select();
-            document.execCommand('copy');
-            alert('Link copiado para a área de transferência!');
-        }
-        
-        function abrirPreview() {
-            const link = document.getElementById('linkGerado').value;
-            const urlRelativa = link.split(window.location.origin)[1];
-            window.open(urlRelativa, '_blank');
-        }
-    </script>
+        const razao = d.razao_social || d.nome || '';
+        const fantasia = d.nome_fantasia || '';
+        const tipoSede = (d.descricao_matriz_filial || d.matriz_filial || '').toString().toUpperCase();
+        const endereco = [
+          d.logradouro, d.numero, d.complemento,
+          d.bairro, d.municipio, d.uf,
+          d.cep ? `CEP ${d.cep}` : ''
+        ].filter(Boolean).join(', ');
+        const telefone = d.ddd_telefone_1 || d.telefone || '—';
+        const email = d.email || '—';
+
+        razaoEl.textContent = razao || '—';
+        fantasiaEl.textContent = fantasia || '—';
+        sedeEl.textContent = tipoSede || '—';
+        endEl.textContent = endereco || '—';
+        telEl.textContent = telefone;
+        emailEl.textContent = email;
+        resultBox.style.display = 'block';
+
+        // Auto-preencher campos
+        if (empresaInput && !empresaInput.value) empresaInput.value = fantasia || razao || '';
+        if (endInput && !endInput.value) endInput.value = endereco || '';
+      } catch (e) {
+        alert('Não foi possível buscar o CNPJ. Verifique o número e tente novamente.');
+        resultBox.style.display = 'none';
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    }
+
+    function toggleEntregaveis(servico) {
+      const container = document.getElementById(`entregaveis${servico}`);
+      const button = document.getElementById(`toggle${servico}`);
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        button.textContent = '🔼 Ocultar Entregáveis';
+        button.classList.add('active');
+      } else {
+        container.style.display = 'none';
+        button.textContent = '📋 Ver Entregáveis';
+        button.classList.remove('active');
+      }
+    }
+
+    function closeModal() { document.getElementById('modalLink').style.display = 'none'; }
+
+    function copiarLink() {
+      const linkInput = document.getElementById('linkGerado');
+      linkInput.select();
+      document.execCommand('copy');
+      alert('Link copiado para a área de transferência!');
+    }
+
+    function abrirPreview() {
+      const link = document.getElementById('linkGerado').value;
+      const urlRelativa = link.split(window.location.origin)[1];
+      window.open(urlRelativa, '_blank');
+    }
+  </script>
 </body>
 </html>
