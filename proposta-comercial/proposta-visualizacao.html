@@ -2557,12 +2557,132 @@
                 
                 document.body.removeChild(form);
                 
+                // Atualizar Supabase se proposta foi carregada por UUID
+                const urlParams = new URLSearchParams(window.location.search);
+                const propostaId = urlParams.get('id');
+                
+                if (propostaId && window.supabase) {
+                    await atualizarPropostaNoSupabase(propostaId, {
+                        recorrencia: camposAceite.recorrencia,
+                        formaPagamento: camposAceite.formaPagamento
+                    });
+                }
+                
                 return response.ok;
             } catch (error) {
                 if (document.body.contains(form)) {
                     document.body.removeChild(form);
                 }
                 return false;
+            }
+        }
+
+        async function atualizarPropostaNoSupabase(propostaId, dadosAceite) {
+            try {
+                const client = window.supabase;
+                
+                // 1. Atualizar propostas_criadas com status 'aceita'
+                const { error: updateError } = await client
+                    .from('propostas_criadas')
+                    .update({
+                        status: 'aceita',
+                        aceita_em: new Date().toISOString()
+                    })
+                    .eq('id', propostaId);
+                
+                if (updateError) {
+                    console.error('Erro ao atualizar propostas_criadas:', updateError);
+                    throw updateError;
+                }
+                
+                // 2. Inserir na tabela propostas com dados do aceite
+                const { data: propostaInserida, error: insertError } = await client
+                    .from('propostas')
+                    .insert({
+                        proposta_criada_id: propostaId,
+                        recorrencia_assinada: dadosAceite.recorrencia,
+                        forma_pagamento_assinada: dadosAceite.formaPagamento,
+                        assinada_em: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+                
+                if (insertError) {
+                    console.error('Erro ao inserir proposta aceita:', insertError);
+                    throw insertError;
+                }
+                
+                console.log('Proposta atualizada no Supabase com sucesso!');
+                
+                // 3. Gerar contrato PDF
+                await gerarEsalvarContratoPDF(propostaInserida.id, propostaId, dadosAceite);
+                
+                return propostaInserida;
+                
+            } catch (error) {
+                console.error('Erro ao atualizar proposta no Supabase:', error);
+                throw error;
+            }
+        }
+
+        async function gerarEsalvarContratoPDF(propostaAceitaId, propostaCriadaId, dadosAceite) {
+            try {
+                // Buscar dados completos da proposta criada
+                const client = window.supabase;
+                const { data: proposta, error } = await client
+                    .from('propostas_criadas')
+                    .select('*')
+                    .eq('id', propostaCriadaId)
+                    .single();
+                
+                if (error || !proposta) {
+                    console.error('Erro ao buscar proposta para gerar PDF:', error);
+                    return;
+                }
+                
+                // Gerar PDF usando a função do supabase-config
+                if (window.supabaseConfig && typeof window.supabaseConfig.gerarContratoPDF === 'function') {
+                    const pdfBlob = await window.supabaseConfig.gerarContratoPDF({
+                        ...proposta,
+                        recorrencia_assinada: dadosAceite.recorrencia,
+                        forma_pagamento_assinada: dadosAceite.formaPagamento
+                    });
+                    
+                    if (pdfBlob) {
+                        // Fazer upload do PDF para o Supabase Storage
+                        const nomeArquivo = `contrato_${propostaAceitaId}_${Date.now()}.pdf`;
+                        const { data: uploadData, error: uploadError } = await client.storage
+                            .from('contratos')
+                            .upload(nomeArquivo, pdfBlob, {
+                                contentType: 'application/pdf',
+                                upsert: false
+                            });
+                        
+                        if (uploadError) {
+                            console.error('Erro ao fazer upload do PDF:', uploadError);
+                            return;
+                        }
+                        
+                        // Obter URL pública do PDF
+                        const { data: urlData } = client.storage
+                            .from('contratos')
+                            .getPublicUrl(nomeArquivo);
+                        
+                        // Salvar referência na tabela contratos
+                        await client
+                            .from('contratos')
+                            .insert({
+                                proposta_id: propostaAceitaId,
+                                pdf_url: urlData.publicUrl,
+                                gerado_em: new Date().toISOString()
+                            });
+                        
+                        console.log('Contrato PDF gerado e salvo com sucesso!');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Erro ao gerar e salvar contrato PDF:', error);
             }
         }
 

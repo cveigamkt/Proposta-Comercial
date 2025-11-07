@@ -15,9 +15,19 @@
     .container{max-width:1200px;margin:0 auto;padding:24px}
     .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
     h1{font-size:1.55rem;margin:0;font-weight:800}
-    .filters{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;grid-template-columns:2fr 1.2fr 1.5fr auto;gap:12px}
-    .filters input{background:#111;border:1px solid var(--border);color:var(--fg);padding:10px 12px;border-radius:8px}
-    .btn{background:var(--brand);border:none;color:#fff;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+    .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--brand)}
+    .stat-card.aceita::before{background:#0bd47e}
+    .stat-card.pendente::before{background:#ffd666}
+    .stat-card.total::before{background:var(--brand-2)}
+    .stat-label{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+    .stat-value{font-size:2rem;font-weight:800;line-height:1;margin-bottom:4px}
+    .stat-subtitle{font-size:.85rem;color:var(--muted)}
+    .filters{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;grid-template-columns:1.8fr 1fr 1.2fr auto auto;gap:12px;align-items:center}
+    .filters input,.filters select{background:#111;border:1px solid var(--border);color:var(--fg);padding:10px 12px;border-radius:8px;font-size:.95rem}
+    .filters select{cursor:pointer}
+    .btn{background:var(--brand);border:none;color:#fff;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:.95rem}
     .btn.secondary{background:#333}
     .btn:disabled{opacity:.6;cursor:not-allowed}
     .table{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto}
@@ -36,7 +46,14 @@
     .link{color:var(--brand-2);text-decoration:none}
     .toolbar{display:flex;gap:10px;align-items:center}
     .footer{margin-top:16px;color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between}
-    @media (max-width:900px){.filters{grid-template-columns:1fr 1fr}.toolbar{margin-top:8px}}
+    @media (max-width:900px){
+      .filters{grid-template-columns:1fr;gap:10px}
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .table{overflow-x:auto}
+      table{min-width:1200px}
+      .toolbar{flex-direction:column;gap:8px;width:100%}
+      .toolbar .btn,.toolbar button{width:100%}
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
@@ -46,15 +63,45 @@
     <div class="header">
       <h1>📊 Painel de Propostas</h1>
       <div class="toolbar">
-        <button id="btnRecarregar" class="btn secondary">Recarregar</button>
+        <button id="btnRecarregar" class="btn secondary">🔄 Recarregar</button>
         <a class="btn" href="proposta-gerador.html">+ Nova Proposta</a>
       </div>
     </div>
 
+    <div class="stats" id="statsContainer">
+      <div class="stat-card total">
+        <div class="stat-label">Total de Propostas</div>
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-subtitle">Todas criadas</div>
+      </div>
+      <div class="stat-card aceita">
+        <div class="stat-label">Aceitas</div>
+        <div class="stat-value" id="statAceitas">—</div>
+        <div class="stat-subtitle" id="statValorAceitas">—</div>
+      </div>
+      <div class="stat-card pendente">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" id="statPendentes">—</div>
+        <div class="stat-subtitle">Aguardando resposta</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Expiradas/Recusadas</div>
+        <div class="stat-value" id="statOutras">—</div>
+        <div class="stat-subtitle">Não convertidas</div>
+      </div>
+    </div>
+
     <div class="filters">
-      <input id="filtroNome" placeholder="Pesquisar por nome do cliente" />
+      <input id="filtroNome" placeholder="🔍 Pesquisar por nome do cliente" />
       <input id="filtroCPF" placeholder="Pesquisar por CPF/CNPJ" />
       <input id="filtroEmpresa" placeholder="Pesquisar por empresa" />
+      <select id="filtroStatus">
+        <option value="">Todos os status</option>
+        <option value="aceita">✅ Aceitas</option>
+        <option value="pendente">⏳ Pendentes</option>
+        <option value="recusada">❌ Recusadas</option>
+        <option value="expirada">⌛ Expiradas</option>
+      </select>
       <button id="btnBuscar" class="btn">Buscar</button>
     </div>
 
@@ -67,6 +114,7 @@
             <th>Empresa</th>
             <th>CPF/CNPJ</th>
             <th>Serviços</th>
+            <th>Modelo Cobrança</th>
             <th class="right">Valores</th>
             <th>Recorrência</th>
             <th>Pagamento</th>
@@ -76,7 +124,7 @@
           </tr>
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="11" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="12" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -99,6 +147,28 @@
       const cls = s === 'aceita' ? 'status-aceita' : s === 'recusada' ? 'status-recusada' : expirada ? 'status-expirada' : 'status-pendente';
       const texto = expirada && s==='pendente' ? 'Expirada' : (s||'pendente');
       return `<span class="chip ${cls}">${texto}</span>`;
+    }
+
+    function formatarModeloCobranca(r) {
+      const modelo = r.modelo_cobranca || 'fixo';
+      const percentual = r.percentual_comissao || 0;
+      const valorFixo = r.valor_comissao_fixa || 0;
+      const tipoHibrido = r.tipo_comissao_hibrido || 'percentual';
+      
+      switch(modelo) {
+        case 'fixo':
+          return '<span class="chip">💰 Fixo</span>';
+        case 'comissao':
+          return `<span class="chip" style="background:#0bd47e14;border-color:#0bd47e33;color:#0bd47e">📊 ${percentual}%</span>`;
+        case 'hibrido':
+          if (tipoHibrido === 'percentual') {
+            return `<span class="chip" style="background:#ffd66614;border-color:#ffd66633;color:#ffd666">🔀 Fixo + ${percentual}%</span>`;
+          } else {
+            return `<span class="chip" style="background:#ffd66614;border-color:#ffd66633;color:#ffd666">🔀 Fixo + ${fmtMoeda(valorFixo)}/venda</span>`;
+          }
+        default:
+          return '<span class="muted">—</span>';
+      }
     }
 
     async function queryResumo(filtros){
@@ -187,8 +257,12 @@
       const tb = document.getElementById('tbodyPropostas');
       const estado = document.getElementById('estadoLista');
       tb.innerHTML = '';
+      
+      // Atualizar estatísticas
+      atualizarEstatisticas(rows);
+      
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="11" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="12" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
@@ -211,6 +285,7 @@
           <td>${r.empresa_cliente || '—'}</td>
           <td class="nowrap">${r.cpf_cnpj || '—'}</td>
           <td>${linhaServico(r)}</td>
+          <td>${formatarModeloCobranca(r)}</td>
           <td class="right">
             <div><strong>${fmtMoeda(r.valor_mensal)}/mês</strong></div>
             <div class="muted" style="font-size:.85rem">Total: ${fmtMoeda(r.valor_total)}</div>
@@ -227,6 +302,23 @@
       }
     }
 
+    function atualizarEstatisticas(rows) {
+      const total = rows.length;
+      const aceitas = rows.filter(r => r.status === 'aceita').length;
+      const pendentes = rows.filter(r => r.status === 'pendente' && !r.expirada).length;
+      const outras = rows.filter(r => r.status === 'recusada' || r.expirada).length;
+      
+      const valorTotalAceitas = rows
+        .filter(r => r.status === 'aceita')
+        .reduce((sum, r) => sum + (Number(r.valor_mensal) || 0), 0);
+      
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statAceitas').textContent = aceitas;
+      document.getElementById('statValorAceitas').textContent = fmtMoeda(valorTotalAceitas) + '/mês';
+      document.getElementById('statPendentes').textContent = pendentes;
+      document.getElementById('statOutras').textContent = outras;
+    }
+
     async function carregar(){
       const btn = document.getElementById('btnBuscar');
       btn.disabled = true; btn.textContent = 'Buscando…';
@@ -237,12 +329,21 @@
           termoCPF: document.getElementById('filtroCPF').value.trim(),
           termoEmpresa: document.getElementById('filtroEmpresa').value.trim()
         };
-        const rows = await queryResumo(filtros);
+        let rows = await queryResumo(filtros);
+        
+        // Aplicar filtro de status
+        const statusFiltro = document.getElementById('filtroStatus').value;
+        if (statusFiltro === 'expirada') {
+          rows = rows.filter(r => r.expirada);
+        } else if (statusFiltro) {
+          rows = rows.filter(r => r.status === statusFiltro && !r.expirada);
+        }
+        
         renderTabela(rows);
       }catch(e){
         console.error(e);
         const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = `<tr><td colspan="9" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="12" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
       }finally{
         btn.disabled = false; btn.textContent = 'Buscar';
       }
