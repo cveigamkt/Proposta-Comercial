@@ -599,21 +599,47 @@ window.gerarLinkProposta = async function() {
             console.log('ID:', window.propostaEmEdicao);
             console.table(dadosInsercao);
             
-            const { data, error } = await supabase
-                .from('propostas_criadas')
-                .update(dadosInsercao)
-                .eq('id', window.propostaEmEdicao)
-                .select('id')
-                .single();
-            
-            if (error) {
-                console.error('=== ERRO AO ATUALIZAR ===');
-                console.error(error);
-                throw new Error(`Erro ao atualizar proposta: ${error.message}`);
+            let updateResp;
+            try {
+                updateResp = await supabase
+                    .from('propostas_criadas')
+                    .update(dadosInsercao)
+                    .eq('id', window.propostaEmEdicao)
+                    .select('id')
+                    .single();
+            } catch (e) {
+                updateResp = { data: null, error: e };
             }
-            
-            propostaId = data.id;
-            alert('✅ Proposta atualizada com sucesso!');
+
+            if (updateResp.error) {
+                console.error('=== ERRO AO ATUALIZAR ===');
+                console.error(updateResp.error);
+                // Fallback: se RLS/perm negada (401/42501), cria nova proposta
+                const msg = (updateResp.error.message || '').toLowerCase();
+                const code = updateResp.error.code || '';
+                const isPermissao = code === '42501' || msg.includes('row-level security') || msg.includes('permission') || msg.includes('401');
+                if (isPermissao) {
+                    console.warn('Sem permissão para atualizar. Criando nova proposta como fallback...');
+                    const insertResp = await supabase
+                        .from('propostas_criadas')
+                        .insert(dadosInsercao)
+                        .select('id')
+                        .single();
+                    if (insertResp.error) {
+                        console.error('Erro no fallback de inserção:', insertResp.error);
+                        throw new Error('Erro ao atualizar proposta e falha ao criar nova: ' + insertResp.error.message);
+                    }
+                    propostaId = insertResp.data.id;
+                    // Atualiza contexto para novo ID
+                    window.propostaEmEdicao = propostaId;
+                    alert('⚠️ Sem permissão para editar a proposta original. Uma nova proposta foi criada e o link foi atualizado.');
+                } else {
+                    throw new Error(`Erro ao atualizar proposta: ${updateResp.error.message}`);
+                }
+            } else {
+                propostaId = updateResp.data.id;
+                alert('✅ Proposta atualizada com sucesso!');
+            }
             
         } else {
             console.log('=== INSERINDO NOVA PROPOSTA ===');

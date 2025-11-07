@@ -475,6 +475,15 @@
             flex-wrap: wrap;
             gap: 10px;
         }
+        /* Forçar quebra amigável dentro do primeiro span em telas menores */
+        @media (max-width: 600px) {
+            .valor-row > span:first-child, .valor-row > div:first-child { white-space: normal; word-break: break-word; }
+            .valor-row .valor { white-space: nowrap; }
+        }
+        /* Mais agressivo em telas muito pequenas */
+        @media (max-width: 480px) {
+            .valor-row > span:first-child, .valor-row > div:first-child { overflow-wrap: anywhere; }
+        }
 
         .valor-row:last-child {
             border-bottom: none;
@@ -974,6 +983,8 @@
                 margin: 10px;
                 padding: 25px 20px;
                 width: calc(100% - 20px);
+                max-height: calc(100vh - 40px);
+                overflow-y: auto;
             }
             
             .modal-buttons {
@@ -997,7 +1008,7 @@
             <h1>HEAT DIGITAL</h1>
             <p class="tagline">Performance Inteligente para Crescimento Real</p>
             <div class="client-info">
-                <span id="nomeCliente"></span> • <span id="empresaCliente"></span> • <span id="dataProposta"></span>
+                <span id="empresaCliente"></span> • <span id="dataProposta"></span>
             </div>
         </div>
     </section>
@@ -1345,6 +1356,10 @@
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+        /* Barra fixa de aceite no mobile */
+        .aceite-mobile-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(21,21,21,0.96); border-top: 1px solid #333; padding: 10px 16px; display: none; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; }
+        .aceite-mobile-bar .texto { color: #E0E0E0; font-size: 0.9rem; }
+        .aceite-mobile-bar .btn { padding: 10px 14px; }
         
         .btn:disabled {
             background: #666 !important;
@@ -1398,6 +1413,9 @@
             #btnAceitarFlutuante .btn-text {
                 display: inline;
             }
+            /* Exibir barra fixa no mobile e ocultar botão flutuante para evitar duplicidade */
+            .aceite-mobile-bar { display: flex; }
+            #btnAceitarFlutuante { display: none; }
         }
         
         @media (max-width: 480px) {
@@ -1428,6 +1446,11 @@
             }
         }
     </style>
+    <!-- Barra fixa de aceite (mobile) -->
+    <div class="aceite-mobile-bar">
+        <div class="texto">Pronto para avançar?</div>
+        <button class="btn btn-primary" onclick="aceitarProposta()">✅ Aceitar Proposta</button>
+    </div>
 
     <!-- Modal de Confirmação -->
     <div id="modalConfirmacao" class="modal">
@@ -1567,7 +1590,8 @@
                 console.log('Proposta carregada:', data);
 
                 // Cabeçalho
-                document.getElementById('nomeCliente').textContent = data.nome_cliente || 'Cliente';
+                // Exibimos somente empresa no cabeçalho para evitar duplicação/confusão
+                document.getElementById('empresaCliente').textContent = data.nome_cliente || data.empresa_cliente || 'Cliente';
                 document.getElementById('empresaCliente').textContent = data.empresa_cliente || 'Empresa';
                 const dataCriacao = data.criada_em ? new Date(data.criada_em) : new Date();
                 document.getElementById('dataProposta').textContent = dataCriacao.toLocaleDateString('pt-BR');
@@ -1636,7 +1660,7 @@
             }
             
             // Dados do cliente
-            document.getElementById('nomeCliente').textContent = params.get('nomeCliente') || 'Cliente';
+            document.getElementById('empresaCliente').textContent = params.get('nomeCliente') || params.get('empresaCliente') || 'Cliente';
             document.getElementById('empresaCliente').textContent = params.get('empresaCliente') || 'Empresa';
             document.getElementById('dataProposta').textContent = params.get('timestampCriacao') || new Date().toLocaleDateString('pt-BR');
             
@@ -1728,6 +1752,7 @@
                 }
                 
                 // Informações de cobrança específicas para Tráfego Pago
+                // Removido valor/"Fixo R$" do bloco de serviços para evitar confusão; valores ficam só no resumo financeiro
                 let cobrancaHtml = '';
                 if (servico.tipo === 'Tráfego Pago') {
                     const pctNum = window.propostaCarregada?.percentual_comissao ?? (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0);
@@ -1738,23 +1763,19 @@
                     if (temComissao) {
                         let desc = '';
                         if (valorFixo > 0) {
-                            // Híbrido
                             if (tipoComissaoHibrido === 'percentual' && pctNum > 0) {
-                                desc = `Híbrido: R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})} + ${pctNum}% sobre vendas`;
+                                desc = `Híbrido: ${pctNum}% sobre vendas`;
                             } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
-                                desc = `Híbrido: R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})} + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda`;
+                                desc = `Híbrido: valor fixo por venda`;
                             }
                         } else if (pctNum > 0) {
-                            // Comissão pura
-                            desc = `Comissão: ${pctNum}% sobre vendas`;
+                            desc = `Comissão sobre vendas`;
                         }
                         if (desc) {
                             cobrancaHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #1E5942; border-radius: 8px; color: #CFCFCF; font-size: 0.95rem;"><strong>Modelo de Cobrança:</strong> ${desc}</div>`;
                         }
-                    } else {
-                        // Modelo fixo
-                        cobrancaHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #1E5942; border-radius: 8px; color: #CFCFCF; font-size: 0.95rem;"><strong>Modelo de Cobrança:</strong> Fixo: R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês</div>`;
                     }
+                    // Caso modelo fixo, não exibir nada aqui (valor ficará apenas no resumo financeiro)
                 }
                 
                 card.innerHTML = `
@@ -1894,13 +1915,13 @@
                         if (valorFixo > 0) {
                             // Híbrido
                             if (tipoComissaoHibrido === 'percentual' && pct > 0) {
-                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + ${pct}% sobre vendas<br>`;
+                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<wbr> + <wbr>${pct}% sobre vendas<br>`;
                             } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
-                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês + R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda<br>`;
+                                detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${valorFixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<wbr> + <wbr>R$ ${valorComissaoFixa.toLocaleString('pt-BR', {minimumFractionDigits: 2})} por venda<br>`;
                             }
                         } else if (pct > 0) {
                             // Comissão pura
-                            detalhamentoServicos += `${servico.tipo} (${servico.plano}): ${pct}% sobre vendas (sem fixo mensal)<br>`;
+                            detalhamentoServicos += `${servico.tipo} (${servico.plano}): <wbr>${pct}% sobre vendas (sem fixo mensal)<br>`;
                         } else {
                             detalhamentoServicos += `${servico.tipo} (${servico.plano}): R$ ${servico.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês<br>`;
                         }
@@ -1913,7 +1934,7 @@
             });
             
             // Atualizar display
-            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR')},00<br><small style="font-size: 0.8rem; color: #888; line-height: 1.3;">${detalhamentoServicos}</small>`;
+            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR')},00<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
             document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR')},00`;
             
             if (descontoRecorrencia > 0) {
@@ -1939,14 +1960,31 @@
 
         function atualizarResumo() {
             const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
-            const valorFinal = parseFloat(document.getElementById('valorFinalMensal').textContent.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+            const elValorFinalMensal = document.getElementById('valorFinalMensal');
+            const elDataProposta = document.getElementById('dataProposta');
+            const elNomeCliente = document.getElementById('nomeCliente');
+            const elEmpresaCliente = document.getElementById('empresaCliente');
+            const elResumoCliente = document.getElementById('resumoCliente');
+            const elResumoData = document.getElementById('resumoData');
+            const elResumoValorFinal = document.getElementById('resumoValorFinal');
+            const elResumoValorTotal = document.getElementById('resumoValorTotal');
+
+            const valorFinal = parseFloat(elValorFinalMensal?.textContent.replace(/[^\d,]/g, '').replace(',', '.') || '0') || 0;
             const valorTotal = valorFinal * recorrencia;
-            const dataAtual = document.getElementById('dataProposta').textContent;
-            
-            document.getElementById('resumoCliente').textContent = `${document.getElementById('nomeCliente').textContent} - ${document.getElementById('empresaCliente').textContent}`;
-            document.getElementById('resumoData').textContent = dataAtual;
-            document.getElementById('resumoValorFinal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00/mês`;
-            document.getElementById('resumoValorTotal').textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00`;
+            const dataAtual = elDataProposta?.textContent || '';
+
+            if (elResumoCliente && elNomeCliente && elEmpresaCliente) {
+                elResumoCliente.textContent = `${elNomeCliente.textContent} - ${elEmpresaCliente.textContent}`;
+            }
+            if (elResumoData && dataAtual) {
+                elResumoData.textContent = dataAtual;
+            }
+            if (elResumoValorFinal) {
+                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00/mês`;
+            }
+            if (elResumoValorTotal) {
+                elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00`;
+            }
             
             // Atualizar recorrência e forma de pagamento
             const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
@@ -1976,6 +2014,7 @@
             }
             
             const resumoServicos = document.getElementById('resumoServicos');
+            if (resumoServicos) {
             resumoServicos.innerHTML = servicosContratados.map(servico => {
                 let entregaveisHtml = '';
                 if (servico.secoes) {
@@ -2024,6 +2063,7 @@
                     </div>
                 `;
             }).join('');
+            }
         }
 
         function toggleFAQ(element) {
@@ -2095,8 +2135,8 @@
             const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
             
             const dadosAceite = {
-                nomeCliente: document.getElementById('nomeCliente').textContent,
-                empresaCliente: document.getElementById('empresaCliente').textContent,
+                nomeCliente: document.getElementById('nomeCliente')?.textContent || document.getElementById('empresaCliente')?.textContent || '',
+                empresaCliente: document.getElementById('empresaCliente')?.textContent || '',
                 emailCliente: new URLSearchParams(window.location.search).get('emailCliente') || '',
                 valorMensal: document.getElementById('valorFinalMensal').textContent,
                 valorTotal: document.getElementById('valorTotalPeriodo').textContent,
@@ -2139,11 +2179,11 @@
                 const doc = new jsPDF();
             
             // Dados do cliente
-            const nomeCliente = document.getElementById('nomeCliente').textContent || 'Cliente';
-            const empresaCliente = document.getElementById('empresaCliente').textContent || 'Empresa';
-            const dataAtual = document.getElementById('dataProposta').textContent || new Date().toLocaleDateString('pt-BR');
-            const valorFinal = document.getElementById('resumoValorFinal').textContent || 'R$ 0,00';
-            const valorTotal = document.getElementById('resumoValorTotal').textContent || 'R$ 0,00';
+            const nomeCliente = document.getElementById('nomeCliente')?.textContent || document.getElementById('empresaCliente')?.textContent || 'Cliente';
+            const empresaCliente = document.getElementById('empresaCliente')?.textContent || 'Empresa';
+            const dataAtual = document.getElementById('dataProposta')?.textContent || new Date().toLocaleDateString('pt-BR');
+            const valorFinal = document.getElementById('resumoValorFinal')?.textContent || 'R$ 0,00';
+            const valorTotal = document.getElementById('resumoValorTotal')?.textContent || 'R$ 0,00';
             
             // Configurar fonte
             doc.setFont('helvetica');
