@@ -2,7 +2,7 @@ CONTRATO PARTICULAR DE PRESTAÇÃO DE SERVIÇOS DE GESTÃO DE TRÁFEGO E SOCIAL 
 
 CONTRATANTE: {{BLOCO_CONTRATANTE}}
 
-CONTRATADO: Heat Digital - Marketing e Publicidade, CNPJ XX.XXX.XXX/XXXX-XX, com sede na [Endereço do Contratado], neste ato por seu representante legal [Nome do Representante].
+CONTRATADO: Heat Digital - Marketing e Publicidade, CNPJ 51.525.424/0001-00, com sede na Rua Blumenau, 249 - Municípios - Balneário Camboriú/SC, neste ato por seu representante legal Christiano Ricardo da Veiga Junior.
 
 As partes acima identificadas têm, entre si, justo e acertado o presente contrato particular de prestação de serviços de gestão de tráfego e social mídia, declarando, pelo ato da assinatura, que se encontram investidas dos competentes poderes de ordem legal e contratual para tanto, sob as penas da Lei, assumindo todas as responsabilidades de caráter civil e criminal, no que couber o objeto social, assim como a veracidade das informações prestadas neste instrumento, nos moldes das disposições a seguir estabelecidas:
 
