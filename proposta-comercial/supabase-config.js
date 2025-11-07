@@ -366,7 +366,8 @@ Suporte:
                     const doc = (dadosContrato.cpfCnpj || '').trim();
                     const end = (dadosContrato.enderecoCliente || '').trim();
                     const representante = (dadosContrato.representanteCliente || dadosContrato.nomeCliente || '').trim();
-                    return `${nomeOuRazao}, pessoa jurídica de direito privado, inscrita sob o CNPJ/CPF nº ${doc}, com sede na ${end}, neste ato por seu representante legal ${representante}.`;
+                    const repCpf = (dadosContrato.cpfRepresentante || '').trim();
+                    return `${nomeOuRazao}, pessoa jurídica de direito privado, inscrita sob o CNPJ/CPF nº ${doc}, com sede na ${end}, neste ato por seu representante legal ${representante}${repCpf ? ", CPF nº " + repCpf : ''}.`;
                 })(),
                 '{{SERVICO_SOCIAL_MIDIA}}': (dadosContrato.servicoSocialMidia || '').toUpperCase(),
                 '{{SERVICO_TRAFEGO_PAGO}}': (dadosContrato.servicoTrafegoPago || '').toUpperCase(),
@@ -398,7 +399,8 @@ Suporte:
                     const temComissao = !!dadosContrato.temComissaoVendas;
                     if (!temComissao || pct <= 0) return '';
                     return `Para o serviço de Tráfego Pago, as partes acordam a remuneração adicional de ${pct}% (por cento) sobre as vendas líquidas atribuídas às campanhas e esforços de mídia geridos pela CONTRATADA. Consideram-se vendas líquidas aquelas efetivamente faturadas, deduzidos cancelamentos, devoluções, estornos e tributos incidentes. O repasse da comissão ocorrerá até o dia 05 (cinco) do mês subsequente ao de competência, mediante relatório de vendas enviado pela CONTRATANTE e conferência da CONTRATADA. A CONTRATADA poderá solicitar evidências razoáveis para auditoria dos números reportados, respeitando-se a confidencialidade dos dados e o acesso limitado às informações estritamente necessárias. ${fixo > 0 ? `Esta comissão é devida cumulativamente ao valor fixo mensal de R$ ${fixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.` : ''}`;
-                })()
+                })(),
+                '{{MELHOR_DIA_PAGAMENTO}}': (dadosContrato.melhorDiaPagamento || '').toString()
             };
             let texto = textoTemplate;
             Object.keys(mapa).forEach(k => { texto = texto.replaceAll(k, mapa[k]); });

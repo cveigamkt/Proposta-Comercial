@@ -144,7 +144,11 @@
 
   <script>
     let client;
-    const baseLink = () => window.location.origin + window.location.pathname.replace(/admin\.html$/,'');
+    const baseLink = () => {
+      // Garante sempre barra final após remover admin.html
+      const root = window.location.origin + window.location.pathname.replace(/admin\.html$/,'');
+      return root.endsWith('/') ? root : root + '/';
+    };
 
     function fmtMoeda(n){
       if (n === null || n === undefined || isNaN(n)) return '—';
@@ -275,7 +279,7 @@
       }
       document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
       for (const r of rows){
-        const url = `${baseLink()}proposta-visualizacao.html?id=${r.id}`;
+  const url = `${window.location.origin}/proposta-visualizacao.html?id=${r.id}`;
         
         // Mostrar recorrência e pagamento apenas se o contrato foi assinado (status = aceita)
         const recorrenciaFinal = (r.status === 'aceita' && r.recorrencia_assinada) 

@@ -2547,7 +2547,7 @@
         }
         
         // Função para registrar aceite na planilha
-        async function registrarAceiteNaPlanilha(dados) {
+    async function registrarAceiteNaPlanilha(dados) {
             
             const form = document.createElement('form');
             form.method = 'POST';
@@ -2573,7 +2573,11 @@
                 formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || '',
                 timestampCriacao: window.dadosProposta?.timestampCriacao || '',
                 responsavelProposta: window.dadosProposta?.responsavelProposta || '',
-                validadeProposta: window.dadosProposta?.diasValidade || '7'
+                validadeProposta: window.dadosProposta?.diasValidade || '7',
+                cpfRepresentante: dadosAssinaturaTemp?.cpfRepresentante || '',
+                dataNascimentoRepresentante: dadosAssinaturaTemp?.dataNascimentoRepresentante || '',
+                melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || '',
+                emailFaturamento: dadosAssinaturaTemp?.email || ''
             };
             
 
@@ -2617,7 +2621,7 @@
             }
         }
 
-        async function atualizarPropostaNoSupabase(propostaId, dadosAceite) {
+    async function atualizarPropostaNoSupabase(propostaId, dadosAceite) {
             try {
                 const client = window.supabase;
                 
@@ -2642,7 +2646,11 @@
                         proposta_criada_id: propostaId,
                         recorrencia_assinada: dadosAceite.recorrencia,
                         forma_pagamento_assinada: dadosAceite.formaPagamento,
-                        assinada_em: new Date().toISOString()
+                        assinada_em: new Date().toISOString(),
+                        cpf_representante: dadosAssinaturaTemp?.cpfRepresentante || null,
+                        data_nascimento_representante: dadosAssinaturaTemp?.dataNascimentoRepresentante || null,
+                        melhor_dia_pagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null,
+                        email_faturamento: dadosAssinaturaTemp?.email || null
                     })
                     .select()
                     .single();
@@ -2685,7 +2693,10 @@
                     const pdfBlob = await window.supabaseConfig.gerarContratoPDF({
                         ...proposta,
                         recorrencia_assinada: dadosAceite.recorrencia,
-                        forma_pagamento_assinada: dadosAceite.formaPagamento
+                        forma_pagamento_assinada: dadosAceite.formaPagamento,
+                        cpfRepresentante: dadosAssinaturaTemp?.cpfRepresentante || null,
+                        dataNascimentoRepresentante: dadosAssinaturaTemp?.dataNascimentoRepresentante || null,
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null
                     });
                     
                     if (pdfBlob) {
@@ -2896,12 +2907,41 @@
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">
-                            E-mail de Confirmação *
+                        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #F2F2F2;">
+                            E-mail para faturamento (as faturas mensais serão enviadas para este e-mail) *
                         </label>
                         <input type="email" id="emailAssinatura" required 
                                style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
-                               placeholder="seu@email.com">
+                               placeholder="financeiro@empresa.com">
+                        <small style="color:#9aa0a6">Usaremos este e-mail para envio das faturas mensais.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">CPF do Representante *</label>
+                        <input type="text" id="cpfRepresentante" required maxlength="14"
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;"
+                               placeholder="000.000.000-00">
+                        <small id="feedbackCpfRepresentante" style="display:none; margin-top:5px; font-weight:600;"></small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">Data de Nascimento do Representante *</label>
+                        <input type="date" id="dataNascimentoRepresentante" required 
+                               style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #F2F2F2;">Melhor data para pagamento (dia do mês) *</label>
+                        <select id="melhorDiaPagamento" required 
+                                style="width: 100%; padding: 12px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; color: #fff; font-size: 1rem;">
+                            <option value="">Selecione…</option>
+                            <option>5</option>
+                            <option>10</option>
+                            <option>15</option>
+                            <option>20</option>
+                            <option>25</option>
+                            <option>30</option>
+                        </select>
                     </div>
                     
                     <div class="form-group" style="margin-bottom: 20px;">
@@ -3081,7 +3121,7 @@
                 });
             }
 
-            const html = `
+                const html = `
                 <p><strong>Cliente:</strong> ${nome}</p>
                 <p><strong>Empresa:</strong> ${empresa}</p>
                 ${resumoServicos ? `<div style="margin:10px 0 0 0">${resumoServicos}</div>` : ''}
@@ -3090,6 +3130,8 @@
                 <p><strong>Forma de Pagamento:</strong> ${pagamentoTexto}</p>
                 <p><strong>Valor Mensal:</strong> ${valorMensal}</p>
                 <p><strong>Valor Total:</strong> ${valorTotal}</p>
+                    <hr style="margin: 12px 0; border: 1px solid rgba(255,255,255,0.1);">
+                    <p style="color:#9aa0a6; font-size:.9rem">As faturas mensais serão enviadas para o e-mail de faturamento informado abaixo.</p>
             `;
             const destino = document.getElementById('resumoPropostaAceite');
             if (destino) destino.innerHTML = html;
@@ -3114,6 +3156,27 @@
                 
                 inputCpfCnpj.addEventListener('blur', function() {
                     window.validacaoCPFCNPJ.validarCPFouCNPJComFeedback(this, feedback);
+                });
+            }
+
+            // CPF do representante (somente CPF)
+            const inputCpfRep = document.getElementById('cpfRepresentante');
+            const feedbackRep = document.getElementById('feedbackCpfRepresentante');
+            if (inputCpfRep && window.validacaoCPFCNPJ) {
+                inputCpfRep.addEventListener('input', function(){
+                    if (window.validacaoCPFCNPJ.aplicarMascaraCPF) {
+                        window.validacaoCPFCNPJ.aplicarMascaraCPF(this);
+                    } else {
+                        window.validacaoCPFCNPJ.aplicarMascaraCPFouCNPJ(this);
+                    }
+                });
+                inputCpfRep.addEventListener('blur', function(){
+                    const valido = window.validacaoCPFCNPJ.validarCPF ? window.validacaoCPFCNPJ.validarCPF(this.value) : window.validacaoCPFCNPJ.validarCPFouCNPJ(this.value)?.valido;
+                    if (feedbackRep){
+                        feedbackRep.style.display = 'block';
+                        if (valido) { this.classList.add('valido'); this.classList.remove('invalido'); feedbackRep.style.color = '#10B981'; feedbackRep.textContent = 'CPF válido.'; }
+                        else { this.classList.add('invalido'); this.classList.remove('valido'); feedbackRep.style.color = '#FF6B6B'; feedbackRep.textContent = 'CPF inválido.'; }
+                    }
                 });
             }
         });
@@ -3330,34 +3393,38 @@
             const cpfCnpjAssinatura = document.getElementById('cpfCnpjAssinatura').value.trim();
             const emailAssinatura = document.getElementById('emailAssinatura').value.trim();
             const telefoneAssinatura = document.getElementById('telefoneAssinatura').value.trim();
-            
+            const cpfRepresentante = document.getElementById('cpfRepresentante').value.trim();
+            const dataNascimentoRepresentante = document.getElementById('dataNascimentoRepresentante').value;
+            const melhorDiaPagamento = document.getElementById('melhorDiaPagamento').value;
+
             // Validações
-            if (!nomeAssinatura || !sobrenomeAssinatura || !cpfCnpjAssinatura || !emailAssinatura || !telefoneAssinatura) {
+            if (!nomeAssinatura || !sobrenomeAssinatura || !cpfCnpjAssinatura || !emailAssinatura || !telefoneAssinatura || !cpfRepresentante || !dataNascimentoRepresentante || !melhorDiaPagamento) {
                 alert('Por favor, preencha todos os campos obrigatórios.');
                 return;
             }
-            
-            // Validar CPF/CNPJ
+
+            // Validar CPF/CNPJ empresa
             const resultadoValidacao = window.validacaoCPFCNPJ.validarCPFouCNPJ(cpfCnpjAssinatura);
             if (!resultadoValidacao.valido) {
-                alert('Por favor, digite um CPF ou CNPJ válido.');
+                alert('Por favor, digite um CPF ou CNPJ válido da empresa.');
                 return;
             }
-            
-            // Validar se o CPF/CNPJ corresponde ao informado no gerador
+
+            // Validar CPF representante
+            if (window.validacaoCPFCNPJ.validarCPF && !window.validacaoCPFCNPJ.validarCPF(cpfRepresentante)) {
+                alert('CPF do representante inválido.');
+                return;
+            }
+
+            // Validar match com gerador
             const urlParams = new URLSearchParams(window.location.search);
             const cpfCnpjGerador = urlParams.get('cpfCnpj') || '';
-            
-            // Normalizar ambos (remover pontuação)
-            const normalizarCpfCnpj = (str) => str.replace(/[^\d]/g, '');
-            const cpfCnpjAssinaturaLimpo = normalizarCpfCnpj(cpfCnpjAssinatura);
-            const cpfCnpjGeradorLimpo = normalizarCpfCnpj(cpfCnpjGerador);
-            
-            if (cpfCnpjGeradorLimpo && cpfCnpjAssinaturaLimpo !== cpfCnpjGeradorLimpo) {
-                alert('❌ O CPF/CNPJ informado não corresponde ao cadastrado na proposta. Por favor, verifique e digite corretamente.');
+            const normalizar = (s) => s.replace(/[^\d]/g, '');
+            if (cpfCnpjGerador && normalizar(cpfCnpjGerador) !== normalizar(cpfCnpjAssinatura)) {
+                alert('❌ O CPF/CNPJ informado não corresponde ao cadastrado na proposta.');
                 return;
             }
-            
+
             // Armazenar dados temporariamente
             dadosAssinaturaTemp = {
                 nomeCompleto: `${nomeAssinatura} ${sobrenomeAssinatura}`,
@@ -3365,7 +3432,10 @@
                 sobrenome: sobrenomeAssinatura,
                 cpfCnpj: cpfCnpjAssinatura,
                 email: emailAssinatura,
-                telefone: telefoneAssinatura
+                telefone: telefoneAssinatura,
+                cpfRepresentante: cpfRepresentante,
+                dataNascimentoRepresentante: dataNascimentoRepresentante,
+                melhorDiaPagamento: melhorDiaPagamento
             };
             
             // Gerar contrato para exibição
@@ -3580,6 +3650,10 @@
                 '{{EMPRESA_CLIENTE}}': window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || '',
                 '{{EMAIL_CLIENTE}}': dadosAssinaturaTemp.email || window.propostaCarregada?.email_cliente || '',
                 '{{TELEFONE_CLIENTE}}': dadosAssinaturaTemp.telefone || window.propostaCarregada?.telefone_cliente || '',
+                '{{REPRESENTANTE_NOME}}': dadosAssinaturaTemp.nome || '',
+                '{{REPRESENTANTE_SOBRENOME}}': dadosAssinaturaTemp.sobrenome || '',
+                '{{REPRESENTANTE_NOME_COMPLETO}}': dadosAssinaturaTemp.nomeCompleto || '',
+                '{{REPRESENTANTE_CPF}}': dadosAssinaturaTemp.cpfRepresentante || '',
                 '{{SERVICO_SOCIAL_MIDIA}}': (window.propostaCarregada?.servico_social_midia || urlParams.get('servicoSocialMidia') || 'Não se aplica'),
                 '{{SERVICO_TRAFEGO_PAGO}}': (window.propostaCarregada?.servico_trafego_pago || urlParams.get('servicoTrafegoPago') || 'Não se aplica'),
                 '{{INVESTIMENTO_MIDIA}}': window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || 'Não informado',
@@ -3593,7 +3667,8 @@
                 '{{ENTREGAVEIS_SOCIAL_MIDIA}}': textoEntregaveisSocial,
                 '{{ENTREGAVEIS_TRAFEGO_PAGO}}': textoEntregaveisTrafego,
                 '{{COBRANCA_TRAFEGO_DESCRICAO}}': cobrancaDescricao,
-                '{{CLAUSULA_COMISSAO}}': clausulaComissao
+                '{{CLAUSULA_COMISSAO}}': clausulaComissao,
+                '{{MELHOR_DIA_PAGAMENTO}}': dadosAssinaturaTemp.melhorDiaPagamento || ''
             };
             
             console.log('Substituindo placeholders...', mapa);
@@ -3633,6 +3708,10 @@
                 }
             }
             
+            // Adicionar data de pagamento no final
+            if (dadosAssinaturaTemp.melhorDiaPagamento) {
+                html += `<div style="margin-top:16px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); color:#9aa0a6; font-size:13px;">Melhor data para pagamento: dia ${dadosAssinaturaTemp.melhorDiaPagamento} de cada mês.</div>`;
+            }
             html += '</div>';
             container.innerHTML = html;
             console.log('Contrato renderizado com sucesso!');
