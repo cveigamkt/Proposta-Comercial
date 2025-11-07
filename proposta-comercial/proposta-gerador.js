@@ -234,6 +234,13 @@ function formatarMoeda(valor) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM carregado - Inicializando event listeners');
     
+    // Verificar se está em modo de edição
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        carregarPropostaParaEdicao(editId);
+    }
+    
     // Atualizar entregáveis de Social Media
     const servicoSocialMidia = document.getElementById('servicoSocialMidia');
     if (servicoSocialMidia) {
@@ -553,7 +560,7 @@ window.gerarLinkProposta = async function() {
         const dataExpiracao = new Date();
         dataExpiracao.setDate(dataExpiracao.getDate() + parseInt(dadosVisualizacao.diasValidade));
         
-        // Preparar dados para inserção
+        // Preparar dados para inserção/atualização
         const dadosInsercao = {
             nome_cliente: dadosVisualizacao.nomeCliente,
             empresa_cliente: dadosVisualizacao.empresaCliente,
@@ -584,30 +591,56 @@ window.gerarLinkProposta = async function() {
             status: 'pendente'
         };
         
-        // Inserir no Supabase e obter UUID
-        console.log('=== DADOS PARA INSERÇÃO ===');
-        console.table(dadosInsercao);
-        console.log('Objeto completo:', JSON.stringify(dadosInsercao, null, 2));
+        let propostaId;
         
-        const { data, error } = await supabase
-            .from('propostas_criadas')
-            .insert(dadosInsercao)
-            .select('id')
-            .single();
-        
-        if (error) {
-            console.error('=== ERRO SUPABASE ===');
-            console.error('Objeto de erro completo:', JSON.stringify(error, null, 2));
-            console.error('Código:', error.code);
-            console.error('Mensagem:', error.message);
-            console.error('Detalhes:', error.details);
-            console.error('Hint:', error.hint);
-            throw new Error('Erro ao salvar proposta no banco de dados: ' + error.message);
+        // Verificar se está em modo de edição
+        if (window.propostaEmEdicao) {
+            console.log('=== ATUALIZANDO PROPOSTA ===');
+            console.log('ID:', window.propostaEmEdicao);
+            console.table(dadosInsercao);
+            
+            const { data, error } = await supabase
+                .from('propostas_criadas')
+                .update(dadosInsercao)
+                .eq('id', window.propostaEmEdicao)
+                .select('id')
+                .single();
+            
+            if (error) {
+                console.error('=== ERRO AO ATUALIZAR ===');
+                console.error(error);
+                throw new Error(`Erro ao atualizar proposta: ${error.message}`);
+            }
+            
+            propostaId = data.id;
+            alert('✅ Proposta atualizada com sucesso!');
+            
+        } else {
+            console.log('=== INSERINDO NOVA PROPOSTA ===');
+            console.table(dadosInsercao);
+            
+            const { data, error } = await supabase
+                .from('propostas_criadas')
+                .insert(dadosInsercao)
+                .select('id')
+                .single();
+            
+            if (error) {
+                console.error('=== ERRO SUPABASE ===');
+                console.error('Objeto de erro completo:', JSON.stringify(error, null, 2));
+                console.error('Código:', error.code);
+                console.error('Mensagem:', error.message);
+                console.error('Detalhes:', error.details);
+                console.error('Hint:', error.hint);
+                throw new Error('Erro ao salvar proposta no banco de dados: ' + error.message);
+            }
+            
+            propostaId = data.id;
         }
         
         // Gerar link com UUID
         const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '');
-        const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${data.id}`;
+        const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${propostaId}`;
         
         // Mostrar modal com o link
         document.getElementById('linkGerado').value = linkProposta;
@@ -740,7 +773,7 @@ function atualizarBadgeComissao() {
         if (tipoComissaoHibrido === 'percentual' && pct > 0) {
             badge.textContent = `+ ${pct}% sobre vendas`;
             badgeWrapper.style.display = 'block';
-        } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
+                } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
             badge.textContent = `+ R$ ${valorComissaoFixa.toFixed(2)} por venda`;
             badgeWrapper.style.display = 'block';
         } else {
@@ -748,5 +781,100 @@ function atualizarBadgeComissao() {
         }
     } else {
         badgeWrapper.style.display = 'none';
+    }
+}
+
+// Função para carregar proposta existente para edição
+async function carregarPropostaParaEdicao(propostaId) {
+    try {
+        console.log('Carregando proposta para edição:', propostaId);
+        
+        // Inicializar Supabase
+        const client = window.supabaseConfig.initSupabase();
+        
+        // Buscar proposta
+        const { data: proposta, error } = await client
+            .from('propostas_criadas')
+            .select('*')
+            .eq('id', propostaId)
+            .single();
+        
+        if (error || !proposta) {
+            console.error('Erro ao carregar proposta:', error);
+            alert('❌ Não foi possível carregar a proposta para edição.');
+            return;
+        }
+        
+        console.log('Proposta carregada:', proposta);
+
+        // Helper para setar valores com segurança
+        const setIfExists = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.value = value ?? '';
+        };
+
+        // Preencher campos do formulário (somente os que existem no gerador)
+        setIfExists('empresaCliente', proposta.empresa_cliente || '');
+        setIfExists('enderecoCliente', proposta.endereco_cliente || '');
+        setIfExists('responsavelProposta', proposta.responsavel_proposta || '');
+        setIfExists('diasValidade', proposta.dias_validade || 7);
+        // IDs que podem não existir no gerador atual
+        setIfExists('emailCliente', proposta.email_cliente || '');
+        setIfExists('telefoneCliente', proposta.telefone_cliente || '');
+        setIfExists('representanteCliente', proposta.representante_cliente || '');
+        // CPF/CNPJ: alinhar com ID correto do HTML
+        setIfExists('cpfCnpjCliente', proposta.cpf_cnpj || '');
+
+        // Mapear nomes salvos no banco para os valores dos selects
+        const mapSocial = { 'START': 'start', 'SCALE': 'scale', 'HEAT': 'heat' };
+        const mapTrafego = { 'FOCO': 'foco', 'ACELERAÇÃO': 'aceleracao', 'DESTAQUE': 'heat' };
+        const socialKey = proposta.servico_social_midia ? (mapSocial[proposta.servico_social_midia] || 'nao-se-aplica') : 'nao-se-aplica';
+        const trafegoKey = proposta.servico_trafego_pago ? (mapTrafego[proposta.servico_trafego_pago] || 'nao-se-aplica') : 'nao-se-aplica';
+        setIfExists('servicoSocialMidia', socialKey);
+        setIfExists('servicoTrafegoPago', trafegoKey);
+
+        // Investimento em mídia
+        if (proposta.investimento_midia) {
+            setIfExists('investimentoMidia', proposta.investimento_midia);
+        }
+
+        // Modelo de cobrança (inferir se não existir no registro)
+        let modelo = proposta.modelo_cobranca || null;
+        if (!modelo) {
+            if (proposta.tem_comissao_vendas) {
+                modelo = (proposta.valor_fixo_trafego && proposta.valor_fixo_trafego > 0) ? 'hibrido' : 'comissao';
+            } else {
+                modelo = 'fixo';
+            }
+        }
+        setIfExists('modeloCobranca', modelo);
+        if (proposta.percentual_comissao != null) setIfExists('percentualComissao', proposta.percentual_comissao);
+        if (proposta.tipo_comissao_hibrido) setIfExists('tipoComissaoHibrido', proposta.tipo_comissao_hibrido);
+        if (proposta.valor_comissao_fixa != null) setIfExists('valorComissaoFixa', proposta.valor_comissao_fixa);
+        if (proposta.valor_fixo_trafego != null) setIfExists('valorFixoTrafego', proposta.valor_fixo_trafego);
+
+        // Disparar eventos para atualizar UI somente se os elementos existirem
+        const elSocial = document.getElementById('servicoSocialMidia');
+        if (elSocial) elSocial.dispatchEvent(new Event('change'));
+        const elTrafego = document.getElementById('servicoTrafegoPago');
+        if (elTrafego) elTrafego.dispatchEvent(new Event('change'));
+        const elModelo = document.getElementById('modeloCobranca');
+        if (elModelo) elModelo.dispatchEvent(new Event('change'));
+
+        // Calcular valores (com try/catch pra não quebrar)
+        try { calcularValores(); } catch (e) { console.warn('Falha ao recalcular valores no modo edição:', e); }
+
+        // Armazenar ID para atualizar ao invés de criar
+        window.propostaEmEdicao = propostaId;
+
+        // Mudar texto do botão (compatível com o HTML atual)
+        const btnGerar = document.querySelector('.btn-generate');
+        if (btnGerar) btnGerar.textContent = '💾 Atualizar Proposta';
+
+        alert('📝 Proposta carregada para edição!');
+        
+    } catch (error) {
+        console.error('Erro ao carregar proposta:', error);
+        alert('❌ Erro ao carregar proposta: ' + error.message);
     }
 }

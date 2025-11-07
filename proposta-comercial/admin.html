@@ -44,6 +44,12 @@
     .right{text-align:right}
     .nowrap{white-space:nowrap}
     .link{color:var(--brand-2);text-decoration:none}
+    .btn-action{padding:6px 12px;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-edit{background:#ffd666;color:#000}
+    .btn-edit:hover{background:#ffcc33}
+    .btn-delete{background:#ff6b6b;color:#fff}
+    .btn-delete:hover{background:#ff5252}
+    .actions-cell{display:flex;gap:6px;flex-wrap:wrap}
     .toolbar{display:flex;gap:10px;align-items:center}
     .footer{margin-top:16px;color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between}
     @media (max-width:900px){
@@ -121,10 +127,11 @@
             <th>Status</th>
             <th>Proposta</th>
             <th>Contrato</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="12" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="13" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -262,7 +269,7 @@
       atualizarEstatisticas(rows);
       
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="12" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="13" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
@@ -297,6 +304,12 @@
             <a class="link" href="${url}" target="_blank">Abrir</a>
           </td>
           <td>${r.contrato_pdf_url ? `<a class="link" href="${r.contrato_pdf_url}" target="_blank">PDF</a>` : '<span class="muted">—</span>'}</td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')" title="Editar proposta">✏️</button>
+              <button class="btn-action btn-delete" onclick="confirmarExclusao('${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
+            </div>
+          </td>
         `;
         tb.appendChild(tr);
       }
@@ -355,6 +368,39 @@
       if(e.key==='Enter') carregar();
     });
     window.addEventListener('DOMContentLoaded', carregar);
+
+    function editarProposta(id) {
+      // Redirecionar para o gerador com os dados da proposta para edição
+      window.location.href = `proposta-gerador.html?edit=${id}`;
+    }
+
+    async function confirmarExclusao(id, nomeCliente) {
+      const confirmacao = confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
+      
+      if (!confirmacao) return;
+      
+      try {
+        client = client || window.supabaseConfig.initSupabase();
+        
+        // Excluir proposta
+        const { error } = await client
+          .from('propostas_criadas')
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+          console.error('Erro ao excluir proposta:', error);
+          alert('❌ Erro ao excluir proposta: ' + error.message);
+          return;
+        }
+        
+        alert('✅ Proposta excluída com sucesso!');
+        carregar(); // Recarregar lista
+      } catch (e) {
+        console.error('Erro ao excluir:', e);
+        alert('❌ Erro ao excluir proposta. Tente novamente.');
+      }
+    }
   </script>
   
 </body>
