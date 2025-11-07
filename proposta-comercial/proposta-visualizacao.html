@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -3837,7 +3837,7 @@
                     percentualComissao: window.propostaCarregada?.percentual_comissao ?? (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0),
                     valorFixoTrafego: window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0),
                     investimentoMidia: window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || '',
-                    recorrencia: recorrenciaSelecionada ? `${recorrenciaSelecionada.value} meses` : '6 meses',
+                    recorrencia: recorrenciaSelecionada ? (recorrenciaSelecionada.closest('.option-card')?.querySelector('.title')?.textContent || '6 meses') : '6 meses',
                     formaPagamento: formaPagamentoSelecionada ? (formaPagamentoSelecionada.closest('.option-card')?.querySelector('.title')?.textContent || '') : '',
                     valorMensal: valorMensal,
                     valorTotal: valorTotal,

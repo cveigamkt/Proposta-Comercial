@@ -1,12 +1,9 @@
-// Configuração do Supabase
+﻿// Configuração do Supabase
 // Substitua com suas credenciais do Supabase após criar o projeto
-
 const SUPABASE_URL = 'https://ndokpkkdziifydugyjie.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2twa2tkemlpZnlkdWd5amllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMjA5NTYsImV4cCI6MjA3Nzg5Njk1Nn0.k9brkGFdvZe_32ctC0zKpOW1y6icp3zacOOw-MYxECc';
-
 // Inicializar cliente Supabase (será carregado via CDN no HTML)
 let supabase = null;
-
 function initSupabase() {
     if (!window.supabase) {
         const err = new Error('Biblioteca supabase-js não carregada.');
@@ -20,11 +17,12 @@ function initSupabase() {
     }
     return supabase;
 }
-
 // Função para salvar proposta aceita no Supabase
 async function salvarPropostaAceita(dadosProposta) {
     try {
         const supabase = initSupabase();
+        const urlParamsSafe = (function(){ try { return new URLSearchParams(window.location.search); } catch(e) { return null; } })();
+        const propostaCriadaId = (dadosProposta && dadosProposta.propostaCriadaId) || (urlParamsSafe && urlParamsSafe.get('id')) || null;
         
         // Obter IP do cliente (via API pública)
         let ip = '0.0.0.0';
@@ -64,13 +62,29 @@ async function salvarPropostaAceita(dadosProposta) {
                 aceita_em: new Date().toISOString(),
                 ip_cliente: ip,
                 user_agent: navigator.userAgent,
-                proposta_criada_id: dadosProposta.propostaCriadaId || null,
+                proposta_criada_id: propostaCriadaId,
                 endereco_cliente: dadosProposta.enderecoCliente || '',
                 representante_cliente: dadosProposta.representanteLegalCliente || ''
             })
             // Seleciona apenas o id para minimizar necessidade de SELECT amplo
             .select('id')
             .single();
+        // Atualizar a proposta de origem como aceita (status, recorrência e forma de pagamento)
+        try {
+            if (propostaCriadaId) {
+                await supabase
+                  .from('propostas_criadas')
+                  .update({
+                    status: 'aceita',
+                    aceita_em: new Date().toISOString(),
+                    recorrencia: dadosProposta.recorrencia || 'Mensal',
+                    forma_pagamento: dadosProposta.formaPagamento || 'À Vista'
+                  })
+                  .eq('id', propostaCriadaId);
+            }
+        } catch (e) {
+            console.warn('Falha ao atualizar propostas_criadas no aceite (seguindo):', e);
+        }
         
         if (error) {
             console.error('❌ Erro ao salvar proposta:', error);
@@ -84,11 +98,10 @@ async function salvarPropostaAceita(dadosProposta) {
         throw error;
     }
 }
-
 // Função para gerar e armazenar contrato em PDF no Supabase Storage
 async function gerarEArmazenarContrato(propostaId, dadosContrato) {
     try {
-        const supabase = initSupabase();
+        const propostaCriadaId = (dadosProposta && dadosProposta.propostaCriadaId) || (urlParamsSafe && urlParamsSafe.get('id')) || null;
         
         // Gerar PDF do contrato
         const pdfBlob = await gerarPDFContrato(dadosContrato);
@@ -142,7 +155,6 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         throw error;
     }
 }
-
 // Gerar hash da assinatura digital
 function gerarHashAssinatura(dadosContrato) {
     const dataString = JSON.stringify({
@@ -158,7 +170,6 @@ function gerarHashAssinatura(dadosContrato) {
         return btoa(dataString);
     }
 }
-
 // Função para gerar PDF do contrato
 async function gerarPDFContrato(dadosContrato) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -168,13 +179,11 @@ async function gerarPDFContrato(dadosContrato) {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     // Utilitários
     const margemEsq = 20;
     const margemDir = 190;
     const larguraUtil = margemDir - margemEsq;
     let y = 20;
-
     // Renderiza um parágrafo quebrando linhas
     const paragrafo = (texto, opcoes = {}) => {
         const { negrito = false, tamanho = 11 } = opcoes;
@@ -193,7 +202,6 @@ async function gerarPDFContrato(dadosContrato) {
         
         doc.setFont('helvetica', 'normal');
     };
-
     // Helper: tentar carregar fonte Unicode local (se existir)
     const carregarFonteUnicode = async () => {
         try {
@@ -221,7 +229,6 @@ async function gerarPDFContrato(dadosContrato) {
             return false;
         }
     };
-
     // Tenta carregar template externo (contrato-template.md) primeiro
     let usouTemplate = false;
     let textoTemplate = '';
@@ -241,11 +248,9 @@ async function gerarPDFContrato(dadosContrato) {
                 }
             } catch (_) { /* tenta próximo caminho */ }
         }
-
         if (textoTemplate) {
             // Fonte Unicode (se disponível) para acentuação correta
             await carregarFonteUnicode();
-
             // Definir entregáveis por plano de Social Media
             const entregaveisSocialMedia = {
                 'start': `SOCIAL MEDIA - PLANO START:
@@ -272,60 +277,51 @@ async function gerarPDFContrato(dadosContrato) {
 - Monitoramento de tendências
 - Suporte em tempo real`
             };
-
             // Definir entregáveis por plano de Tráfego Pago
             const entregaveisTrafegoPago = {
                 'foco': `TRÁFEGO PAGO - PLANO FOCO:
 Execução:
 - 3 criativos estáticos (imagem) por mês
 - 1 reunião mensal
-
 Gestão e Acompanhamento:
 - Planejamento de campanhas
 - Rastreamento de leads
 - Relatórios semanais de performance
 - Dashboard de resultados
-
 Estratégia e Configuração:
 - Script de vendas
 - Análise de concorrência
 - Definição de ICP (público ideal)
 - Landing Page de alta conversão
 - Configuração inicial de BM + Tags (Meta/Google)
-
 Suporte:
 - Suporte direto (grupo de acompanhamento)`,
                 'aceleracao': `TRÁFEGO PAGO - PLANO ACELERAÇÃO:
 Execução:
 - 5 criativos estáticos (imagem) por mês
 - 2 reuniões mensais
-
 Gestão e Acompanhamento:
 - Planejamento de campanhas
 - Rastreamento de leads
 - Relatórios semanais de performance
 - Dashboard de resultados
-
 Estratégia e Configuração:
 - Script de vendas
 - Análise de concorrência
 - Definição de ICP (público ideal)
 - Landing Page de alta conversão
 - Configuração inicial de BM + Tags (Meta/Google)
-
 Suporte:
 - Suporte direto (grupo de acompanhamento)`,
                 'heat': `TRÁFEGO PAGO - PLANO DESTAQUE:
 Execução:
 - 8 criativos estáticos (imagem) por mês
 - 4 reuniões mensais
-
 Gestão e Acompanhamento:
 - Planejamento de campanhas
 - Rastreamento de leads
 - Relatórios semanais de performance
 - Dashboard de resultados
-
 Estratégia e Configuração:
 - Script de vendas
 - Análise de concorrência
@@ -334,27 +330,21 @@ Estratégia e Configuração:
 - Configuração inicial de BM + Tags (Meta/Google)
 - Consultoria estratégica de crescimento
 - Ajustes contínuos de LP e otimização de conversão (CRO)
-
 Suporte:
 - Suporte direto (grupo de acompanhamento)
 - Suporte prioritário via WhatsApp`
             };
-
             // Montar textos dos entregáveis com base nos serviços contratados
             let textoEntregaveisSocial = '';
             let textoEntregaveisTrafego = '';
-
             const servicoSocial = (dadosContrato.servicoSocialMidia || '').toLowerCase();
             const servicoTrafego = (dadosContrato.servicoTrafegoPago || '').toLowerCase();
-
             if (servicoSocial && servicoSocial !== 'nao-se-aplica' && entregaveisSocialMedia[servicoSocial]) {
                 textoEntregaveisSocial = entregaveisSocialMedia[servicoSocial];
             }
-
             if (servicoTrafego && servicoTrafego !== 'nao-se-aplica' && entregaveisTrafegoPago[servicoTrafego]) {
                 textoEntregaveisTrafego = entregaveisTrafegoPago[servicoTrafego];
             }
-
             const mapa = {
                 '{{NOME_CLIENTE}}': dadosContrato.nomeCliente || '',
                 '{{EMPRESA_CLIENTE}}': dadosContrato.empresaCliente || '',
@@ -406,7 +396,6 @@ Suporte:
             Object.keys(mapa).forEach(k => { texto = texto.replaceAll(k, mapa[k]); });
             // Compatibilidade: substituir marcador textual do IP caso não exista placeholder dedicado
             texto = texto.replace('[será inserido automaticamente]', dadosContrato.ipAssinatura || '');
-
             // Renderiza o template linha a linha para preservar quebras
             doc.setFontSize(11);
             const linhas = texto.split('\n');
@@ -429,7 +418,6 @@ Suporte:
     } catch (e) {
         console.warn('Não foi possível carregar contrato-template.md, usando fallback. Erro:', e);
     }
-
     if (!usouTemplate) {
         // Fallback: renderiza cabeçalho, partes e cláusulas resumidas
         doc.setFontSize(20);
@@ -437,7 +425,6 @@ Suporte:
         doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS', margemEsq, y); y += 10;
         doc.setFontSize(16);
         doc.text('HEAT DIGITAL', margemEsq, y); y += 15;
-
         // Dados das partes
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
@@ -455,13 +442,11 @@ Suporte:
         paragrafo('Heat Digital - Marketing e Publicidade');
         paragrafo('CNPJ: XX.XXX.XXX/XXXX-XX');
         y += 4;
-
         // Texto padrão
         doc.setFont('helvetica', 'bold');
         doc.text('OBJETO DO CONTRATO:', margemEsq, y); y += 7;
         doc.setFont('helvetica', 'normal');
         paragrafo('Prestação de serviços de marketing digital, incluindo gestão de redes sociais e/ou tráfego pago, conforme especificações detalhadas abaixo.');
-
         doc.setFont('helvetica', 'bold');
         doc.text('SERVIÇOS CONTRATADOS:', margemEsq, y); y += 7;
         doc.setFont('helvetica', 'normal');
@@ -470,7 +455,6 @@ Suporte:
             paragrafo(`• Tráfego Pago - Plano: ${dadosContrato.servicoTrafegoPago.toUpperCase()}`);
             if (dadosContrato.investimentoMidia) paragrafo(`  Investimento em Mídia: ${dadosContrato.investimentoMidia}`);
         }
-
         doc.setFont('helvetica', 'bold');
         doc.text('VALORES E CONDIÇÕES:', margemEsq, y); y += 7;
         doc.setFont('helvetica', 'normal');
@@ -478,7 +462,6 @@ Suporte:
         paragrafo(`Recorrência: ${dadosContrato.recorrencia}`);
         paragrafo(`Forma de Pagamento: ${dadosContrato.formaPagamento}`);
         paragrafo(`Valor Total do Período: R$ ${parseFloat(dadosContrato.valorTotal).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-
         doc.setFont('helvetica', 'bold');
         doc.text('CLÁUSULAS CONTRATUAIS:', margemEsq, y); y += 7;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
@@ -491,7 +474,6 @@ Suporte:
         ];
         clausulas.forEach(c => paragrafo(c));
     }
-
     // Assinatura digital: apenas quando usando fallback (o template já contém esta seção)
     if (!usouTemplate) {
         doc.setFont('helvetica','bold'); doc.setFontSize(12);
@@ -507,7 +489,6 @@ Suporte:
         paragrafo('Este documento possui validade jurídica por meio de assinatura eletrônica, conforme MP 2.200-2/2001 e Lei 14.063/2020.');
         doc.setTextColor(0);
     }
-
     // Anexo/Resumo: só adicionar no fallback; o template já contém seção de anexo contratual
     if (!usouTemplate) {
         doc.setTextColor(0); doc.setFontSize(12); doc.setFont('helvetica','bold');
@@ -519,10 +500,8 @@ Suporte:
         paragrafo(`Recorrência: ${dadosContrato.recorrencia} | Pagamento: ${dadosContrato.formaPagamento}`);
         paragrafo(`Valores: Mensal ${parseFloat(dadosContrato.valorMensal).toLocaleString('pt-BR', {minimumFractionDigits: 2})} | Total ${parseFloat(dadosContrato.valorTotal).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`);
     }
-
     return doc.output('blob');
 }
-
 // Exportar funções
 window.supabaseConfig = {
     initSupabase,

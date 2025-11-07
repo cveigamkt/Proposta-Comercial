@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -52,6 +52,11 @@
     .actions-cell{display:flex;gap:6px;flex-wrap:wrap}
     .toolbar{display:flex;gap:10px;align-items:center}
     .footer{margin-top:16px;color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between}
+    .status-update-info{font-size:.75rem;color:var(--muted);margin-top:4px}
+    .status-assinatura{font-size:.7rem;color:#00E388;margin-top:2px}
+    .btn-assinar{background:#00E388;color:#000;border:none;padding:6px 12px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-assinar:hover{background:#00cc7a}
+    .btn-assinar:disabled{background:#555;color:#999;cursor:not-allowed}
     @media (max-width:900px){
       .filters{grid-template-columns:1fr;gap:10px}
       .stats{grid-template-columns:repeat(2,1fr)}
@@ -125,13 +130,15 @@
             <th>Recorrência</th>
             <th>Pagamento</th>
             <th>Status</th>
+            <th>Última Atualização</th>
+            <th>Assinatura</th>
             <th>Proposta</th>
             <th>Contrato</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="13" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="15" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -158,6 +165,18 @@
       const cls = s === 'aceita' ? 'status-aceita' : s === 'recusada' ? 'status-recusada' : expirada ? 'status-expirada' : 'status-pendente';
       const texto = expirada && s==='pendente' ? 'Expirada' : (s||'pendente');
       return `<span class="chip ${cls}">${texto}</span>`;
+    }
+    
+    function formatarDataHora(data) {
+      if (!data) return '—';
+      const date = new Date(data);
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
 
     function formatarModeloCobranca(r) {
@@ -232,8 +251,12 @@
           forma_pagamento: pc.forma_pagamento,
           status: pc.status,
           criada_em: pc.criada_em,
+          atualizada_em: pc.atualizada_em,
           expira_em: pc.expira_em,
           aceita_em: pc.aceita_em,
+          assinado_em: pc.assinado_em,
+          assinado_por: pc.assinado_por,
+          hash_assinatura: pc.hash_assinatura,
           proposta_aceita_id: mapProp.get(pc.id) || null,
           contrato_pdf_url: contratosMap.get(mapProp.get(pc.id)) || null,
           expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
@@ -273,7 +296,7 @@
       atualizarEstatisticas(rows);
       
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="13" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="15" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
@@ -282,11 +305,11 @@
   const url = `${window.location.origin}/proposta-visualizacao.html?id=${r.id}`;
         
         // Mostrar recorrência e pagamento apenas se o contrato foi assinado (status = aceita)
-        const recorrenciaFinal = (r.status === 'aceita' && r.recorrencia_assinada) 
-          ? r.recorrencia_assinada 
+        const recorrenciaFinal = (r.status === 'aceita' && r.recorrencia) 
+          ? r.recorrencia 
           : '<span class="muted">—</span>';
-        const pagamentoFinal = (r.status === 'aceita' && r.forma_pagamento_assinada) 
-          ? r.forma_pagamento_assinada 
+        const pagamentoFinal = (r.status === 'aceita' && r.forma_pagamento) 
+          ? r.forma_pagamento 
           : '<span class="muted">—</span>';
         
         const tr = document.createElement('tr');
@@ -304,6 +327,21 @@
           <td class="nowrap">${recorrenciaFinal}</td>
           <td class="nowrap">${pagamentoFinal}</td>
           <td>${statusChip(r.status, r.expirada)}</td>
+          <td class="nowrap">
+            <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
+            ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
+          </td>
+          <td>
+            ${(() => {
+              if (r.status === 'pendente' && !r.expirada) {
+                return `<button class="btn-assinar" onclick="assinarProposta('${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Marcar como assinada">✍️ Assinar</button>`;
+              } else if (r.status === 'aceita') {
+                return `<span class="chip status-aceita">✅ Assinado</span>`;
+              } else {
+                return `<span class="muted">—</span>`;
+              }
+            })()}
+          </td>
           <td>
             <a class="link" href="${url}" target="_blank">Abrir</a>
           </td>
@@ -360,7 +398,7 @@
       }catch(e){
         console.error(e);
         const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = `<tr><td colspan="12" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="15" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
       }finally{
         btn.disabled = false; btn.textContent = 'Buscar';
       }
@@ -371,7 +409,11 @@
     document.addEventListener('keydown', (e)=>{
       if(e.key==='Enter') carregar();
     });
-    window.addEventListener('DOMContentLoaded', carregar);
+    window.addEventListener('DOMContentLoaded', () => {
+      carregar();
+      // Iniciar monitoramento em tempo real após carregar os dados iniciais
+      setTimeout(iniciarMonitoramentoRealtime, 2000);
+    });
 
     function editarProposta(id) {
       // Redirecionar para o gerador com os dados da proposta para edição
@@ -403,6 +445,92 @@
       } catch (e) {
         console.error('Erro ao excluir:', e);
         alert('❌ Erro ao excluir proposta. Tente novamente.');
+      }
+    }
+
+    async function assinarProposta(id, nomeCliente) {
+      if (!confirm(`Confirma a assinatura da proposta para ${nomeCliente}?`)) return;
+      try {
+        const agora = new Date().toISOString();
+        const hash = await gerarHashAssinatura(id, agora);
+        
+        const { error } = await client
+          .from('propostas_criadas')
+          .update({
+            status: 'aceita',
+            assinado_em: agora,
+            atualizada_em: agora,
+            aceita_em: agora,
+            hash_assinatura: hash,
+            assinado_por: 'Administrador'
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        await carregar();
+        await enviarNotificacaoAssinatura(id, nomeCliente);
+        alert('✅ Proposta assinada com sucesso!');
+      } catch (err) {
+        console.error('Erro ao assinar proposta:', err);
+        alert('❌ Erro ao assinar proposta: ' + err.message);
+      }
+    }
+
+    async function gerarHashAssinatura(id, timestamp) {
+      const crypto = window.crypto || window.msCrypto;
+      if (!crypto || !crypto.subtle) {
+        return 'hash-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      }
+      try {
+        const data = new TextEncoder().encode(id + timestamp + Math.random());
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (error) {
+        return 'hash-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      }
+    }
+
+    async function enviarNotificacaoAssinatura(propostaId, nomeCliente) {
+      try {
+        const { error } = await client
+          .from('notificacoes')
+          .insert([{
+            tipo: 'assinatura',
+            mensagem: `Proposta de ${nomeCliente} foi assinada`,
+            dados: { propostaId: propostaId },
+            criada_em: new Date().toISOString(),
+            lida: false
+          }]);
+
+        if (error) throw error;
+        console.log('Notificação de assinatura registrada com sucesso');
+      } catch (err) {
+        console.error('Erro ao registrar notificação:', err);
+      }
+    }
+
+    // Monitorar mudanças em tempo real
+    function iniciarMonitoramentoRealtime() {
+      try {
+        client = client || window.supabaseConfig.initSupabase();
+        
+        // Monitorar mudanças na tabela propostas_criadas
+        client
+          .channel('propostas_changes')
+          .on('postgres_changes', 
+            { event: 'UPDATE', schema: 'public', table: 'propostas_criadas' },
+            (payload) => {
+              console.log('Mudança detectada:', payload);
+              // Recarregar a lista se houver mudanças
+              carregar();
+            }
+          )
+          .subscribe();
+        
+        console.log('Monitoramento em tempo real iniciado');
+      } catch (e) {
+        console.error('Erro ao iniciar monitoramento:', e);
       }
     }
   </script>
