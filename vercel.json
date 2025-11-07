@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/proposta-comercial/proposta-gerador.html"
+      "destination": "/proposta-gerador.html"
     }
   ],
   "headers": [
