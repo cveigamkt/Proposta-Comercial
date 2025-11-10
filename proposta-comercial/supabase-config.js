@@ -360,6 +360,22 @@ Suporte:
             if (servicoTrafego && servicoTrafego !== 'nao-se-aplica' && entregaveisTrafegoPago[servicoTrafego]) {
                 textoEntregaveisTrafego = entregaveisTrafegoPago[servicoTrafego];
             }
+            // Regra de exclusividade da Landing Page: somente em contratos com recorrência de 12 meses
+            const recorrenciaTexto = (dadosContrato.recorrencia || '').toLowerCase();
+            const planoDozeMeses = recorrenciaTexto.includes('12');
+            if (textoEntregaveisTrafego) {
+                if (!planoDozeMeses) {
+                    // Remover linhas relacionadas à Landing Page e LP quando não é 12 meses
+                    textoEntregaveisTrafego = textoEntregaveisTrafego
+                        .split('\n')
+                        .filter(l => !/landing\s*page/i.test(l) && !/\bLP\b/i.test(l))
+                        .join('\n');
+                    textoEntregaveisTrafego += '\nObservação: A Landing Page de alta conversão é exclusiva para contratos com recorrência de 12 meses.';
+                } else {
+                    // Tornar explícito no texto que a LP é exclusiva para 12 meses
+                    textoEntregaveisTrafego = textoEntregaveisTrafego.replace(/(Landing\s*Page[^\n]*)/i, '$1 (exclusivo para 12 meses)');
+                }
+            }
             const mapa = {
                 '{{NOME_CLIENTE}}': dadosContrato.nomeCliente || '',
                 '{{EMPRESA_CLIENTE}}': dadosContrato.empresaCliente || '',
