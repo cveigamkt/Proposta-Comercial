@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redirecionando…</title>
+  <!-- Fallback imediato para ambientes sem JS -->
+  <meta http-equiv="refresh" content="0; url=../proposta-visualizacao.html">
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:40px;color:#222}
+    .muted{color:#666}
+    a{color:#0a84ff;text-decoration:none}
+  </style>
+</head>
+<body>
+  <p class="muted">Redirecionando para a visualização da proposta…</p>
+  <p>Se não redirecionar automaticamente, <a href="../proposta-visualizacao.html">clique aqui</a>.</p>
+  <script>
+    (function(){
+      try{
+        var qs = window.location.search || '';
+        var hash = window.location.hash || '';
+        // Preserva querystring e hash ao redirecionar para o arquivo .html na raiz
+        var target = '../proposta-visualizacao.html' + qs + hash;
+        window.location.replace(target);
+      }catch(e){
+        // Fallback em caso de erro
+        window.location.href = '../proposta-visualizacao.html';
+      }
+    })();
+  </script>
+</body>
+</html>

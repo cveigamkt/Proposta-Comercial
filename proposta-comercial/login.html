@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Painel de Propostas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0a0a0a; --card:#151515; --muted:#9aa0a6; --fg:#fff; --brand:#1E5942; --brand-2:#00E388; --danger:#FF6B6B; --border:#262626; --chip:#202020;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--fg);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px}
+    h1{font-size:1.4rem;margin:0 0 4px 0;font-weight:800}
+    .subtitle{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+    label{display:block;margin-bottom:6px;font-size:.85rem;color:var(--muted)}
+    input{width:100%;background:#111;border:1px solid var(--border);color:#fff;padding:12px;border-radius:10px;font-size:.95rem;margin-bottom:12px}
+    .btn{width:100%;background:var(--brand);border:none;color:#fff;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;font-size:.95rem}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .actions{display:flex;gap:8px;margin-top:10px}
+    .link{color:var(--brand-2);text-decoration:none;font-size:.9rem}
+    .alert{background:#2a1f1f;color:#ffb3b3;border:1px solid #442222;padding:10px;border-radius:8px;font-size:.9rem;margin-bottom:12px;display:none}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .brand-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:flex;align-items:center;justify-content:center;color:#000;font-weight:800}
+    .footer{margin-top:14px;color:var(--muted);font-size:.85rem;text-align:center}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-logo">PC</div>
+      <div>
+        <h1>Entrar no Painel</h1>
+        <div class="subtitle">Autentique-se para acessar o Admin</div>
+      </div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="seu@email.com" autocomplete="username">
+
+    <label for="password">Senha</label>
+    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+
+    <button id="btnLogin" class="btn">Entrar</button>
+    <div class="actions" style="display:flex;gap:8px;margin-top:8px">
+      <a class="link" href="admin.html">Ir para o Admin</a>
+      <a class="link" href="index.html">Página inicial</a>
+    </div>
+    <div class="footer">Dica: se não tiver acesso, fale com o administrador.</div>
+  </div>
+
+  <script>
+    let client;
+    function baseLink(){
+      // Base relativa à pasta atual (funciona local e em produção)
+      const { origin, pathname } = window.location;
+      const idx = pathname.lastIndexOf('/');
+      const basePath = idx >= 0 ? pathname.slice(0, idx + 1) : '/';
+      return origin + basePath;
+    }
+    function showError(msg){
+      const al = document.getElementById('alert');
+      al.textContent = msg; al.style.display='block';
+    }
+
+    async function doLogin(){
+      client = client || window.supabaseConfig.initSupabase();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('btnLogin');
+      if (!email || !password) { showError('Informe email e senha.'); return; }
+      btn.disabled = true; btn.textContent = 'Entrando…';
+      try{
+        const { error } = await client.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // Redirecionar
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || 'admin.html';
+        window.location.href = baseLink() + redirect;
+      }catch(e){
+        showError('Falha no login: ' + e.message);
+      }finally{
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    }
+
+
+    async function checkSession(){
+      try{
+        client = client || window.supabaseConfig.initSupabase();
+        const { data: { session } } = await client.auth.getSession();
+        if (session && session.user){
+          const params = new URLSearchParams(window.location.search);
+          const redirect = params.get('redirect') || 'admin.html';
+          window.location.href = baseLink() + redirect;
+        }
+      }catch(_){ /* ignore */ }
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', doLogin);
+    document.addEventListener('keydown', (e)=>{ if (e.key==='Enter') doLogin(); });
+    window.addEventListener('DOMContentLoaded', checkSession);
+  </script>
+</body>
+</html>

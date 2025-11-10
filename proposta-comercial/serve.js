@@ -30,6 +30,8 @@ const server = http.createServer((req, res) => {
     if (stats.isDirectory()) {
       const indexPath = path.join(abs, 'index.html');
       if (fs.existsSync(indexPath)) {
+        // Garantir Content-Type correto ao servir index.html de diretórios
+        res.writeHead(200, { 'Content-Type': types['.html'] || 'text/html; charset=utf-8' });
         return fs.createReadStream(indexPath).pipe(res);
       }
       res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });

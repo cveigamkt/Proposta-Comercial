@@ -229,10 +229,130 @@ function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Garantir acesso somente com login
+async function ensureLoggedIn() {
+    if (!window.supabaseConfig) {
+        throw new Error('supabase-config.js não foi carregado.');
+    }
+    const client = await window.supabaseConfig.initSupabase();
+    const { data: { session } } = await client.auth.getSession();
+    if (!session || !session.user) {
+        const redirect = 'proposta-gerador.html' + (window.location.search || '');
+        window.location.href = window.location.origin + '/login.html?redirect=' + encodeURIComponent(redirect);
+        return null;
+    }
+    window.supabaseClient = client;
+    return client;
+}
+
+// Obter papel do usuário logado
+async function getUserRole(client) {
+    try {
+        const { data: { session } } = await client.auth.getSession();
+        let papel = 'viewer';
+        if (session?.user?.email) {
+            const { data: rows, error } = await client
+                .from('usuarios')
+                .select('papel,email,nome,user_id')
+                .eq('email', session.user.email)
+                .limit(1);
+            if (!error && rows && rows.length) {
+                papel = rows[0]?.papel || papel;
+            }
+        }
+        papel = papel || (session?.user?.user_metadata?.papel) || 'viewer';
+        window.usuarioPapel = papel;
+        return papel;
+    } catch (e) {
+        console.warn('Falha ao obter papel do usuário:', e);
+        window.usuarioPapel = 'viewer';
+        return 'viewer';
+    }
+}
+
+// Garantir que somente admin/editor possam usar o gerador
+async function ensureEditorOrAdmin() {
+    const client = await ensureLoggedIn();
+    if (!client) return null; // já redirecionado
+    const papel = await getUserRole(client);
+    if (papel !== 'admin' && papel !== 'editor') {
+        alert('Apenas usuários com papel admin ou editor podem usar o gerador.');
+        window.location.href = window.location.origin + '/admin.html';
+        return null;
+    }
+    return client;
+}
+
+// Carregar usuários (admin/editor) para o dropdown de responsável
+async function popularResponsavelDropdown() {
+    const selectEl = document.getElementById('responsavelProposta');
+    if (!selectEl) return;
+    // Estado inicial
+    selectEl.innerHTML = '<option value="">Carregando responsáveis…</option>';
+
+    try {
+        if (!window.supabaseConfig) {
+            throw new Error('supabase-config.js não foi carregado.');
+        }
+        const client = await window.supabaseConfig.initSupabase();
+        const { data, error } = await client
+            .from('usuarios')
+            .select('nome,email,papel')
+            .in('papel', ['admin', 'editor'])
+            .order('nome', { ascending: true });
+
+        if (error) throw error;
+
+        // Reconstruir opções
+        selectEl.innerHTML = '<option value="">Selecione o responsável</option>';
+        (data || []).forEach(u => {
+            const nome = (u.nome || '').trim() || (u.email || '').trim() || 'Usuário';
+            const opt = document.createElement('option');
+            opt.value = nome;
+            opt.textContent = u.papel ? `${nome} · ${u.papel}` : nome;
+            selectEl.appendChild(opt);
+        });
+
+    } catch (e) {
+        console.error('Erro ao carregar responsáveis:', e);
+        // Manter o select utilizável, mas informar falha
+        selectEl.innerHTML = '<option value="">Não foi possível carregar responsáveis</option>';
+    }
+}
+
 // ==================== INICIALIZAÇÃO ====================
 // Aguardar DOM carregar antes de adicionar event listeners
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOM carregado - Inicializando event listeners');
+    // Exigir papel admin/editor antes de permitir acesso
+    const client = await ensureEditorOrAdmin();
+    if (!client) return; // será redirecionado para login
+    // Atualizar UI de sessão e habilitar Sair
+    try {
+        const { data: { session } } = await client.auth.getSession();
+        const papel = window.usuarioPapel || 'viewer';
+        const authEl = document.getElementById('authStatusGerador');
+        const btnLogout = document.getElementById('btnLogoutGerador');
+        if (authEl) authEl.textContent = `${(session?.user?.email) || 'Usuário'} · ${papel}`;
+        if (btnLogout) {
+            btnLogout.style.display = '';
+            btnLogout.onclick = async () => {
+                try {
+                    await client.auth.signOut();
+                } catch (e) {
+                    console.warn('Falha no signOut, limpando sessão local', e);
+                }
+                // Limpeza defensiva das chaves de sessão supabase (sb-*) para garantir logout cruzado
+                try {
+                    Object.keys(localStorage).forEach(k => { if (k.startsWith('sb-')) localStorage.removeItem(k); });
+                } catch (_) { /* ignora */ }
+                const redirect = 'proposta-gerador.html' + (window.location.search || '');
+                window.location.href = window.location.origin + '/login.html?redirect=' + encodeURIComponent(redirect);
+            };
+        }
+    } catch (_) { /* ignore */ }
+    // Popular dropdown de responsáveis (admin/editor)
+    await popularResponsavelDropdown();
     
     // Verificar se está em modo de edição
     const urlParams = new URLSearchParams(window.location.search);
@@ -582,8 +702,8 @@ window.gerarLinkProposta = async function() {
             valor_mensal: valorMensalFinal,
             valor_total: valorTotal,
             desconto_aplicado: descontoCustomizado,
-            recorrencia: 'Mensal', // Padrão por enquanto
-            forma_pagamento: 'À Vista', // Padrão por enquanto
+            recorrencia: null, // Será preenchido quando o cliente aceitar
+            forma_pagamento: null, // Será preenchido quando o cliente aceitar
             responsavel_proposta: dadosVisualizacao.responsavelProposta,
             dias_validade: parseInt(dadosVisualizacao.diasValidade),
             expira_em: dataExpiracao.toISOString(),
@@ -665,7 +785,12 @@ window.gerarLinkProposta = async function() {
         }
         
         // Gerar link com UUID
-        const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '');
+        const baseUrl = (() => {
+            const { origin, pathname } = window.location;
+            const idx = pathname.lastIndexOf('/');
+            const basePath = idx >= 0 ? pathname.slice(0, idx + 1) : '/';
+            return origin + basePath;
+        })();
         const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${propostaId}`;
         
         // Mostrar modal com o link
@@ -831,6 +956,20 @@ async function carregarPropostaParaEdicao(propostaId) {
             return;
         }
         
+        // Verificar se a proposta já foi assinada
+        if (proposta.status === 'aceita' || proposta.assinado_em) {
+            alert('❌ Não é possível editar propostas que já foram assinadas.');
+            // Redirecionar de volta para o admin
+            window.location.href = 'admin.html';
+            return;
+        }
+        
+        if (error || !proposta) {
+            console.error('Erro ao carregar proposta:', error);
+            alert('❌ Não foi possível carregar a proposta para edição.');
+            return;
+        }
+        
         console.log('Proposta carregada:', proposta);
 
         // Helper para setar valores com segurança
@@ -843,6 +982,19 @@ async function carregarPropostaParaEdicao(propostaId) {
         setIfExists('empresaCliente', proposta.empresa_cliente || '');
         setIfExists('enderecoCliente', proposta.endereco_cliente || '');
         setIfExists('responsavelProposta', proposta.responsavel_proposta || '');
+        // Garantir que o valor salvo exista como opção no select
+        const respSelect = document.getElementById('responsavelProposta');
+        if (respSelect && proposta.responsavel_proposta) {
+            const atual = String(proposta.responsavel_proposta);
+            const existe = Array.from(respSelect.options).some(o => o.value === atual);
+            if (!existe) {
+                const opt = document.createElement('option');
+                opt.value = atual;
+                opt.textContent = `${atual} · registro antigo`;
+                respSelect.appendChild(opt);
+            }
+            respSelect.value = atual;
+        }
         setIfExists('diasValidade', proposta.dias_validade || 7);
         // IDs que podem não existir no gerador atual
         setIfExists('emailCliente', proposta.email_cliente || '');

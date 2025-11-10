@@ -6,6 +6,66 @@
     <title>Proposta Comercial - Heat Digital</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Captura detalhada de erros e rejeições não tratadas
+        (function () {
+            function serializeError(err) {
+                try {
+                    if (!err) return { message: 'Erro indefinido' };
+                    const out = {
+                        name: err.name,
+                        message: err.message,
+                        stack: err.stack,
+                    };
+                    // Inclui chaves úteis se existirem
+                    ['code', 'status', 'hint', 'details'].forEach(k => {
+                        if (err && typeof err[k] !== 'undefined') out[k] = err[k];
+                    });
+                    return out;
+                } catch (_) {
+                    return { message: String(err) };
+                }
+            }
+
+            window.addEventListener('error', function (event) {
+                const info = {
+                    tipo: 'error',
+                    mensagem: event.message,
+                    arquivo: event.filename,
+                    linha: event.lineno,
+                    coluna: event.colno,
+                    erro: serializeError(event.error)
+                };
+                console.group('%c[Diagnóstico] Erro JS capturado', 'color:#fff;background:#c0392b;padding:2px 6px;border-radius:4px;');
+                console.error(info);
+                console.groupEnd();
+            });
+
+            window.addEventListener('unhandledrejection', function (event) {
+                const reason = event.reason;
+                const info = {
+                    tipo: 'unhandledrejection',
+                    motivo: typeof reason === 'object' ? serializeError(reason) : String(reason)
+                };
+                console.group('%c[Diagnóstico] Promessa rejeitada sem tratamento', 'color:#fff;background:#8e44ad;padding:2px 6px;border-radius:4px;');
+                console.error(info);
+                console.groupEnd();
+            });
+
+            // Diagnósticos de ambiente e parâmetros
+            (function diag() {
+                const params = new URLSearchParams(window.location.search);
+                const id = params.get('id');
+                console.group('%c[Diagnóstico] Ambiente de visualização', 'color:#fff;background:#2c3e50;padding:2px 6px;border-radius:4px;');
+                console.info('URL:', window.location.href);
+                console.info('ID (query):', id);
+                console.info('supabase-js carregado?', !!window.supabase);
+                console.info('supabase-config presente?', !!window.supabaseConfig);
+                console.info('jsPDF presente?', !!(window.jspdf && window.jspdf.jsPDF));
+                console.groupEnd();
+            })();
+        })();
+    </script>
     <style>
         * {
             margin: 0;
@@ -1589,10 +1649,21 @@
                 window.propostaCarregada = data; // Disponível globalmente
                 console.log('Proposta carregada:', data);
 
+                // Bloquear ações de aceite se já estiver aceita
+                try {
+                    const btnPrincipal = document.getElementById('btnAceitarPrincipal');
+                    const btnFlutuante = document.getElementById('btnAceitarFlutuante');
+                    const avisoSelecao = document.getElementById('avisoSelecao');
+                    if (data.status === 'aceita' || data.aceita_em || data.assinada_em) {
+                        if (btnPrincipal) { btnPrincipal.disabled = true; btnPrincipal.textContent = '✅ Proposta já assinada'; }
+                        if (btnFlutuante) { btnFlutuante.disabled = true; btnFlutuante.innerHTML = '<span class="btn-icon">✅</span><span class="btn-text">Assinada</span>'; }
+                        if (avisoSelecao) { avisoSelecao.style.display = 'block'; avisoSelecao.textContent = '⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.'; }
+                    }
+                } catch (e) { console.warn('Falha ao aplicar bloqueio de UI:', e); }
+
                 // Cabeçalho
-                // Exibimos somente empresa no cabeçalho para evitar duplicação/confusão
+                // Exibe o nome do cliente/empresa no cabeçalho
                 document.getElementById('empresaCliente').textContent = data.nome_cliente || data.empresa_cliente || 'Cliente';
-                document.getElementById('empresaCliente').textContent = data.empresa_cliente || 'Empresa';
                 const dataCriacao = data.criada_em ? new Date(data.criada_em) : new Date();
                 document.getElementById('dataProposta').textContent = dataCriacao.toLocaleDateString('pt-BR');
 
@@ -1645,15 +1716,49 @@
 
                 renderizarServicos();
                 atualizarResumo();
+                // Se o nome da empresa não veio do banco, tentar preencher via CNPJ
+                try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { console.warn('Fallback CNPJ falhou:', e); }
             } catch (e) {
                 console.error('Erro ao carregar proposta por UUID:', e);
                 alert('Não foi possível carregar a proposta. Verifique o link e tente novamente.');
             }
         }
 
+        // Tenta popular o nome da empresa a partir do CNPJ (quando empresaCliente está vazio)
+        async function tentarPopularEmpresaPorCNPJ() {
+            const el = document.getElementById('empresaCliente');
+            if (!el) return;
+            const atual = (el.textContent || '').trim();
+            // Não sobrescreve se já existe um nome válido
+            if (atual && !['Cliente', 'Empresa', 'N/A', '—'].includes(atual)) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const cpfCnpj = params.get('cpfCnpj') || (window.propostaCarregada ? (window.propostaCarregada.cpf_cnpj || '') : '');
+            const digits = (cpfCnpj || '').replace(/[^\d]/g, '');
+            // Apenas CNPJ (14 dígitos) tem razão social/nome fantasia
+            if (digits.length !== 14) return;
+
+            try {
+                const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, { cache: 'no-store' });
+                if (!resp.ok) return;
+                const d = await resp.json();
+                const nome = d.nome_fantasia || d.razao_social || d.nome || '';
+                if (nome) {
+                    el.textContent = nome;
+                    if (window.dadosProposta) {
+                        window.dadosProposta.empresaCliente = nome;
+                    }
+                }
+            } catch (e) {
+                console.warn('Falha ao buscar CNPJ na BrasilAPI:', e);
+            }
+        }
+
         async function carregarDados() {
             const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
+            // Sanitiza ID: remove espaços e possíveis < > colados por engano
+            const rawId = params.get('id');
+            const id = (rawId || '').trim().replace(/^<|>$/g, '');
             if (id) {
                 await carregarDadosPorUUID(id);
                 return;
@@ -1724,6 +1829,8 @@
             
             renderizarServicos();
             atualizarResumo();
+            // Se vier via parâmetros e empresa estiver ausente, tentar preencher pelo CNPJ
+            try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { console.warn('Fallback CNPJ (params) falhou:', e); }
         }
 
         function renderizarServicos() {
@@ -1934,25 +2041,25 @@
             });
             
             // Atualizar display
-            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR')},00<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
-            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR')},00`;
+            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
+            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             
             if (descontoRecorrencia > 0) {
                 document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
-                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR')},00`;
+                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             } else {
                 document.getElementById('descontoRecorrenciaRow').style.display = 'none';
             }
             
             if (descontoPagamento > 0) {
                 document.getElementById('descontoPagamentoRow').style.display = 'flex';
-                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR')},00`;
+                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             } else {
                 document.getElementById('descontoPagamentoRow').style.display = 'none';
             }
             
-            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00`;
-            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00 (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
+            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
             
             atualizarResumo();
             verificarSelecoes();
@@ -1980,10 +2087,10 @@
                 elResumoData.textContent = dataAtual;
             }
             if (elResumoValorFinal) {
-                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00/mês`;
+                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
             }
             if (elResumoValorTotal) {
-                elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00`;
+                elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             }
             
             // Atualizar recorrência e forma de pagamento
@@ -2101,6 +2208,11 @@
         }
 
         function aceitarProposta() {
+            // Bloqueio imediato se já assinada
+            if (window.propostaCarregada?.status === 'aceita' || window.propostaCarregada?.aceita_em || window.propostaCarregada?.assinada_em) {
+                alert('⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.');
+                return;
+            }
             // Verificar se a proposta ainda é válida
             if (propostaExpirada) {
                 alert('❌ Esta proposta já expirou e não pode mais ser aceita.');
@@ -3048,7 +3160,16 @@
                 <p style="color: #E0E0E0; margin-bottom: 25px; line-height: 1.6;">
                     Obrigado por aceitar nossa proposta! Seu contrato foi gerado e enviado para o seu e-mail.
                 </p>
+                <div class="resumo-assinatura-final" style="background: rgba(30,89,66,0.1); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: left;">
+                    <h3 style="color: #00E388; margin-bottom: 15px; font-size: 1.1rem;">Resumo da Proposta</h3>
+                    <div id="resumoAssinaturaFinal" style="color: #E0E0E0; font-size: 0.95rem;"></div>
+                </div>
                 <div id="linkContratoGerado" style="margin-bottom: 25px;"></div>
+                <div id="statusEnvioEmail" style="margin-bottom: 15px; color: #E0E0E0; font-size: 0.95rem;"></div>
+                <div style="margin-bottom: 25px;">
+                    <button class="btn btn-export" onclick="exportarPDF()">📄 Baixar resumo em PDF</button>
+                    <button class="btn" style="margin-left:10px;" onclick="reenviarContratoPorEmail()">✉️ Enviar por e-mail</button>
+                </div>
                 <button class="btn btn-primary" onclick="fecharModalSucesso()">
                     Fechar
                 </button>
@@ -3142,6 +3263,39 @@
                 const emailInput = document.getElementById('emailAssinatura');
                 if (emailInput) emailInput.value = emailCliente;
             }
+        }
+
+        // Preencher resumo final no modal de sucesso pós-assinatura
+        function preencherResumoAssinaturaFinal() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const nome = document.getElementById('nomeCliente')?.textContent || urlParams.get('nomeCliente') || 'N/A';
+            const empresa = document.getElementById('empresaCliente')?.textContent || window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || 'N/A';
+            const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+            const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+            const recorrenciaTexto = recorrenciaSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || '—';
+            const pagamentoTexto = pagamentoSelecionado?.closest('.option-card')?.querySelector('.title')?.textContent || '—';
+            const valorMensal = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
+            const valorTotal = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
+
+            let resumoServicos = '';
+            if (Array.isArray(window.servicosContratados)) {
+                window.servicosContratados.forEach(servico => {
+                    resumoServicos += `<p>• ${servico.tipo} (${servico.plano})</p>`;
+                });
+            }
+
+            const html = `
+                <p><strong>Cliente:</strong> ${nome}</p>
+                <p><strong>Empresa:</strong> ${empresa}</p>
+                ${resumoServicos ? `<div style="margin:10px 0 0 0">${resumoServicos}</div>` : ''}
+                <hr style="margin: 12px 0; border: 1px solid rgba(255,255,255,0.1);">
+                <p><strong>Recorrência:</strong> ${recorrenciaTexto}</p>
+                <p><strong>Forma de Pagamento:</strong> ${pagamentoTexto}</p>
+                <p><strong>Valor Mensal:</strong> ${valorMensal}</p>
+                <p><strong>Valor Total:</strong> ${valorTotal}</p>
+            `;
+            const destino = document.getElementById('resumoAssinaturaFinal');
+            if (destino) destino.innerHTML = html;
         }
 
         // Validação de CPF/CNPJ em tempo real
@@ -3303,6 +3457,51 @@
                     statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Falha ao inicializar Supabase: ${e.message}</p>`;
                     throw e;
                 }
+                // Bloquear reassinatura se já aceita
+                try {
+                    const check = await window.supabaseConfig.checarBloqueioReassinatura(dadosProposta.propostaCriadaId);
+                    if (check?.bloqueada) {
+                        statusDiv.innerHTML = `<p style="color:#FF6B6B;">⚠️ Esta proposta já foi assinada (status: ${check.status}). Reassinatura bloqueada.</p>`;
+                        return; // Interrompe o fluxo
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível verificar bloqueio de reassinatura:', e);
+                }
+
+                // Salvar dados do representante
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📝 Salvando dados do representante...</p>';
+                try {
+                    // Fallback robusto: se por algum motivo dadosAssinaturaTemp não estiverem populados,
+                    // lê diretamente dos campos do formulário para garantir persistência.
+                    const nomeForm = document.getElementById('nomeAssinatura')?.value?.trim() || '';
+                    const sobrenomeForm = document.getElementById('sobrenomeAssinatura')?.value?.trim() || '';
+                    const emailForm = document.getElementById('emailAssinatura')?.value?.trim() || '';
+                    const telefoneForm = document.getElementById('telefoneAssinatura')?.value?.trim() || '';
+                    const cpfRepForm = document.getElementById('cpfRepresentante')?.value?.trim() || '';
+                    const dataNascRepForm = document.getElementById('dataNascimentoRepresentante')?.value || null;
+                    const melhorDiaPagForm = document.getElementById('melhorDiaPagamento')?.value || null;
+
+                    const repPayload = {
+                        propostaCriadaId: dadosProposta.propostaCriadaId,
+                        propostaId: null,
+                        nome: dadosAssinaturaTemp?.nome || nomeForm || nomeAssinatura,
+                        sobrenome: dadosAssinaturaTemp?.sobrenome || sobrenomeForm || sobrenomeAssinatura,
+                        cpf: dadosAssinaturaTemp?.cpfRepresentante || cpfRepForm,
+                        dataNascimento: dadosAssinaturaTemp?.dataNascimentoRepresentante || dataNascRepForm,
+                        email: dadosAssinaturaTemp?.email || emailForm || emailAssinatura,
+                        telefone: dadosAssinaturaTemp?.telefone || telefoneForm || telefoneAssinatura,
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || melhorDiaPagForm || null,
+                        ip: (typeof ipData !== 'undefined' && ipData?.ip) ? ipData.ip : null,
+                        userAgent: navigator.userAgent
+                    };
+                    const repResult = await window.supabaseConfig.salvarDadosRepresentante(repPayload);
+                    statusDiv.innerHTML = `<p style="color:#7CFC9A;">✅ Dados do representante salvos (ID: ${repResult?.id || '—'})</p>`;
+                } catch (e) {
+                    console.error('Falha ao salvar dados do representante:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao salvar dados do representante.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
 
                 // Salvar proposta no Supabase
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📊 Salvando proposta...</p>';
@@ -3341,10 +3540,33 @@
                 // Mostrar modal de sucesso
                 const linkDiv = document.getElementById('linkContratoGerado');
                 linkDiv.innerHTML = `
-                    <a href="${contratoResult.pdfUrl}" target="_blank" class="btn btn-secondary" style="text-decoration: none;">
+                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration: none;">
                         📥 Baixar Contrato em PDF
                     </a>
+                    <button class="btn" style="margin-left:10px;" onclick="navigator.clipboard.writeText('${contratoResult.pdfUrl}').then(()=>alert('Link do contrato copiado!'))">🔗 Copiar link</button>
                 `;
+                // Parar contador de validade e ocultar UI
+                try {
+                    if (window.timerInterval) clearInterval(window.timerInterval);
+                    const timerValidade = document.getElementById('timerValidade');
+                    if (timerValidade) timerValidade.style.display = 'none';
+                } catch (_) {}
+                // Enviar contrato por e-mail automaticamente
+                try {
+                    await enviarEmailPropostaAssinada({
+                        pdfUrl: contratoResult.pdfUrl,
+                        nomeCliente: dadosProposta.nomeCliente,
+                        empresaCliente: dadosProposta.empresaCliente,
+                        emailCliente: dadosProposta.emailCliente,
+                        emailFaturamento: dadosAssinaturaTemp?.email || ''
+                    });
+                } catch (e) {
+                    console.warn('Falha ao enviar e-mail automático:', e);
+                }
+                // Preencher resumo no modal de sucesso
+                if (typeof preencherResumoAssinaturaFinal === 'function') {
+                    preencherResumoAssinaturaFinal();
+                }
                 document.getElementById('modalContratoSucesso').style.display = 'block';
                 
             } catch (error) {
@@ -3766,13 +3988,18 @@
         
         // ETAPA 3: Assinatura final
         async function assinarContrato() {
+            // Bloqueio redundante de segurança
+            if (window.propostaCarregada?.status === 'aceita' || window.propostaCarregada?.aceita_em || window.propostaCarregada?.assinada_em) {
+                alert('⚠️ Esta proposta já foi assinada e não pode ser assinada novamente.');
+                return;
+            }
             const aceitoFinal = document.getElementById('aceitoTermosContratoFinal').checked;
-            
+
             if (!aceitoFinal) {
                 alert('Você precisa aceitar os termos do contrato para assinar.');
                 return;
             }
-            
+
             // Desabilitar botão e mostrar loading
             const btnAssinar = document.getElementById('btnAssinarContrato');
             const statusDiv = document.getElementById('statusAssinatura');
@@ -3780,21 +4007,21 @@
             btnAssinar.textContent = '⏳ Processando...';
             statusDiv.style.display = 'block';
             statusDiv.innerHTML = '<p style="color: #FFA500;">Gerando contrato e salvando dados...</p>';
-            
+
             try {
                 const urlParams = new URLSearchParams(window.location.search);
                 const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
                 const formaPagamentoSelecionada = document.querySelector('input[name="pagamento"]:checked');
-                
+
                 const valorMensalTexto = document.getElementById('valorFinalMensal')?.textContent || 'R$ 0,00';
                 const valorTotalTexto = document.getElementById('valorTotalPeriodo')?.textContent || 'R$ 0,00';
                 const valorMensal = valorMensalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
                 const valorTotal = valorTotalTexto.replace(/[^\d,]/g, '').replace(',', '.') || '0';
-                
+
                 // Calcular valores separados de Social Media e Tráfego Pago
                 let valorSocialMidia = 0;
                 let valorTrafegoPago = 0;
-                
+
                 servicosContratados.forEach(servico => {
                     if (servico.tipo === 'Social Mídia') {
                         valorSocialMidia = servico.valor;
@@ -3802,7 +4029,7 @@
                         valorTrafegoPago = servico.valor;
                     }
                 });
-                
+
                 // Obter IP do cliente
                 let ipCliente = '0.0.0.0';
                 try {
@@ -3814,14 +4041,14 @@
                 } catch (e) {
                     console.warn('Não foi possível obter IP');
                 }
-                
+
                 const timestamp = new Date().toISOString();
                 const hashAssinatura = window.supabaseConfig.gerarHashAssinatura({
                     nomeCliente: dadosAssinaturaTemp.nomeCompleto,
                     cpfCnpj: dadosAssinaturaTemp.cpfCnpj,
                     timestamp: timestamp
                 });
-                
+
                 // Preparar dados da proposta
                 const dadosProposta = {
                     nomeCliente: dadosAssinaturaTemp.nomeCompleto,
@@ -3845,10 +4072,10 @@
                     observacoes: urlParams.get('observacoes') || '',
                     propostaCriadaId: window.propostaCarregada?.id || null,
                     enderecoCliente: window.propostaCarregada?.endereco_cliente || urlParams.get('enderecoCliente') || '',
-                    representanteLegalCliente: window.propostaCarregada?.representante_cliente || urlParams.get('representanteLegalCliente') || ''
+                    representanteLegalCliente: dadosAssinaturaTemp?.nomeCompleto || urlParams.get('representanteLegalCliente') || ''
                 };
-                
-                // Inicializar Supabase
+
+                // Inicializar Supabase explicitamente
                 try {
                     window.supabaseConfig.initSupabase();
                 } catch (e) {
@@ -3856,8 +4083,56 @@
                     statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Falha ao inicializar Supabase: ${e.message}</p>`;
                     throw e;
                 }
-                
-                // Salvar proposta
+
+                // Bloquear reassinatura se já aceita
+                try {
+                    const check = await window.supabaseConfig.checarBloqueioReassinatura(dadosProposta.propostaCriadaId);
+                    if (check?.bloqueada) {
+                        statusDiv.innerHTML = `<p style="color:#FF6B6B;">⚠️ Esta proposta já foi assinada (status: ${check.status}). Reassinatura bloqueada.</p>`;
+                        btnAssinar.disabled = false;
+                        btnAssinar.textContent = '✍️ Assinar Contrato';
+                        return; // Interrompe o fluxo
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível verificar bloqueio de reassinatura:', e);
+                }
+
+                // Salvar dados do representante
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📝 Salvando dados do representante...</p>';
+                try {
+                    // Fallback robusto: se por algum motivo dadosAssinaturaTemp não estiverem populados,
+                    // lê diretamente dos campos do formulário para garantir persistência.
+                    const nomeForm = document.getElementById('nomeAssinatura')?.value?.trim() || '';
+                    const sobrenomeForm = document.getElementById('sobrenomeAssinatura')?.value?.trim() || '';
+                    const emailForm = document.getElementById('emailAssinatura')?.value?.trim() || '';
+                    const telefoneForm = document.getElementById('telefoneAssinatura')?.value?.trim() || '';
+                    const cpfRepForm = document.getElementById('cpfRepresentante')?.value?.trim() || '';
+                    const dataNascRepForm = document.getElementById('dataNascimentoRepresentante')?.value || null;
+                    const melhorDiaPagForm = document.getElementById('melhorDiaPagamento')?.value || null;
+
+                    const repPayload = {
+                        propostaCriadaId: dadosProposta.propostaCriadaId,
+                        propostaId: null,
+                        nome: dadosAssinaturaTemp?.nome || nomeForm || dadosAssinaturaTemp?.nomeCompleto?.split(' ')[0] || '',
+                        sobrenome: dadosAssinaturaTemp?.sobrenome || sobrenomeForm || (dadosAssinaturaTemp?.nomeCompleto?.split(' ').slice(1).join(' ') || ''),
+                        cpf: dadosAssinaturaTemp?.cpfRepresentante || cpfRepForm,
+                        dataNascimento: dadosAssinaturaTemp?.dataNascimentoRepresentante || dataNascRepForm,
+                        email: dadosAssinaturaTemp?.email || emailForm,
+                        telefone: dadosAssinaturaTemp?.telefone || telefoneForm,
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || melhorDiaPagForm || null,
+                        ip: ipCliente || null,
+                        userAgent: navigator.userAgent
+                    };
+                    const repResult = await window.supabaseConfig.salvarDadosRepresentante(repPayload);
+                    statusDiv.innerHTML = `<p style="color:#7CFC9A;">✅ Dados do representante salvos (ID: ${repResult?.id || '—'})</p>`;
+                } catch (e) {
+                    console.error('Falha ao salvar dados do representante:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style=\"color: #FF6B6B;\">❌ Erro ao salvar dados do representante.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
+
+                // Salvar proposta no Supabase
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📊 Salvando proposta...</p>';
                 let propostaData;
                 try {
@@ -3868,7 +4143,7 @@
                     statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao salvar proposta no Supabase.<br><small>${detalhes}</small></p>`;
                     throw e;
                 }
-                
+
                 // Gerar e armazenar contrato
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📄 Gerando contrato em PDF...</p>';
                 const dadosContrato = {
@@ -3877,7 +4152,7 @@
                     ipAssinatura: ipCliente,
                     hashAssinatura: hashAssinatura
                 };
-                
+
                 let contratoResult;
                 try {
                     contratoResult = await window.supabaseConfig.gerarEArmazenarContrato(propostaData.id, dadosContrato);
@@ -3887,15 +4162,15 @@
                     statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao gerar ou enviar o contrato em PDF.<br><small>${detalhes}</small></p>`;
                     throw e;
                 }
-                
+
                 // Sucesso!
                 document.getElementById('modalAssinaturaContrato').style.display = 'none';
-                
+
                 // Resetar para etapa 1
                 mostrarEtapa(1);
                 dadosAssinaturaTemp = {};
                 contratoLidoCompletamente = false;
-                
+
                 // Limpar campos
                 document.getElementById('nomeAssinatura').value = '';
                 document.getElementById('sobrenomeAssinatura').value = '';
@@ -3903,22 +4178,107 @@
                 document.getElementById('emailAssinatura').value = '';
                 document.getElementById('telefoneAssinatura').value = '';
                 document.getElementById('aceitoTermosContratoFinal').checked = false;
-                
+
                 // Mostrar modal de sucesso
                 const linkDiv = document.getElementById('linkContratoGerado');
                 linkDiv.innerHTML = `
-                    <a href="${contratoResult.pdfUrl}" target="_blank" class="btn btn-secondary" style="text-decoration: none;">
+                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration: none;">
                         📥 Baixar Contrato em PDF
                     </a>
+                    <button class="btn" style="margin-left:10px;" onclick="navigator.clipboard.writeText('${contratoResult.pdfUrl}').then(()=>alert('Link do contrato copiado!'))">🔗 Copiar link</button>
                 `;
+                // Parar contador de validade e ocultar UI
+                try {
+                    if (window.timerInterval) clearInterval(window.timerInterval);
+                    const timerValidade = document.getElementById('timerValidade');
+                    if (timerValidade) timerValidade.style.display = 'none';
+                } catch (_) {}
+                // Preencher resumo no modal de sucesso
+                if (typeof preencherResumoAssinaturaFinal === 'function') {
+                    preencherResumoAssinaturaFinal();
+                }
+                // Enviar contrato por e-mail automaticamente
+                try {
+                    await enviarEmailPropostaAssinada({
+                        pdfUrl: contratoResult.pdfUrl,
+                        nomeCliente: dadosProposta.nomeCliente,
+                        empresaCliente: dadosProposta.empresaCliente,
+                        emailCliente: dadosProposta.emailCliente,
+                        emailFaturamento: dadosAssinaturaTemp?.email || ''
+                    });
+                } catch (e) {
+                    console.warn('Falha ao enviar e-mail automático:', e);
+                }
                 document.getElementById('modalContratoSucesso').style.display = 'block';
-                
+
             } catch (error) {
                 console.error('Erro ao processar assinatura:', error);
                 const detalhes = error?.message || error?.error_description || error?.hint || '';
                 statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao processar. Por favor, tente novamente.<br><small>${detalhes}</small></p>`;
                 btnAssinar.disabled = false;
                 btnAssinar.textContent = '✍️ Assinar Contrato';
+            }
+        }
+        
+        // Enviar contrato por e-mail via Supabase Edge Function
+        async function enviarEmailPropostaAssinada({ pdfUrl, nomeCliente, empresaCliente, emailCliente, emailFaturamento }) {
+            const statusEl = document.getElementById('statusEnvioEmail');
+            if (statusEl) statusEl.textContent = '✉️ Enviando contrato por e-mail...';
+            try {
+                // Garantir cliente Supabase
+                if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+                    window.supabaseConfig.initSupabase();
+                }
+                if (!window.supabase || !window.supabase.functions) {
+                    throw new Error('Supabase Functions não disponíveis no cliente.');
+                }
+
+                const destinatarios = [emailCliente, emailFaturamento].filter(Boolean);
+                if (!destinatarios.length) {
+                    throw new Error('Nenhum e-mail de destino informado.');
+                }
+
+                const htmlBody = `Contrato assinado por ${nomeCliente || 'Cliente'}${empresaCliente ? ' (' + empresaCliente + ')' : ''}. ` +
+                    `Link para download: <a href="${pdfUrl}" target="_blank">${pdfUrl}</a>`;
+
+                const { data, error } = await window.supabase.functions.invoke('send-contract-email', {
+                    body: {
+                        pdfUrl,
+                        to: destinatarios.join(','),
+                        nomeCliente: nomeCliente || '',
+                        empresaCliente: empresaCliente || '',
+                        subject: 'Contrato assinado - Heat Digital',
+                        htmlBody
+                    }
+                });
+
+                if (error) throw error;
+                if (statusEl) statusEl.textContent = '✅ E-mail enviado com sucesso.';
+                return data || { status: 'ok' };
+            } catch (e) {
+                if (statusEl) statusEl.textContent = '⚠️ Não foi possível enviar o e-mail agora. Você pode tentar novamente.';
+                throw e;
+            }
+        }
+
+        // Ação manual de reenvio
+        async function reenviarContratoPorEmail() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const empresa = window.propostaCarregada?.empresa_cliente || urlParams.get('empresaCliente') || '';
+                const cliente = dadosAssinaturaTemp?.nomeCompleto || (document.getElementById('nomeCliente')?.textContent || 'Cliente');
+                const pdfUrl = (document.querySelector('#linkContratoGerado a')?.href) || '';
+                const emailCliente = dadosAssinaturaTemp?.email || new URLSearchParams(window.location.search).get('emailCliente') || '';
+                await enviarEmailPropostaAssinada({
+                    pdfUrl,
+                    nomeCliente: cliente,
+                    empresaCliente: empresa,
+                    emailCliente,
+                    emailFaturamento: dadosAssinaturaTemp?.email || ''
+                });
+            } catch (e) {
+                console.warn('Reenvio de e-mail falhou:', e);
+                alert('Não foi possível enviar o e-mail. Tente novamente mais tarde.');
             }
         }
     </script>
