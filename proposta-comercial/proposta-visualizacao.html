@@ -1166,12 +1166,13 @@
                         <input type="radio" name="recorrencia" value="6" checked>
                         <div class="title">6 meses</div>
                         <div class="discount">10% desconto</div>
-                        <div class="badge-recomendado" style="background: #FFD700;">RECOMENDADO</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="12">
                         <div class="title">12 meses</div>
                         <div class="discount">15% desconto</div>
+                        <div class="badge-recomendado" style="background: #FFD700;">RECOMENDADO</div>
+                        <div class="bonus" style="margin-top: 4px; font-size: 0.8rem; color: #7FDDB8; font-weight: 500;">🎁 Bônus: Você ganha 1 site (LP de alta conversão)</div>
                     </label>
                 </div>
             </div>
@@ -1182,18 +1183,21 @@
                 <div class="pagamento-options" id="pagamentoOptions">
                     <label class="option-card" id="opcao-avista">
                         <input type="radio" name="pagamento" value="avista">
-                        <div class="title">À Vista</div>
+                        <div class="title">À Vista (Pix ou Boleto)</div>
                         <div class="discount" id="desconto-avista">10% desconto adicional</div>
+                        <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Pagamento imediato via Pix ou Boleto</div>
                     </label>
                     <label class="option-card" id="opcao-parcelado">
                         <input type="radio" name="pagamento" value="parcelado">
-                        <div class="title">50% + 50%</div>
+                        <div class="title">50% agora + 50% em 30 dias (Pix/Boleto)</div>
                         <div class="discount" id="desconto-parcelado">5% desconto adicional</div>
+                        <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Primeira parcela no início; segunda em até 30 dias</div>
                     </label>
                     <label class="option-card" id="opcao-mensal">
                         <input type="radio" name="pagamento" value="mensal">
-                        <div class="title">Mensal</div>
+                        <div class="title">Mensal (Pix ou Boleto)</div>
                         <div class="discount" id="desconto-mensal">Sem desconto adicional</div>
+                        <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Pagamento recorrente mensal via Pix ou Boleto</div>
                     </label>
                 </div>
             </div>
@@ -1791,7 +1795,24 @@
             
             // Carregar serviços
             const socialMidia = params.get('servicoSocialMidia');
-            const trafegoPago = params.get('servicoTrafegoPago');
+            let trafegoPago = params.get('servicoTrafegoPago');
+
+            // Fallback: quando nenhum serviço é passado via URL, exibir Tráfego Pago FOCO por padrão
+            if ((!socialMidia || socialMidia === 'nao-se-aplica') && (!trafegoPago || trafegoPago === 'nao-se-aplica')) {
+                trafegoPago = 'foco';
+                // Garantir exibição do modelo de cobrança conforme esperado: Híbrido 10%
+                if (!params.get('modeloCobranca')) params.set('modeloCobranca', 'hibrido');
+                if (!params.get('percentualComissao')) params.set('percentualComissao', '10');
+                if (!params.get('valorFixoTrafego')) params.set('valorFixoTrafego', String(planos.trafegoPago.foco.valor));
+
+                // Persistir valores padrão para uso em outras partes da página
+                window.propostaCarregada = window.propostaCarregada || {};
+                window.propostaCarregada.tem_comissao_vendas = true;
+                window.propostaCarregada.tipo_comissao_hibrido = 'percentual';
+                window.propostaCarregada.percentual_comissao = 10;
+                window.propostaCarregada.valor_fixo_trafego = planos.trafegoPago.foco.valor;
+                window.propostaCarregada.servico_trafego_pago_key = 'foco';
+            }
             
             valorBase = 0;
             servicosContratados = [];
@@ -1845,17 +1866,23 @@
                 
                 let entregaveisHtml = '';
                 if (servico.secoes) {
-                    // Formato com seções
+                    // Formato com seções — manter LP visível sempre, com observação
                     Object.keys(servico.secoes).forEach(secaoNome => {
                         entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${secaoNome}:</h5><ul style="margin-left: 15px;">`;
                         servico.secoes[secaoNome].forEach(item => {
-                            entregaveisHtml += `<li style="margin-bottom: 4px;">${item}</li>`;
+                            const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
+                            const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                            entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
                         });
                         entregaveisHtml += '</ul></div>';
                     });
                 } else {
-                    // Formato antigo (lista simples)
-                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}</ul>`;
+                    // Formato antigo (lista simples) — manter LP visível sempre, com observação
+                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => {
+                        const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
+                        const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                        return `<li>${itemTexto}</li>`;
+                    }).join('')}</ul>`;
                 }
                 
                 // Informações de cobrança específicas para Tráfego Pago
@@ -2122,18 +2149,31 @@
             
             const resumoServicos = document.getElementById('resumoServicos');
             if (resumoServicos) {
-            resumoServicos.innerHTML = servicosContratados.map(servico => {
+            // Exibir banner de bônus no resumo quando recorrência for 12 meses
+            const recSelResumo = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || '0', 10);
+            const bonusResumo = recSelResumo === 12 
+                ? '<div style="background:#1E5942; color:#00FF9C; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-weight:600;">🎁 Bônus 12 meses: Você ganha 1 site (LP de alta conversão)</div>' 
+                : '';
+
+            resumoServicos.innerHTML = bonusResumo + servicosContratados.map(servico => {
                 let entregaveisHtml = '';
                 if (servico.secoes) {
                     Object.keys(servico.secoes).forEach(secaoNome => {
                         entregaveisHtml += `<div style="margin-bottom: 10px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong><ul style="margin-left: 15px;">`;
                         servico.secoes[secaoNome].forEach(item => {
-                            entregaveisHtml += `<li style="margin-bottom: 2px;">${item}</li>`;
+                            const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
+                            const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                            entregaveisHtml += `<li style="margin-bottom: 2px;">${itemTexto}</li>`;
                         });
                         entregaveisHtml += '</ul></div>';
                     });
                 } else {
-                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => `<li>${item}</li>`).join('')}</ul>`;
+                    // Formato antigo — manter LP com observação de exclusividade
+                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => {
+                        const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
+                        const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                        return `<li>${itemTexto}</li>`;
+                    }).join('')}</ul>`;
                 }
                 
                 // Linha com modelo de cobrança no resumo
@@ -2549,7 +2589,7 @@
                             <li>Script de vendas</li>
                             <li>Análise de concorrência</li>
                             <li>Definição de ICP (público ideal)</li>
-                            <li>Landing Page de alta conversão</li>
+                            <li>Landing Page de alta conversão <span style="color:#ccc; font-size:0.8rem; font-style: italic;">(exclusivo para plano de 12 meses de recorrência)</span></li>
                             <li>Configuração inicial de BM + Tags (Meta/Google)</li>
                         </ul>
                         <div style="margin: 20px 0 12px 0; color: #00FF9C; font-size: 0.95rem; border-bottom: 1px solid #1E5942; padding-bottom: 2px; letter-spacing: 0.3px; font-weight: 600;">Suporte:</div>
@@ -2582,7 +2622,7 @@
                             <li>Script de vendas</li>
                             <li>Análise de concorrência</li>
                             <li>Definição de ICP (público ideal)</li>
-                            <li>Landing Page de alta conversão</li>
+                            <li>Landing Page de alta conversão <span style="color:#ccc; font-size:0.8rem; font-style: italic;">(exclusivo para plano de 12 meses de recorrência)</span></li>
                             <li>Configuração inicial de BM + Tags (Meta/Google)</li>
                         </ul>
                         <div style="margin: 20px 0 12px 0; color: #00FF9C; font-size: 0.95rem; border-bottom: 1px solid #1E5942; padding-bottom: 2px; letter-spacing: 0.3px; font-weight: 600;">Suporte:</div>
@@ -2614,7 +2654,7 @@
                             <li>Script de vendas</li>
                             <li>Análise de concorrência</li>
                             <li>Definição de ICP (público ideal)</li>
-                            <li>Landing Page de alta conversão</li>
+                            <li>Landing Page de alta conversão <span style="color:#ccc; font-size:0.8rem; font-style: italic;">(exclusivo para plano de 12 meses de recorrência)</span></li>
                             <li>Configuração inicial de BM + Tags (Meta/Google)</li>
                             <li>Consultoria estratégica de crescimento</li>
                             <li>Ajustes contínuos de LP e otimização de conversão (CRO)</li>
@@ -3154,26 +3194,24 @@
     <div id="modalContratoSucesso" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="fecharModalSucesso()">&times;</span>
-            <div style="text-align: center;">
+                <div style="text-align: center;">
                 <h2 style="color: #00E388; font-size: 2.5rem; margin-bottom: 20px;">🎉</h2>
                 <h2 style="color: #1E5942; margin-bottom: 20px;">Contrato Assinado com Sucesso!</h2>
                 <p style="color: #E0E0E0; margin-bottom: 25px; line-height: 1.6;">
-                    Obrigado por aceitar nossa proposta! Seu contrato foi gerado e enviado para o seu e-mail.
+                    Obrigado por aceitar nossa proposta! Seu contrato foi gerado.
                 </p>
                 <div class="resumo-assinatura-final" style="background: rgba(30,89,66,0.1); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: left;">
                     <h3 style="color: #00E388; margin-bottom: 15px; font-size: 1.1rem;">Resumo da Proposta</h3>
                     <div id="resumoAssinaturaFinal" style="color: #E0E0E0; font-size: 0.95rem;"></div>
                 </div>
                 <div id="linkContratoGerado" style="margin-bottom: 25px;"></div>
-                <div id="statusEnvioEmail" style="margin-bottom: 15px; color: #E0E0E0; font-size: 0.95rem;"></div>
                 <div style="margin-bottom: 25px;">
                     <button class="btn btn-export" onclick="exportarPDF()">📄 Baixar resumo em PDF</button>
-                    <button class="btn" style="margin-left:10px;" onclick="reenviarContratoPorEmail()">✉️ Enviar por e-mail</button>
                 </div>
                 <button class="btn btn-primary" onclick="fecharModalSucesso()">
                     Fechar
                 </button>
-            </div>
+                </div>
         </div>
     </div>
     
@@ -4282,5 +4320,21 @@
             }
         }
     </script>
+<script>
+// Desativação do envio por e-mail após assinatura
+// Esta redefinição garante que quaisquer chamadas existentes não executem envio.
+async function enviarEmailPropostaAssinada() {
+  console.info('Envio de proposta por e-mail desativado após assinatura.');
+  return { ok: true, disabled: true };
+}
+
+function reenviarContratoPorEmail() {
+  console.info('Reenvio por e-mail desativado.');
+  const statusEl = document.getElementById('statusEnvioEmail');
+  if (statusEl) {
+    statusEl.textContent = 'Envio por e-mail desativado.';
+  }
+}
+</script>
 </body>
 </html>

@@ -118,8 +118,8 @@ const planosTrafegoPago = {
                 'Script de vendas',
                 'Análise de concorrência',
                 'Definição de ICP (público ideal)',
-                'Landing Page de alta conversão',
                 'Configuração inicial de BM + Tags (Meta/Google)',
+                'Landing Page de alta conversão',
                 'Consultoria estratégica de crescimento',
                 'Ajustes contínuos de LP e otimização de conversão (CRO)'
             ],
@@ -443,7 +443,9 @@ if (servicoTrafegoPago) {
             html += `<div style="margin-bottom: 8px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong></div>`;
             html += '<ul style="margin-left: 15px; margin-bottom: 8px;">';
             dados.secoes[secaoNome].forEach(item => {
-                html += `<li style="font-size: 0.85rem; margin-bottom: 3px;">✅ ${item}</li>`;
+                const isLP = /LP de alta conversão/i.test(item);
+                const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                html += `<li style="font-size: 0.85rem; margin-bottom: 3px;">✅ ${itemTexto}</li>`;
             });
             html += '</ul>';
         });
@@ -452,6 +454,21 @@ if (servicoTrafegoPago) {
     }
     
     atualizarValores();
+    // Inserir destaque no card de 12 meses do simulador
+    const bonusEl = document.getElementById('bonus12');
+    if (!bonusEl) {
+        const total12 = document.getElementById('sim12Total');
+        if (total12) {
+            const div = document.createElement('div');
+            div.id = 'bonus12';
+            div.className = 'periodo-bonus';
+            div.style.marginTop = '6px';
+            div.style.color = '#1E5942';
+            div.style.fontWeight = '700';
+            div.textContent = '🎁 Bônus 12 meses: Você ganha 1 site (LP de alta conversão)';
+            total12.insertAdjacentElement('afterend', div);
+        }
+    }
     atualizarBadgeComissao();
 });
 }
