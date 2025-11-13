@@ -21,6 +21,9 @@
     document.head.appendChild(style);
 
     const current = (location.pathname || '').toLowerCase();
+    // Detect base path: some deployments serve from '/proposta-comercial/' while others from '/'
+    const inSubdir = current.includes('/proposta-comercial/');
+    const base = inSubdir ? '/proposta-comercial/' : '/';
     const nav = document.createElement('nav');
     nav.className = 'menu-lateral';
 
@@ -31,8 +34,9 @@
 
     function link(href, text) {
       const a = document.createElement('a');
-      a.href = href; a.textContent = text;
-      if (current.endsWith('/' + href.toLowerCase()) || current.endsWith(href.toLowerCase())) {
+      const full = (base + href).replace('//','/');
+      a.href = full; a.textContent = text;
+      if (current.endsWith('/' + href.toLowerCase()) || current.endsWith(href.toLowerCase()) || current.endsWith(full.toLowerCase())) {
         a.classList.add('active');
       }
       return a;
@@ -41,7 +45,7 @@
     nav.appendChild(link('proposta-gerador.html', 'Gerador de Proposta'));
     nav.appendChild(link('proposta-rapida.html', 'Criador de Proposta Rápida'));
     nav.appendChild(link('clientes.html', 'Clientes'));
-  nav.appendChild(link('admin.html', 'Propostas'));
+    nav.appendChild(link('admin.html', 'Propostas'));
 
     document.body.appendChild(nav);
 

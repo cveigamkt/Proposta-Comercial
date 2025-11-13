@@ -24,7 +24,11 @@
     if (!user) {
       const tbody = document.getElementById('clientesTabela');
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="7" class="muted">É necessário estar logado para listar clientes. <a href="login.html?redirect=clientes.html">Fazer login</a></td></tr>';
+        const current = (location.pathname || '').toLowerCase();
+        const inSubdir = current.includes('/proposta-comercial/');
+        const base = inSubdir ? '/proposta-comercial/' : '/';
+        const loginUrl = `${base}login.html?redirect=${encodeURIComponent(base + 'clientes.html')}`;
+        tbody.innerHTML = `<tr><td colspan="7" class="muted">É necessário estar logado para listar clientes. <a href="${loginUrl}">Fazer login</a></td></tr>`;
       }
       return;
     }
