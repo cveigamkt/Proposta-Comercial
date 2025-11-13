@@ -283,40 +283,113 @@ async function ensureEditorOrAdmin() {
     return client;
 }
 
-// Carregar usuários (admin/editor) para o dropdown de responsável
+// Definir responsável da proposta como usuário logado
 async function popularResponsavelDropdown() {
     const selectEl = document.getElementById('responsavelProposta');
     if (!selectEl) return;
-    // Estado inicial
-    selectEl.innerHTML = '<option value="">Carregando responsáveis…</option>';
+    selectEl.innerHTML = '<option value="">Definindo usuário…</option>';
 
     try {
-        if (!window.supabaseConfig) {
-            throw new Error('supabase-config.js não foi carregado.');
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+        const client = await window.supabaseConfig.initSupabase();
+        const { data: { session } } = await client.auth.getSession();
+        const email = session?.user?.email || '';
+        let nomeFinal = email;
+
+        if (email) {
+            const { data: rows, error } = await client
+                .from('usuarios')
+                .select('nome,email')
+                .eq('email', email)
+                .limit(1);
+            if (!error && rows && rows.length) {
+                const nomeDB = (rows[0]?.nome || '').trim();
+                nomeFinal = nomeDB || email;
+            }
         }
+
+        selectEl.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = nomeFinal;
+        opt.textContent = nomeFinal;
+        selectEl.appendChild(opt);
+        selectEl.value = nomeFinal;
+        selectEl.disabled = true; // fixar responsável
+    } catch (e) {
+        console.error('Erro ao definir responsável:', e);
+        selectEl.innerHTML = '<option value="">Usuário não identificado</option>';
+        selectEl.disabled = true;
+    }
+}
+
+// Carregar clientes cadastrados para o dropdown e permitir auto-preenchimento
+async function popularClientesDropdown() {
+    const selectEl = document.getElementById('clienteSelecionado');
+    if (!selectEl) return;
+    selectEl.innerHTML = '<option value="">Carregando clientes…</option>';
+    try {
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
         const client = await window.supabaseConfig.initSupabase();
         const { data, error } = await client
-            .from('usuarios')
-            .select('nome,email,papel')
-            .in('papel', ['admin', 'editor'])
-            .order('nome', { ascending: true });
-
+            .from('clientes')
+            .select('id, tipo_documento, documento, nome, empresa, endereco, email, telefone')
+            .order('created_at', { ascending: false });
         if (error) throw error;
-
-        // Reconstruir opções
-        selectEl.innerHTML = '<option value="">Selecione o responsável</option>';
-        (data || []).forEach(u => {
-            const nome = (u.nome || '').trim() || (u.email || '').trim() || 'Usuário';
+        const opts = (data || []).map(c => {
+            const doc = (c.documento || '').replace(/\D/g, '');
+            const labelBase = c.tipo_documento === 'cpf' ? (c.nome || 'Cliente') : (c.empresa || 'Empresa');
+            const tipo = c.tipo_documento?.toUpperCase() || 'DOC';
             const opt = document.createElement('option');
-            opt.value = nome;
-            opt.textContent = u.papel ? `${nome} · ${u.papel}` : nome;
-            selectEl.appendChild(opt);
+            opt.value = c.id;
+            opt.textContent = `${labelBase} · ${tipo}: ${doc}`;
+            opt.dataset.tipo = c.tipo_documento;
+            opt.dataset.documento = doc;
+            opt.dataset.nome = c.nome || '';
+            opt.dataset.empresa = c.empresa || '';
+            opt.dataset.endereco = c.endereco || '';
+            opt.dataset.email = c.email || '';
+            opt.dataset.telefone = c.telefone || '';
+            return opt;
         });
-
+        selectEl.innerHTML = '<option value="">Selecione um cliente</option>';
+        opts.forEach(o => selectEl.appendChild(o));
+        selectEl.onchange = function(){
+            const opt = selectEl.selectedOptions[0];
+            if (!opt || !opt.value) return;
+            const tipo = opt.dataset.tipo;
+            const doc = opt.dataset.documento;
+            const nome = opt.dataset.nome;
+            const empresa = opt.dataset.empresa;
+            const endereco = opt.dataset.endereco;
+            const cpfCnpjEl = document.getElementById('cpfCnpjCliente');
+            const empresaEl = document.getElementById('empresaCliente');
+            const enderecoEl = document.getElementById('enderecoCliente');
+            // Guardar email/telefone em campos ocultos/data attributes, se desejado
+            // (neste fluxo, usaremos os datasets ao salvar)
+            // Preencher documento formatado
+            if (cpfCnpjEl) {
+                let fmt = doc;
+                if (window.validacaoCPFCNPJ) {
+                    if (tipo === 'cpf' && window.validacaoCPFCNPJ.formatarCPF) {
+                        fmt = window.validacaoCPFCNPJ.formatarCPF(doc);
+                    } else if (window.validacaoCPFCNPJ.formatarCNPJ) {
+                        fmt = window.validacaoCPFCNPJ.formatarCNPJ(doc);
+                    }
+                }
+                cpfCnpjEl.value = fmt;
+            }
+            // Nome/Empresa: para CPF usar nome, para CNPJ usar empresa
+            if (empresaEl) empresaEl.value = (tipo === 'cpf' ? (nome || empresa) : (empresa || nome)) || '';
+            if (enderecoEl) enderecoEl.value = endereco || '';
+        };
+        // Se já houver um cliente selecionado (edição), disparar preenchimento
+        const sel = selectEl.selectedOptions?.[0];
+        if (sel && sel.value) {
+            try { selectEl.onchange(); } catch (_) { /* ignore */ }
+        }
     } catch (e) {
-        console.error('Erro ao carregar responsáveis:', e);
-        // Manter o select utilizável, mas informar falha
-        selectEl.innerHTML = '<option value="">Não foi possível carregar responsáveis</option>';
+        console.error('Erro ao carregar clientes:', e);
+        selectEl.innerHTML = '<option value="">Não foi possível carregar clientes</option>';
     }
 }
 
@@ -353,6 +426,24 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (_) { /* ignore */ }
     // Popular dropdown de responsáveis (admin/editor)
     await popularResponsavelDropdown();
+    // Popular dropdown de clientes cadastrados
+    await popularClientesDropdown();
+
+    // Modal: cadastro rápido de cliente
+    try {
+        const abrirBtn = document.getElementById('btnNovoCliente');
+        const modal = document.getElementById('modalNovoCliente');
+        const fecharBtn = document.getElementById('fecharModalNovoCliente');
+        const salvarBtn = document.getElementById('btnSalvarNovoCliente');
+        if (abrirBtn && modal && fecharBtn && salvarBtn) {
+            abrirBtn.onclick = () => { modal.style.display = 'block'; };
+            fecharBtn.onclick = () => { modal.style.display = 'none'; };
+            window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+            salvarBtn.onclick = async () => { await salvarNovoCliente(); };
+        }
+    } catch (e) {
+        console.warn('Falha ao iniciar modal de cliente:', e);
+    }
     
     // Verificar se está em modo de edição
     const urlParams = new URLSearchParams(window.location.search);
@@ -471,6 +562,71 @@ if (servicoTrafegoPago) {
     }
     atualizarBadgeComissao();
 });
+
+// Inserir novo cliente via modal e selecionar no dropdown
+async function salvarNovoCliente() {
+    try {
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+        const client = await ensureLoggedIn();
+        if (!client) return;
+
+        const tipo = (document.getElementById('novoTipoDocumento')?.value || 'cnpj').toLowerCase();
+        let doc = (document.getElementById('novoDocumento')?.value || '').replace(/\D/g, '');
+        const nome = (document.getElementById('novoNome')?.value || '').trim();
+        const empresa = (document.getElementById('novaEmpresa')?.value || '').trim();
+        const endereco = (document.getElementById('novoEndereco')?.value || '').trim();
+        const email = (document.getElementById('novoEmail')?.value || '').trim();
+        const telefone = (document.getElementById('novoTelefone')?.value || '').trim();
+
+        const feedbackEl = document.getElementById('novoClienteFeedback');
+        const modal = document.getElementById('modalNovoCliente');
+
+        // Validações básicas
+        if (!doc) { alert('Informe o CPF/CNPJ.'); return; }
+        if (tipo === 'cnpj' && !empresa) { alert('Informe o nome da empresa.'); return; }
+        if (tipo === 'cpf' && !nome) { alert('Informe o nome do cliente.'); return; }
+
+        const payload = {
+            tipo_documento: tipo,
+            documento: doc,
+            nome: tipo === 'cpf' ? nome : null,
+            empresa: tipo === 'cnpj' ? empresa : null,
+            endereco: endereco || null,
+            email: email || null,
+            telefone: telefone || null
+        };
+
+        const { data, error } = await client
+            .from('clientes')
+            .insert(payload)
+            .select('id,tipo_documento,documento,nome,empresa,endereco')
+            .single();
+
+        if (error) {
+            console.error('Erro ao inserir cliente:', error);
+            alert('Não foi possível cadastrar o cliente: ' + (error.message || 'erro desconhecido'));
+            return;
+        }
+
+        // Atualiza dropdown e seleciona o novo cliente
+        await popularClientesDropdown();
+        const selectEl = document.getElementById('clienteSelecionado');
+        if (selectEl && data?.id) {
+            selectEl.value = data.id;
+            selectEl.dispatchEvent(new Event('change'));
+        }
+
+        if (feedbackEl) {
+            feedbackEl.style.display = '';
+            feedbackEl.textContent = 'Cliente cadastrado com sucesso!';
+        }
+        if (modal) modal.style.display = 'none';
+
+    } catch (e) {
+        console.error('Falha no cadastro de cliente:', e);
+        alert('Erro inesperado ao cadastrar cliente.');
+    }
+}
 }
 
     // Event listener para modelo de cobrança
@@ -692,6 +848,8 @@ window.gerarLinkProposta = async function() {
         }
         
         const supabase = window.supabaseConfig.initSupabase();
+        const { data: { session } } = await supabase.auth.getSession();
+        const responsavelUid = session?.user?.id || null;
         
         // Calcular data de expiração
         const dataExpiracao = new Date();
@@ -699,6 +857,7 @@ window.gerarLinkProposta = async function() {
         
         // Preparar dados para inserção/atualização
         const dadosInsercao = {
+            cliente_id: dadosVisualizacao.clienteId || null,
             nome_cliente: dadosVisualizacao.nomeCliente,
             empresa_cliente: dadosVisualizacao.empresaCliente,
             email_cliente: dadosVisualizacao.emailCliente || 'sem-email@proposta.com',
@@ -722,6 +881,7 @@ window.gerarLinkProposta = async function() {
             recorrencia: null, // Será preenchido quando o cliente aceitar
             forma_pagamento: null, // Será preenchido quando o cliente aceitar
             responsavel_proposta: dadosVisualizacao.responsavelProposta,
+            responsavel_user_id: responsavelUid,
             dias_validade: parseInt(dadosVisualizacao.diasValidade),
             expira_em: dataExpiracao.toISOString(),
             observacoes: descontoDescricao || null,
@@ -800,7 +960,9 @@ window.gerarLinkProposta = async function() {
             
             propostaId = data.id;
         }
-        
+
+        // Persistência de itens e histórico passa a ser feita pelo cliente na visualização
+
         // Gerar link com UUID
         const baseUrl = (() => {
             const { origin, pathname } = window.location;
@@ -828,6 +990,13 @@ let timestampPropostaAtual = null;
 
 // Função auxiliar para coletar dados do formulário
 function coletarDadosFormulario() {
+    // Coletar cliente selecionado (id, email, telefone) do dropdown
+    const clienteSelect = document.getElementById('clienteSelecionado');
+    const clienteOpt = clienteSelect?.selectedOptions?.[0] || null;
+    const clienteId = clienteOpt?.value || null;
+    const clienteEmail = clienteOpt?.dataset?.email || '';
+    const clienteTelefone = clienteOpt?.dataset?.telefone || '';
+
     // Validar campos obrigatórios
     const empresaClienteEl = document.getElementById('empresaCliente');
     const responsavelPropostaEl = document.getElementById('responsavelProposta');
@@ -839,13 +1008,79 @@ function coletarDadosFormulario() {
         return null;
     }
     
-    const empresaCliente = empresaClienteEl.value.trim();
-    const responsavelProposta = responsavelPropostaEl.value.trim();
-    const enderecoCliente = enderecoClienteEl.value.trim();
+    // Valores atuais dos inputs
+    let empresaCliente = (empresaClienteEl.value || '').trim();
+    let responsavelProposta = (responsavelPropostaEl.value || '').trim();
+    let enderecoCliente = (enderecoClienteEl.value || '').trim();
+
+    // Fallback defensivo: preencher a partir do cliente selecionado e sessão
+    // Empresa/Nome
+    if (!empresaCliente && clienteOpt) {
+        const tipo = clienteOpt.dataset?.tipo;
+        const nome = (clienteOpt.dataset?.nome || '').trim();
+        const empresaDs = (clienteOpt.dataset?.empresa || '').trim();
+        empresaCliente = (tipo === 'cpf' ? (nome || empresaDs) : (empresaDs || nome)) || '';
+        if (empresaClienteEl) empresaClienteEl.value = empresaCliente;
+    }
+    // Endereço
+    if (!enderecoCliente && clienteOpt) {
+        enderecoCliente = (clienteOpt.dataset?.endereco || '').trim();
+        if (enderecoClienteEl) enderecoClienteEl.value = enderecoCliente;
+    }
+    // Responsável: se ainda vazio, buscar sessão atual
+    // (popularResponsavelDropdown já tenta isso, mas garantimos aqui)
+    if (!responsavelProposta) {
+        // Fallback rápido: usar texto do authStatusGerador
+        const authText = (document.getElementById('authStatusGerador')?.textContent || '').trim();
+        const authEmailGuess = authText ? authText.split(' · ')[0] : '';
+        if (authEmailGuess && authEmailGuess.includes('@')) {
+            responsavelProposta = authEmailGuess;
+            if (responsavelPropostaEl) {
+                responsavelPropostaEl.innerHTML = '';
+                const opt = document.createElement('option');
+                opt.value = authEmailGuess;
+                opt.textContent = authEmailGuess;
+                responsavelPropostaEl.appendChild(opt);
+                responsavelPropostaEl.value = authEmailGuess;
+                responsavelPropostaEl.disabled = true;
+            }
+        }
+        if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+            // Nota: chamada não bloqueia se falhar; apenas tenta obter email
+            const clientTmp = window.supabaseConfig.initSupabase?.();
+            if (clientTmp && typeof clientTmp.then === 'function') {
+                // Se for Promise, aguardamos rapidamente
+                // (coletarDadosFormulario é síncrona por design, então não await total)
+            }
+        }
+        try {
+            if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+                // Executa de forma síncrona com await em IIFE
+                // eslint-disable-next-line no-new-func
+                const obterEmail = new Function('return (async () => { const c = await window.supabaseConfig.initSupabase(); const { data: { session } } = await c.auth.getSession(); return session?.user?.email || ""; })()');
+                // Tentativa rápida
+                // eslint-disable-next-line no-undef
+                obterEmail().then(email => {
+                    if (!responsavelProposta && email) {
+                        responsavelProposta = email;
+                        if (responsavelPropostaEl) {
+                            responsavelPropostaEl.innerHTML = '';
+                            const opt = document.createElement('option');
+                            opt.value = email;
+                            opt.textContent = email;
+                            responsavelPropostaEl.appendChild(opt);
+                            responsavelPropostaEl.value = email;
+                            responsavelPropostaEl.disabled = true;
+                        }
+                    }
+                }).catch(() => {});
+            }
+        } catch (_) { /* ignora */ }
+    }
     const diasValidade = diasValidadeEl.value;
     
     if (!empresaCliente || !responsavelProposta || !enderecoCliente) {
-        alert('Por favor, preencha todos os campos obrigatórios (Empresa, Responsável e Endereço).');
+        alert('Por favor, selecione um cliente para preencher Empresa e Endereço e garanta que está logado para definir o Responsável.');
         return null;
     }
     
@@ -856,7 +1091,21 @@ function coletarDadosFormulario() {
         return null;
     }
     
-    const cpfCnpjCliente = cpfCnpjClienteEl.value.trim();
+    let cpfCnpjCliente = (cpfCnpjClienteEl.value || '').trim();
+    if (!cpfCnpjCliente && clienteOpt) {
+        // Preencher a partir do dataset do cliente
+        let doc = (clienteOpt.dataset?.documento || '').trim();
+        if (window.validacaoCPFCNPJ) {
+            const tipo = clienteOpt.dataset?.tipo;
+            if (tipo === 'cpf' && window.validacaoCPFCNPJ.formatarCPF) {
+                doc = window.validacaoCPFCNPJ.formatarCPF(doc);
+            } else if (window.validacaoCPFCNPJ.formatarCNPJ) {
+                doc = window.validacaoCPFCNPJ.formatarCNPJ(doc);
+            }
+        }
+        cpfCnpjCliente = doc;
+        cpfCnpjClienteEl.value = cpfCnpjCliente;
+    }
     if (!cpfCnpjCliente) {
         alert('Por favor, preencha o CPF/CNPJ do cliente.');
         return null;
@@ -894,11 +1143,12 @@ function coletarDadosFormulario() {
     }
     
     return {
+        clienteId: clienteId,
         nomeCliente: empresaCliente, // Usar empresa como nome do cliente
         empresaCliente: empresaCliente,
-        emailCliente: 'sem-email@proposta.com', // Email placeholder (campo não está no formulário)
+        emailCliente: clienteEmail || 'sem-email@proposta.com',
         cpfCnpj: cpfCnpjCliente,
-        telefoneCliente: 'Não informado', // Campo não está no formulário
+        telefoneCliente: clienteTelefone || 'Não informado',
         enderecoCliente: enderecoCliente,
         representanteLegalCliente: '', // Será capturado no aceite
         responsavelProposta: responsavelProposta,
@@ -1073,3 +1323,8 @@ async function carregarPropostaParaEdicao(propostaId) {
         alert('❌ Erro ao carregar proposta: ' + error.message);
     }
 }
+    const clienteSelect = document.getElementById('clienteSelecionado');
+    const clienteOpt = clienteSelect?.selectedOptions?.[0] || null;
+    const clienteId = clienteOpt?.value || null;
+    const clienteEmail = clienteOpt?.dataset?.email || '';
+    const clienteTelefone = clienteOpt?.dataset?.telefone || '';

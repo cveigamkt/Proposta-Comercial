@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel Admin — Propostas</title>
+    <title>Painel Propostas — Propostas</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -131,6 +131,8 @@
           <tr>
             <th>Data</th>
             <th>Cliente</th>
+            <th>Email</th>
+            <th>Telefone</th>
             <th>Empresa</th>
             <th>CPF/CNPJ</th>
             <th>Representante</th>
@@ -139,6 +141,7 @@
             <th class="right">Valores</th>
             <th>Recorrência</th>
             <th>Pagamento</th>
+            <th>Vencimento</th>
             <th>Responsável</th>
             <th>Status</th>
             <th>Última Atualização</th>
@@ -148,7 +151,7 @@
           </tr>
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="16" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="19" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -247,7 +250,7 @@
       }
     }
 
-    async function queryResumo(filtros){
+async function queryResumo(filtros){
       // Tenta usar a view resumo_propostas; se falhar, faz fallback manual
       try {
         let q = client.from('resumo_propostas').select('*').order('criada_em', { ascending:false }).limit(200);
@@ -259,41 +262,32 @@
         const baseView = data || [];
         if (baseView.length === 0) return baseView;
 
-        // Enriquecer com proposta aceita (id) e PDF de contrato
+        // Enriquecer com contrato PDF (normalizado) usando proposta_criada_id
         const ids = baseView.map(r => r.id).filter(Boolean);
-        const { data: props } = await client
-          .from('propostas')
-          .select('id, proposta_criada_id')
-          .in('proposta_criada_id', ids);
-        const mapProp = new Map((props||[]).map(p => [p.proposta_criada_id, p.id]));
-        const propIds = (props||[]).map(p => p.id);
-        let contratosMap = new Map();
-        if (propIds.length > 0) {
-          const { data: contratos } = await client
-            .from('contratos')
-            .select('proposta_id, pdf_url')
-            .in('proposta_id', propIds);
-          contratosMap = new Map((contratos||[]).map(c => [c.proposta_id, c.pdf_url]));
-        }
-
-        // Enriquecer com dados do representante vinculados à proposta criada
-        let repMap = new Map();
+        const mapProp = new Map(); // sem uso do legado 'propostas'
+        const melhorDiaMap = new Map(); // usar campo direto de propostas_criadas
+        const propDataMap = new Map(); // usar campos assinados da própria view/base
+        const propIds = []; // não usado sem legado
+        // Contratos: priorizar tabela normalizada (proposta_contratos por proposta_criada_id)
+        let contratosNormMap = new Map();
         if (ids.length > 0) {
-          const { data: reps } = await client
-            .from('representantes_proposta')
-            .select('proposta_criada_id, nome_completo, cpf, validado')
+          const { data: contratosNorm } = await client
+            .from('proposta_contratos')
+            .select('proposta_criada_id, contrato_url')
             .in('proposta_criada_id', ids);
-          repMap = new Map((reps||[]).map(r => [r.proposta_criada_id, r]));
+          contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
         }
+        let contratosLegadoMap = new Map();
 
         return baseView.map(pc => ({
           ...pc,
-          // Preferir dados normalizados da tabela de representantes; se ausentes, cair para coluna de view quando existir
-          representante_nome: repMap.get(pc.id)?.nome_completo || pc.representante_cliente || null,
-          representante_cpf: repMap.get(pc.id)?.cpf || null,
-          representante_validado: repMap.get(pc.id)?.validado || false,
-          proposta_aceita_id: mapProp.get(pc.id) || null,
-          contrato_pdf_url: contratosMap.get(mapProp.get(pc.id)) || null,
+          status: (pc.status === 'aceita' || pc.aceita_em) ? 'aceita' : pc.status,
+          representante_nome: pc.representante_cliente || null,
+          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? null),
+          recorrencia_assinada: pc.recorrencia_assinada || null,
+          forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
+          proposta_aceita_id: null,
+          contrato_pdf_url: (contratosNormMap.get(pc.id) ?? pc.contrato_pdf_url ?? null),
           expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
         }));
       } catch (e) {
@@ -311,34 +305,31 @@
         if (e1) throw e1;
         const ids = base.map(r => r.id);
         if (ids.length===0) return [];
-        // Buscar propostas aceitas vinculadas
-        const { data: props, error: e2 } = await client.from('propostas').select('id, proposta_criada_id').in('proposta_criada_id', ids);
-        const mapProp = new Map((props||[]).map(p => [p.proposta_criada_id, p.id]));
-        const propIds = (props||[]).map(p => p.id);
-        let contratosMap = new Map();
-        if (propIds.length>0) {
-          const { data: contratos } = await client.from('contratos').select('proposta_id, pdf_url').in('proposta_id', propIds);
-          contratosMap = new Map((contratos||[]).map(c => [c.proposta_id, c.pdf_url]));
-        }
-        // Buscar dados do representante vinculados à proposta criada
-        let repMap = new Map();
+        // Sem tabela legado 'propostas': usar apenas dados de propostas_criadas e contratos normalizados
+        const mapProp = new Map();
+        const melhorDiaMap = new Map();
+        const propDataMap = new Map();
+        const propIds = [];
+        // Contratos normalizados por proposta_criada_id; fallback para contratos legados por proposta_id
+        let contratosNormMap = new Map();
         if (ids.length>0) {
-          const { data: reps } = await client
-            .from('representantes_proposta')
-            .select('proposta_criada_id, nome_completo, cpf, validado')
+          const { data: contratosNorm } = await client
+            .from('proposta_contratos')
+            .select('proposta_criada_id, contrato_url')
             .in('proposta_criada_id', ids);
-          repMap = new Map((reps||[]).map(r => [r.proposta_criada_id, r]));
+          contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
         }
+        let contratosLegadoMap = new Map();
         return base.map(pc => ({
           id: pc.id,
           nome_cliente: pc.nome_cliente,
           email_cliente: pc.email_cliente,
+          telefone_cliente: pc.telefone_cliente,
           empresa_cliente: pc.empresa_cliente,
           cpf_cnpj: pc.cpf_cnpj,
           responsavel_proposta: pc.responsavel_proposta,
-          representante_nome: repMap.get(pc.id)?.nome_completo || null,
-          representante_cpf: repMap.get(pc.id)?.cpf || null,
-          representante_validado: repMap.get(pc.id)?.validado || false,
+          representante_nome: pc.representante_cliente || null,
+          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? melhorDiaMap.get(pc.id) ?? null),
           servico_social_midia: pc.servico_social_midia,
           servico_trafego_pago: pc.servico_trafego_pago,
           valor_social_midia: pc.valor_social_midia,
@@ -348,7 +339,9 @@
           valor_total: pc.valor_total,
           recorrencia: pc.recorrencia,
           forma_pagamento: pc.forma_pagamento,
-          status: pc.status,
+          recorrencia_assinada: pc.recorrencia_assinada || null,
+          forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
+          status: (pc.status === 'aceita' || pc.aceita_em || pc.assinado_em) ? 'aceita' : pc.status,
           criada_em: pc.criada_em,
           atualizada_em: pc.atualizada_em,
           expira_em: pc.expira_em,
@@ -356,8 +349,8 @@
           assinado_em: pc.assinado_em,
           assinado_por: pc.assinado_por,
           hash_assinatura: pc.hash_assinatura,
-          proposta_aceita_id: mapProp.get(pc.id) || null,
-          contrato_pdf_url: contratosMap.get(mapProp.get(pc.id)) || null,
+          proposta_aceita_id: null,
+          contrato_pdf_url: (contratosNormMap.get(pc.id) ?? null),
           expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
         }));
       }
@@ -386,6 +379,22 @@
       return parts.join('<br>') || '<span class="muted">—</span>';
     }
 
+    // Calcula valor final mensal e total do período com descontos aplicados
+    function calcularValorFinal(r){
+      const base = (Number(r.valor_social_midia)||0) + (Number(r.valor_trafego_pago)||0);
+      if (!base) return { mensal: 0, total: 0, meses: 0 };
+      const recStr = (r.recorrencia_assinada || r.recorrencia || '').toString().toLowerCase();
+      let meses = 0;
+      if (recStr.includes('12')) meses = 12; else if (recStr.includes('6')) meses = 6; else if (recStr.includes('3')) meses = 3; else if (recStr.includes('mensal') || recStr.includes('1')) meses = 1;
+      const forma = (r.forma_pagamento_assinada || r.forma_pagamento || '').toString().toLowerCase();
+      const descRec = meses===12 ? 0.15 : meses===6 ? 0.10 : meses===3 ? 0.05 : 0;
+      const descCond = 0.05; // sempre aplicado
+      const descPag = forma.includes('vista') ? 0.10 : (forma.includes('50') || forma.includes('parcel')) ? 0.05 : 0;
+      const mensal = base * (1 - descRec - descCond - descPag);
+      const total = meses>0 ? mensal * meses : 0;
+      return { mensal, total, meses };
+    }
+
     function renderTabela(rows){
       const tb = document.getElementById('tbodyPropostas');
       const estado = document.getElementById('estadoLista');
@@ -398,7 +407,7 @@
       atualizarEstatisticas(rows);
       
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="15" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="19" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
@@ -406,33 +415,34 @@
       for (const r of rows){
   const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
         
-        // Mostrar recorrência e pagamento para propostas aceitas (com ou sem valores)
-        const recorrenciaFinal = (r.status === 'aceita') 
-          ? (r.recorrencia || '<span class="muted">—</span>')
-          : '<span class="muted">—</span>';
-        const pagamentoFinal = (r.status === 'aceita') 
-          ? (r.forma_pagamento || '<span class="muted">—</span>')
+        // Mostrar recorrência e pagamento sempre que houver valores (assinados ou originais)
+        const recorrenciaFinal = (r.recorrencia_assinada || r.recorrencia) || '<span class="muted">—</span>';
+        const pagamentoFinal = (r.forma_pagamento_assinada || r.forma_pagamento) || '<span class="muted">—</span>';
+        const vencimentoFinal = (r.melhor_dia_pagamento && Number(r.melhor_dia_pagamento) > 0)
+          ? `Dia ${String(r.melhor_dia_pagamento).padStart(2, '0')}`
           : '<span class="muted">—</span>';
         
         const tr = document.createElement('tr');
+        const vf = r.status === 'aceita' ? calcularValorFinal(r) : { mensal: Number(r.valor_mensal)||0, total: Number(r.valor_total)||0, meses: 0 };
         tr.innerHTML = `
           <td class="nowrap">${r.criada_em ? new Date(r.criada_em).toLocaleString('pt-BR') : '—'}</td>
           <td>${r.nome_cliente || '—'}</td>
+          <td class="nowrap">${r.email_cliente || '—'}</td>
+          <td class="nowrap">${r.telefone_cliente || '—'}</td>
           <td>${r.empresa_cliente || '—'}</td>
           <td class="nowrap">${r.cpf_cnpj || '—'}</td>
           <td>
             ${r.representante_nome ? `<div>${r.representante_nome}</div>` : '<span class="muted">—</span>'}
-            ${r.representante_cpf ? `<div class="muted" style="font-size:.85rem">CPF: ${r.representante_cpf}</div>` : ''}
-            ${r.representante_validado ? '<span class="chip" style="margin-top:6px;background:#0bd47e14;border-color:#0bd47e33;color:#0bd47e">✅ Validado</span>' : ''}
           </td>
           <td>${linhaServico(r)}</td>
           <td>${formatarModeloCobranca(r)}</td>
           <td class="right">
-            <div><strong>${fmtMoeda(r.valor_mensal)}/mês</strong></div>
-            <div class="muted" style="font-size:.85rem">Total: ${fmtMoeda(r.valor_total)}</div>
+            <div><strong>${fmtMoeda(vf.mensal)}/mês</strong></div>
+            <div class="muted" style="font-size:.85rem">Total${vf.meses?` (${vf.meses}m)`:''}: ${fmtMoeda(vf.total)}</div>
           </td>
           <td class="nowrap">${recorrenciaFinal}</td>
           <td class="nowrap">${pagamentoFinal}</td>
+          <td class="nowrap">${vencimentoFinal}</td>
           <td>${r.responsavel_proposta || '<span class="muted">—</span>'}</td>
           <td>${statusChip(r.status, r.expirada)}</td>
           <td class="nowrap">
@@ -446,7 +456,7 @@
           <td>
             <div class="actions-cell">
               <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')" title="Editar proposta">✏️</button>
-              <button type="button" class="btn-action btn-delete" onclick="confirmarExclusao(event, '${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
+              <button type="button" class="btn-action btn-delete" onclick="return confirmarExclusao(event, '${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
               ${r.status === 'aceita' && r.contrato_pdf_url ? `<button type="button" class="btn-action" onclick="enviarContratoPorEmailAdmin('${r.id}')" title="Enviar contrato assinado por e-mail">✉️</button>` : ''}
             </div>
           </td>
@@ -482,7 +492,7 @@
           const { data: { session } } = await client.auth.getSession();
           if (!session || !session.user) {
             const tb = document.getElementById('tbodyPropostas');
-            tb.innerHTML = '<tr><td colspan="16" class="muted">Faça login para acessar o painel.</td></tr>';
+        tb.innerHTML = '<tr><td colspan="19" class="muted">Faça login para acessar o painel.</td></tr>';
             return;
           }
         } catch(_){ /* fallback: se falhar, continua mas sem dados */ }
@@ -505,7 +515,7 @@
       }catch(e){
         console.error(e);
         const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = `<tr><td colspan="15" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="19" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
       }finally{
         btn.disabled = false; btn.textContent = 'Buscar';
       }
@@ -659,77 +669,101 @@
       try { if (evt) { evt.preventDefault(); evt.stopPropagation(); } } catch(_) {}
       if (!isAdmin()) {
         alert('🚫 Apenas administradores podem excluir propostas.');
-        return;
+        return false;
       }
       // Buscar a proposta na lista de dados carregados (pode estar aceita)
       const proposta = window.ultimasPropostas?.find(p => p.id === id);
       
-      const confirmacao = window.confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nIsto irá remover registros relacionados (proposta assinada, contrato e PDF no Storage). Esta ação não pode ser desfeita.`);
-      if (!confirmacao) { console.debug('Exclusão cancelada pelo usuário'); return; }
+      let confirmacao = false;
+      try {
+        confirmacao = window.confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nIsto irá remover registros relacionados (proposta assinada, contrato e PDF no Storage). Esta ação não pode ser desfeita.`);
+      } catch(_) { confirmacao = false; }
+      if (confirmacao !== true) { console.debug('Exclusão cancelada pelo usuário'); return false; }
+      try { if (evt?.currentTarget) { evt.currentTarget.disabled = true; evt.currentTarget.textContent = 'Excluindo…'; } } catch(_){}
+      alert('🗑️ Iniciando exclusão da proposta e registros relacionados…');
       
       try {
         client = client || window.supabaseConfig.initSupabase();
 
-        // 1) Se existir proposta assinada vinculada, apagar contratos e PDF
-        const { data: propAssinada } = await client
-          .from('propostas')
-          .select('id')
-          .eq('proposta_criada_id', id)
-          .limit(1)
-          .maybeSingle();
-
-        if (propAssinada?.id){
-          const propId = propAssinada.id;
-          // Buscar contratos vinculados para remover PDFs
-          const { data: contratos } = await client
-            .from('contratos')
-            .select('id,pdf_url')
-            .eq('proposta_id', propId);
-          if (Array.isArray(contratos)){
-            for (const c of contratos){
-              const caminho = extrairCaminhoStorage(c.pdf_url);
-              if (caminho){
-                try{
-                  await client.storage.from('contratos').remove([caminho]);
-                }catch(e){
-                  console.warn('Falha ao remover arquivo do Storage:', e?.message || e);
-                }
+        // 1) Apagar contratos normalizados e seus PDFs
+        console.debug('[Excluir] Buscando contratos normalizados para proposta', id);
+        const { data: contratosNorm } = await client
+          .from('proposta_contratos')
+          .select('id,contrato_url')
+          .eq('proposta_criada_id', id);
+        if (Array.isArray(contratosNorm)){
+          for (const c of contratosNorm){
+            const caminho = extrairCaminhoStorage(c.contrato_url);
+            if (caminho){
+              try{
+                await client.storage.from('contratos').remove([caminho]);
+              }catch(e){
+                console.warn('Falha ao remover arquivo do Storage (normalized):', e?.message || e);
               }
             }
           }
-          // Remover contratos
-          await client.from('contratos').delete().eq('proposta_id', propId);
-          // Remover proposta assinada
-          await client.from('propostas').delete().eq('id', propId);
+          console.debug('[Excluir] Removendo registros em proposta_contratos…');
+          await client.from('proposta_contratos').delete().eq('proposta_criada_id', id);
         }
 
-        // 2) Remover representantes vinculados
-        await client.from('representantes_proposta').delete().eq('proposta_criada_id', id);
+        // 1.1) Limpeza opcional de legados (se existirem), engolindo erros
+        try {
+          const { data: propAssinada } = await client
+            .from('propostas')
+            .select('id')
+            .eq('proposta_criada_id', id)
+            .limit(1)
+            .maybeSingle();
+          const propId = propAssinada?.id;
+          if (propId){
+            const { data: contratosLegado } = await client
+              .from('contratos')
+              .select('id,pdf_url')
+              .eq('proposta_id', propId);
+            if (Array.isArray(contratosLegado)){
+              for (const c of contratosLegado){
+                const caminho = extrairCaminhoStorage(c.pdf_url);
+                if (caminho){
+                  try{ await client.storage.from('contratos').remove([caminho]); }catch(e){ /* ignora */ }
+                }
+              }
+            }
+            try { await client.from('contratos').delete().eq('proposta_id', propId); } catch (_) {}
+            try { await client.from('propostas').delete().eq('id', propId); } catch (_) {}
+          }
+        } catch (_) { /* tolerante se tabelas não existirem */ }
+
+        // 2) Remover representantes vinculados (LEGADO)
+        // Removido: tabela representantes_proposta foi descontinuada.
+        // Caso ainda exista no seu projeto, você pode habilitar a linha abaixo temporariamente.
+        // try { await client.from('representantes_proposta').delete().eq('proposta_criada_id', id); } catch (_) {}
 
         // 3) Remover proposta criada (independente do status)
-        const { data, error } = await client
+        console.debug('[Excluir] Removendo proposta_criadas id', id);
+        const { error } = await client
           .from('propostas_criadas')
           .delete()
-          .eq('id', id)
-          .select('id');
+          .eq('id', id);
         
         if (error) {
           console.error('Erro ao excluir proposta:', error);
           alert('❌ Erro ao excluir proposta: ' + error.message);
-          return;
+          return false;
         }
-        if (!data || data.length === 0) {
-          console.warn('Exclusão não retornou registros. Verifique políticas RLS.');
-          alert('❌ Proposta não foi excluída. Verifique permissões de DELETE (RLS).');
-          return;
-        }
+        // Remover da lista local e atualizar UI imediatamente
+        try {
+          window.ultimasPropostas = (window.ultimasPropostas || []).filter(p => p.id !== id);
+          renderTabela(window.ultimasPropostas);
+        } catch(_) { /* ignora: render falhar não impede recarregar */ }
         
         alert('✅ Proposta e registros relacionados excluídos com sucesso!');
         carregar(); // Recarregar lista
+        return true;
       } catch (e) {
         console.error('Erro ao excluir em cascata:', e);
         const msg = e?.message || e?.error_description || e?.hint || 'Erro desconhecido (verifique políticas de DELETE e Storage)';
         alert('❌ Erro ao excluir: ' + msg);
+        return false;
       }
     }
 

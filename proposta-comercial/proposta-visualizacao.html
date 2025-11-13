@@ -1627,6 +1627,29 @@
             return 'nao-se-aplica';
         }
 
+        // Normaliza forma de pagamento para valores dos radios
+        function normalizarFormaPagamento(forma) {
+            const s = (forma || '').toString().toLowerCase();
+            if (!s) return null;
+            if (s.includes('vista')) return 'avista';
+            if (s.includes('parc')) return 'parcelado';
+            if (s.includes('mensal')) return 'mensal';
+            return null;
+        }
+
+        // Seleciona radio por nome e valor e aplica o destaque visual do card
+        function selecionarRadioPorValor(nome, valor) {
+            const input = document.querySelector(`input[name="${nome}"][value="${valor}"]`);
+            if (input) {
+                input.checked = true;
+                const card = input.closest('.option-card');
+                if (card) {
+                    document.querySelectorAll(`.${nome === 'recorrencia' ? 'recorrencia-options' : 'pagamento-options'} .option-card`).forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                }
+            }
+        }
+
     async function carregarDadosPorUUID(id) {
             try {
                 console.log('=== CARREGANDO PROPOSTA ===');
@@ -1681,6 +1704,13 @@
                 window.propostaCarregada.servico_social_midia_key = socialKey;
                 window.propostaCarregada.servico_trafego_pago_key = trafegoKey;
 
+                // Pré-selecionar recorrência/pagamento com base nos campos assinados (ou originais)
+                const recAssinada = parseInt(data.recorrencia_assinada ?? data.recorrencia ?? '');
+                const recInicial = [1, 3, 6, 12].includes(recAssinada) ? recAssinada : (parseInt(data.recorrencia || '') || 6);
+                const formaInicial = normalizarFormaPagamento(data.forma_pagamento_assinada ?? data.forma_pagamento) || (recInicial === 1 ? 'mensal' : 'mensal');
+                selecionarRadioPorValor('recorrencia', String(recInicial));
+                selecionarRadioPorValor('pagamento', String(formaInicial));
+
                 // Montar serviços contratados a partir dos planos + valores vindos do banco (respeitando comissão)
                 valorBase = 0;
                 servicosContratados = [];
@@ -1719,6 +1749,7 @@
                 };
 
                 renderizarServicos();
+                try { calcularValores(); } catch(e) { console.warn('Falha ao calcular valores iniciais com campos assinados:', e); }
                 atualizarResumo();
                 // Se o nome da empresa não veio do banco, tentar preencher via CNPJ
                 try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { console.warn('Fallback CNPJ falhou:', e); }
@@ -2085,7 +2116,21 @@
                 document.getElementById('descontoPagamentoRow').style.display = 'none';
             }
             
-            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            const rowFinalMensal = document.getElementById('valorFinalMensal')?.parentElement;
+            const labelFinalMensal = rowFinalMensal?.querySelector('span:first-child');
+            if (pagamento === 'mensal') {
+                if (rowFinalMensal) rowFinalMensal.style.display = 'flex';
+                if (labelFinalMensal) labelFinalMensal.textContent = '💰 Valor Final Mensal:';
+                document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            } else if (pagamento === 'parcelado') {
+                if (rowFinalMensal) rowFinalMensal.style.display = 'flex';
+                if (labelFinalMensal) labelFinalMensal.textContent = '💰 Parcelas (50% + 50%):';
+                const parcela = valorTotal / 2;
+                document.getElementById('valorFinalMensal').textContent = `2x de R$ ${parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            } else if (pagamento === 'avista') {
+                // À vista: não exibe linha de mensal, mantém apenas total do contrato
+                if (rowFinalMensal) rowFinalMensal.style.display = 'none';
+            }
             document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
             
             atualizarResumo();
@@ -2103,8 +2148,11 @@
             const elResumoValorFinal = document.getElementById('resumoValorFinal');
             const elResumoValorTotal = document.getElementById('resumoValorTotal');
 
-            const valorFinal = parseFloat(elValorFinalMensal?.textContent.replace(/[^\d,]/g, '').replace(',', '.') || '0') || 0;
-            const valorTotal = valorFinal * recorrencia;
+            const totalTxt = document.getElementById('valorTotalPeriodo')?.textContent || '';
+            const matchTotal = totalTxt.match(/R\$\s*([\d\.]+,\d{2})/);
+            const valorTotal = parseFloat((matchTotal?.[1] || '0').replace(/\./g, '').replace(',', '.')) || 0;
+            const pagamentoSelecionadoValor = document.querySelector('input[name="pagamento"]:checked')?.value;
+            const valorFinal = pagamentoSelecionadoValor === 'mensal' && recorrencia > 0 ? (valorTotal / recorrencia) : 0;
             const dataAtual = elDataProposta?.textContent || '';
 
             if (elResumoCliente && elNomeCliente && elEmpresaCliente) {
@@ -2114,7 +2162,14 @@
                 elResumoData.textContent = dataAtual;
             }
             if (elResumoValorFinal) {
-                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
+                if (pagamentoSelecionadoValor === 'mensal') {
+                    elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
+                } else if (pagamentoSelecionadoValor === 'parcelado') {
+                    const parcela = valorTotal / 2;
+                    elResumoValorFinal.textContent = `2x de R$ ${parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                } else {
+                    elResumoValorFinal.textContent = 'Não se aplica';
+                }
             }
             if (elResumoValorTotal) {
                 elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -2286,15 +2341,17 @@
             const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
             const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
             
-            const dadosAceite = {
-                nomeCliente: document.getElementById('nomeCliente')?.textContent || document.getElementById('empresaCliente')?.textContent || '',
-                empresaCliente: document.getElementById('empresaCliente')?.textContent || '',
-                emailCliente: new URLSearchParams(window.location.search).get('emailCliente') || '',
-                valorMensal: document.getElementById('valorFinalMensal').textContent,
-                valorTotal: document.getElementById('valorTotalPeriodo').textContent,
-                recorrencia: recorrenciaSelecionada?.value || '',
-                formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || ''
-            };
+                const dadosAceite = {
+                    nomeCliente: document.getElementById('nomeCliente')?.textContent || document.getElementById('empresaCliente')?.textContent || '',
+                    empresaCliente: document.getElementById('empresaCliente')?.textContent || '',
+                    emailCliente: new URLSearchParams(window.location.search).get('emailCliente') || '',
+                    telefoneCliente: document.getElementById('telefoneAssinatura')?.value?.trim() || '',
+                    valorMensal: document.getElementById('valorFinalMensal').textContent,
+                    valorTotal: document.getElementById('valorTotalPeriodo').textContent,
+                    recorrencia: recorrenciaSelecionada?.value || '',
+                    formaPagamento: pagamentoSelecionado?.closest('.option-card').querySelector('.title').textContent || '',
+                    melhorDiaPagamento: document.getElementById('melhorDiaPagamento')?.value || null
+                };
             
             // Fechar modal de confirmação
             document.getElementById('modalConfirmacao').style.display = 'none';
@@ -2757,10 +2814,17 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const propostaId = urlParams.get('id');
                 
+                // Garantir cliente Supabase inicializado antes de operações de DB
+                if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+                    try { window.supabaseConfig.initSupabase(); } catch (e) { console.warn('Falha ao inicializar Supabase antes do update:', e); }
+                }
                 if (propostaId && window.supabase) {
                     await atualizarPropostaNoSupabase(propostaId, {
                         recorrencia: camposAceite.recorrencia,
-                        formaPagamento: camposAceite.formaPagamento
+                        formaPagamento: camposAceite.formaPagamento,
+                        emailCliente: camposAceite.emailCliente || '',
+                        telefoneCliente: (dadosAssinaturaTemp?.telefone || document.getElementById('telefoneAssinatura')?.value || '').trim(),
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || document.getElementById('melhorDiaPagamento')?.value || null
                     });
                 }
                 
@@ -2775,49 +2839,96 @@
 
     async function atualizarPropostaNoSupabase(propostaId, dadosAceite) {
             try {
-                const client = window.supabase;
-                
-                // 1. Atualizar propostas_criadas com status 'aceita'
-                const { error: updateError } = await client
-                    .from('propostas_criadas')
-                    .update({
-                        status: 'aceita',
-                        aceita_em: new Date().toISOString()
-                    })
-                    .eq('id', propostaId);
-                
-                if (updateError) {
-                    console.error('Erro ao atualizar propostas_criadas:', updateError);
-                    throw updateError;
+                // Garantir que estamos usando o cliente Supabase (não apenas o namespace da lib)
+                const client = (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function')
+                  ? window.supabaseConfig.initSupabase()
+                  : window.supabase;
+                // 0. Persistir itens selecionados pelo cliente em proposta_itens
+                try {
+                    const descontoPorForma = (forma) => {
+                        const f = (forma || '').toLowerCase();
+                        if (f.includes('vista')) return 10; // À Vista
+                        if (f.includes('parcel')) return 5; // Parcelado
+                        return 0; // Mensal / outros
+                    };
+
+                    const descontoPct = descontoPorForma(dadosAceite.formaPagamento || '');
+                    const itensDetalhados = (Array.isArray(window.servicosContratados) ? window.servicosContratados : [])
+                      .map((s) => {
+                        const preco = typeof s.valor === 'number' ? s.valor : parseFloat(String(s.valor).replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
+                        const total = +(preco * (1 - (descontoPct/100))).toFixed(2);
+                        const planoKey = s.tipo === 'Social Mídia' ? (window.propostaCarregada?.servico_social_midia_key || 'nao-se-aplica') : (window.propostaCarregada?.servico_trafego_pago_key || 'nao-se-aplica');
+                        return {
+                          proposta_criada_id: propostaId,
+                          nome_servico: s.tipo,
+                          descricao: s.plano || null,
+                          quantidade: 1,
+                          preco_unitario: preco,
+                          desconto_percentual: descontoPct,
+                          total: total,
+                          metadata: {
+                            plano_key: planoKey,
+                            recorrencia: dadosAceite.recorrencia || null,
+                            origem: 'cliente',
+                          }
+                        };
+                      });
+
+                    if (itensDetalhados.length > 0) {
+                        const { error: itensError } = await client
+                          .from('proposta_itens')
+                          .insert(itensDetalhados);
+                        if (itensError) {
+                          console.warn('Falha ao inserir itens selecionados pelo cliente:', itensError);
+                        } else {
+                          // Registrar status de itens preenchidos
+                          const { error: statusItensError } = await client
+                            .from('proposta_status_history')
+                            .insert({
+                              proposta_criada_id: propostaId,
+                              status: 'itens_preenchidos',
+                              observacao: `Cliente selecionou ${itensDetalhados.length} item(ns).`,
+                              created_by: null
+                            });
+                          if (statusItensError) {
+                            console.warn('Falha ao registrar status itens_preenchidos:', statusItensError);
+                          }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Erro ao persistir itens selecionados:', e);
                 }
                 
-                // 2. Inserir na tabela propostas com dados do aceite
-                const { data: propostaInserida, error: insertError } = await client
-                    .from('propostas')
-                    .insert({
-                        proposta_criada_id: propostaId,
-                        recorrencia_assinada: dadosAceite.recorrencia,
-                        forma_pagamento_assinada: dadosAceite.formaPagamento,
-                        assinada_em: new Date().toISOString(),
-                        cpf_representante: dadosAssinaturaTemp?.cpfRepresentante || null,
-                        data_nascimento_representante: dadosAssinaturaTemp?.dataNascimentoRepresentante || null,
-                        melhor_dia_pagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null,
-                        email_faturamento: dadosAssinaturaTemp?.email || null
-                    })
-                    .select()
-                    .single();
-                
-                if (insertError) {
-                    console.error('Erro ao inserir proposta aceita:', insertError);
-                    throw insertError;
+                // 1. Delegar atualização e histórico para a função centralizada
+                try {
+                    const formaLower = (dadosAceite.formaPagamento || '').toLowerCase();
+                    const melhorDiaSan = (() => {
+                        const raw = dadosAceite.melhorDiaPagamento;
+                        if (!raw || formaLower.includes('vista') || formaLower.includes('50')) return null;
+                        const n = parseInt(String(raw).trim(), 10);
+                        return isNaN(n) ? null : Math.max(1, Math.min(31, n));
+                    })();
+                    if (window.supabaseConfig && typeof window.supabaseConfig.salvarPropostaAceita === 'function') {
+                        const res = await window.supabaseConfig.salvarPropostaAceita({
+                            propostaCriadaId: propostaId,
+                            recorrencia: dadosAceite.recorrencia,
+                            formaPagamento: dadosAceite.formaPagamento,
+                            emailCliente: dadosAceite.emailCliente || null,
+                            telefoneCliente: dadosAceite.telefoneCliente || null,
+                            melhorDiaPagamento: melhorDiaSan,
+                            servicosContratados: (Array.isArray(window.servicosContratados) ? window.servicosContratados : [])
+                        });
+                        console.log('Aceite centralizado salvo:', res);
+                    }
+                } catch (e) {
+                    console.error('Falha na atualização centralizada do aceite:', e);
+                    throw e;
                 }
-                
-                console.log('Proposta atualizada no Supabase com sucesso!');
                 
                 // 3. Gerar contrato PDF
-                await gerarEsalvarContratoPDF(propostaInserida.id, propostaId, dadosAceite);
+                await gerarEsalvarContratoPDF(propostaId, dadosAceite);
                 
-                return propostaInserida;
+                return { id: propostaId };
                 
             } catch (error) {
                 console.error('Erro ao atualizar proposta no Supabase:', error);
@@ -2825,7 +2936,7 @@
             }
         }
 
-        async function gerarEsalvarContratoPDF(propostaAceitaId, propostaCriadaId, dadosAceite) {
+        async function gerarEsalvarContratoPDF(propostaCriadaId, dadosAceite) {
             try {
                 // Buscar dados completos da proposta criada
                 const client = window.supabase;
@@ -2840,20 +2951,46 @@
                     return;
                 }
                 
-                // Gerar PDF usando a função do supabase-config
-                if (window.supabaseConfig && typeof window.supabaseConfig.gerarContratoPDF === 'function') {
-                    const pdfBlob = await window.supabaseConfig.gerarContratoPDF({
-                        ...proposta,
-                        recorrencia_assinada: dadosAceite.recorrencia,
-                        forma_pagamento_assinada: dadosAceite.formaPagamento,
-                        cpfRepresentante: dadosAssinaturaTemp?.cpfRepresentante || null,
-                        dataNascimentoRepresentante: dadosAssinaturaTemp?.dataNascimentoRepresentante || null,
-                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null
-                    });
+                // Gerar PDF usando a função do supabase-config com mapeamento correto (camelCase)
+                if (window.supabaseConfig && typeof window.supabaseConfig.gerarPDFContrato === 'function') {
+                    const toNumber = (v) => {
+                        if (typeof v === 'number') return v;
+                        const num = parseFloat(String(v || '0').replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.'));
+                        return isNaN(num) ? 0 : num;
+                    };
+
+                    const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
+                    const recorrenciaTitulo = recorrenciaSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || null;
+                    const pagamentoSelecionado = document.querySelector('input[name="pagamento"]:checked');
+                    const formaPagTitulo = pagamentoSelecionado?.closest('.option-card')?.querySelector('.title')?.textContent || null;
+
+                    const valorMensalNum = toNumber(document.getElementById('valorFinalMensal')?.textContent) || toNumber(proposta.valor_mensal);
+                    const valorTotalNum = toNumber(document.getElementById('valorTotalPeriodo')?.textContent) || toNumber(proposta.valor_total);
+
+                    const dadosContratoPDF = {
+                        nomeCliente: proposta.empresa_cliente || proposta.nome_cliente || '',
+                        empresaCliente: proposta.empresa_cliente || '',
+                        cpfCnpj: proposta.cpf_cnpj || '',
+                        emailCliente: proposta.email_cliente || dadosAceite.emailCliente || '',
+                        telefoneCliente: proposta.telefone_cliente || dadosAceite.telefoneCliente || '',
+                        servicoSocialMidia: proposta.servico_social_midia_key || proposta.servico_social_midia || 'nao-se-aplica',
+                        servicoTrafegoPago: proposta.servico_trafego_pago_key || proposta.servico_trafego_pago || 'nao-se-aplica',
+                        investimentoMidia: proposta.investimento_midia || '',
+                        recorrencia: proposta.recorrencia || dadosAceite.recorrencia || recorrenciaTitulo || '',
+                        formaPagamento: proposta.forma_pagamento || dadosAceite.formaPagamento || formaPagTitulo || '',
+                        valorMensal: Number(valorMensalNum.toFixed(2)),
+                        valorTotal: Number(valorTotalNum.toFixed(2)),
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || proposta.melhor_dia_pagamento || null,
+                        percentualComissao: proposta.percentual_comissao || null,
+                        valorFixoTrafego: proposta.valor_fixo_trafego || null,
+                        temComissaoVendas: !!proposta.tem_comissao_vendas
+                    };
+
+                    const pdfBlob = await window.supabaseConfig.gerarPDFContrato(dadosContratoPDF);
                     
                     if (pdfBlob) {
                         // Fazer upload do PDF para o Supabase Storage
-                        const nomeArquivo = `contrato_${propostaAceitaId}_${Date.now()}.pdf`;
+                        const nomeArquivo = `contrato_${propostaCriadaId}_${Date.now()}.pdf`;
                         const { data: uploadData, error: uploadError } = await client.storage
                             .from('contratos')
                             .upload(nomeArquivo, pdfBlob, {
@@ -2871,13 +3008,33 @@
                             .from('contratos')
                             .getPublicUrl(nomeArquivo);
                         
-                        // Salvar referência na tabela contratos
+                        // Obter IP da assinatura
+                        let ipAssinatura = '0.0.0.0';
+                        try {
+                            const ipResponse = await fetch('https://api.ipify.org?format=json');
+                            if (ipResponse.ok) {
+                                const ipData = await ipResponse.json();
+                                ipAssinatura = ipData.ip || ipAssinatura;
+                            }
+                        } catch (_) { /* prosseguir com padrão */ }
+
+                        // Calcular hash do contrato, se util disponível
+                        const contratoHash = (window.supabaseConfig && typeof window.supabaseConfig.gerarHashAssinatura === 'function')
+                          ? window.supabaseConfig.gerarHashAssinatura({
+                              nomeCliente: proposta.empresa_cliente || proposta.nome_cliente || '',
+                              cpfCnpj: proposta.cpf_cnpj || '',
+                              timestamp: new Date().toISOString()
+                            })
+                          : null;
+
+                        // Salvar referência na tabela normalizada de contratos (inclui IP)
                         await client
-                            .from('contratos')
+                            .from('proposta_contratos')
                             .insert({
-                                proposta_id: propostaAceitaId,
-                                pdf_url: urlData.publicUrl,
-                                gerado_em: new Date().toISOString()
+                                proposta_criada_id: propostaCriadaId,
+                                contrato_url: urlData.publicUrl,
+                                ip_assinatura: ipAssinatura,
+                                contrato_sha256: contratoHash
                             });
                         
                         console.log('Contrato PDF gerado e salvo com sucesso!');
@@ -3194,24 +3351,25 @@
     <div id="modalContratoSucesso" class="modal" style="display:none;">
         <div class="modal-content">
             <span class="close" onclick="fecharModalSucesso()">&times;</span>
-                <div style="text-align: center;">
-                <h2 style="color: #00E388; font-size: 2.5rem; margin-bottom: 20px;">🎉</h2>
-                <h2 style="color: #1E5942; margin-bottom: 20px;">Contrato Assinado com Sucesso!</h2>
-                <p style="color: #E0E0E0; margin-bottom: 25px; line-height: 1.6;">
+            <div style="text-align: center;">
+                <h2 style="color: #00E388; font-size: 2.5rem; margin-bottom: 12px;">🎉</h2>
+                <h2 style="color: #1E5942; margin-bottom: 12px;">Contrato Assinado com Sucesso!</h2>
+                <p style="color: #E0E0E0; margin-bottom: 18px; line-height: 1.6;">
                     Obrigado por aceitar nossa proposta! Seu contrato foi gerado.
                 </p>
-                <div class="resumo-assinatura-final" style="background: rgba(30,89,66,0.1); padding: 20px; border-radius: 12px; margin: 20px 0; text-align: left;">
-                    <h3 style="color: #00E388; margin-bottom: 15px; font-size: 1.1rem;">Resumo da Proposta</h3>
+                <div class="resumo-assinatura-final" style="background: rgba(30,89,66,0.12); padding: 18px; border-radius: 12px; margin: 16px 0 22px; text-align: left;">
+                    <h3 style="color: #00E388; margin-bottom: 12px; font-size: 1.05rem;">Resumo da Proposta</h3>
                     <div id="resumoAssinaturaFinal" style="color: #E0E0E0; font-size: 0.95rem;"></div>
                 </div>
-                <div id="linkContratoGerado" style="margin-bottom: 25px;"></div>
-                <div style="margin-bottom: 25px;">
+                <!-- Ações dinâmicas: download e copiar link -->
+                <div id="linkContratoGerado" class="modal-buttons" style="margin-bottom: 14px;"></div>
+                <!-- Ação estática: baixar resumo em PDF e fechar -->
+                <div class="modal-buttons" style="margin-top: 8px;">
                     <button class="btn btn-export" onclick="exportarPDF()">📄 Baixar resumo em PDF</button>
+                    <button class="btn btn-ghost" onclick="fecharModalSucesso()">Fechar</button>
                 </div>
-                <button class="btn btn-primary" onclick="fecharModalSucesso()">
-                    Fechar
-                </button>
-                </div>
+                <div id="copyFeedbackContrato" class="copy-feedback" aria-live="polite"></div>
+            </div>
         </div>
     </div>
     
@@ -3247,6 +3405,21 @@
     </style>
 
     <!-- Scripts necessários -->
+    <style>
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid #444;
+            color: #ddd;
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+        .copy-feedback {
+            text-align: center;
+            color: #00E388;
+            font-weight: 600;
+            margin-top: 8px;
+            min-height: 20px;
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="validacao-cpf-cnpj.js?v=6"></script>
     <script src="supabase-config.js?v=6"></script>
@@ -3259,6 +3432,20 @@
         function fecharModalAssinatura() {
             const modal = document.getElementById('modalAssinaturaContrato');
             if (modal) modal.style.display = 'none';
+        }
+
+        // Utilitário: copiar link do contrato com feedback discreto
+        async function copiarLinkContrato(url) {
+            try {
+                await navigator.clipboard.writeText(url);
+                const fb = document.getElementById('copyFeedbackContrato');
+                if (fb) {
+                    fb.textContent = 'Link do contrato copiado! ✅';
+                    setTimeout(() => { fb.textContent = ''; }, 2500);
+                }
+            } catch (_) {
+                alert('Não foi possível copiar o link.');
+            }
         }
 
         // Preencher resumo da proposta no modal de assinatura (escopo global)
@@ -3578,10 +3765,10 @@
                 // Mostrar modal de sucesso
                 const linkDiv = document.getElementById('linkContratoGerado');
                 linkDiv.innerHTML = `
-                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration: none;">
+                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration: none;" download>
                         📥 Baixar Contrato em PDF
                     </a>
-                    <button class="btn" style="margin-left:10px;" onclick="navigator.clipboard.writeText('${contratoResult.pdfUrl}').then(()=>alert('Link do contrato copiado!'))">🔗 Copiar link</button>
+                    <button class="btn btn-secondary" onclick="copiarLinkContrato('${contratoResult.pdfUrl}')">🔗 Copiar link</button>
                 `;
                 // Parar contador de validade e ocultar UI
                 try {
@@ -3918,6 +4105,28 @@
                 }
             }
 
+            // Ajustes de pagamento conforme forma selecionada
+            const formaPagTitulo = formaPagamentoSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || '';
+            const formaPagLower = (formaPagTitulo || '').toLowerCase();
+            const valorMensalOriginal = valorMensalTexto.replace('R$', '').trim();
+            const valorTotalOriginal = valorTotalTexto.split('(')[0].replace('R$', '').trim();
+            const valorTotalNum = parseFloat(valorTotalOriginal.replace(/[\.]/g,'').replace(',', '.')) || 0;
+            const valorMensalFmt = (formaPagLower.includes('vista') || formaPagLower.includes('50')) ? 'Não se aplica' : valorMensalOriginal;
+            const assinaturaData = new Date();
+            const addDays = (d, n) => { const nd = new Date(d); nd.setDate(nd.getDate()+n); return nd; };
+            const fmtDate = (d) => d.toLocaleDateString('pt-BR');
+            const detalhePagamento = (() => {
+                if (formaPagLower.includes('50')) {
+                    const primeira = (valorTotalNum/2);
+                    const segunda = (valorTotalNum - primeira);
+                    return `1ª parcela: R$ ${primeira.toLocaleString('pt-BR', {minimumFractionDigits:2})} (vencimento em ${fmtDate(addDays(assinaturaData,2))}) | 2ª parcela: R$ ${segunda.toLocaleString('pt-BR', {minimumFractionDigits:2})} (vencimento em ${fmtDate(addDays(assinaturaData,30))}).`;
+                }
+                if (formaPagLower.includes('vista')) {
+                    return `Pagamento único de R$ ${valorTotalNum.toLocaleString('pt-BR', {minimumFractionDigits:2})}.`;
+                }
+                return `Mensalidade de R$ ${valorMensalOriginal} totalizando R$ ${valorTotalOriginal} no período.`;
+            })();
+
             const mapa = {
                 '{{NOME_CLIENTE}}': dadosAssinaturaTemp.nomeCompleto || window.propostaCarregada?.nome_cliente || '',
                 '{{CPF_CNPJ}}': dadosAssinaturaTemp.cpfCnpj || window.propostaCarregada?.cpf_cnpj || '',
@@ -3932,9 +4141,9 @@
                 '{{SERVICO_TRAFEGO_PAGO}}': (window.propostaCarregada?.servico_trafego_pago || urlParams.get('servicoTrafegoPago') || 'Não se aplica'),
                 '{{INVESTIMENTO_MIDIA}}': window.propostaCarregada?.investimento_midia || urlParams.get('investimentoMidia') || 'Não informado',
                 '{{RECORRENCIA}}': recorrenciaSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || '6 meses',
-                '{{FORMA_PAGAMENTO}}': formaPagamentoSelecionada?.closest('.option-card')?.querySelector('.title')?.textContent || 'À Vista',
-                '{{VALOR_MENSAL}}': valorMensalTexto.replace('R$', '').trim(),
-                '{{VALOR_TOTAL}}': valorTotalTexto.split('(')[0].replace('R$', '').trim(),
+                '{{FORMA_PAGAMENTO}}': formaPagTitulo || 'À Vista',
+                '{{VALOR_MENSAL}}': valorMensalFmt,
+                '{{VALOR_TOTAL}}': valorTotalOriginal,
                 '{{DATA_ASSINATURA}}': new Date().toLocaleString('pt-BR'),
                 '{{HASH_ASSINATURA}}': '[Será gerado após assinatura]',
                 '{{IP_ASSINATURA}}': '[Será registrado após assinatura]',
@@ -3942,7 +4151,8 @@
                 '{{ENTREGAVEIS_TRAFEGO_PAGO}}': textoEntregaveisTrafego,
                 '{{COBRANCA_TRAFEGO_DESCRICAO}}': cobrancaDescricao,
                 '{{CLAUSULA_COMISSAO}}': clausulaComissao,
-                '{{MELHOR_DIA_PAGAMENTO}}': dadosAssinaturaTemp.melhorDiaPagamento || ''
+                '{{MELHOR_DIA_PAGAMENTO}}': (formaPagLower.includes('50') ? '' : (dadosAssinaturaTemp.melhorDiaPagamento || '')),
+                '{{DETALHE_PAGAMENTO}}': detalhePagamento
             };
             
             console.log('Substituindo placeholders...', mapa);
@@ -4124,7 +4334,8 @@
                     observacoes: urlParams.get('observacoes') || '',
                     propostaCriadaId: window.propostaCarregada?.id || null,
                     enderecoCliente: window.propostaCarregada?.endereco_cliente || urlParams.get('enderecoCliente') || '',
-                    representanteLegalCliente: dadosAssinaturaTemp?.nomeCompleto || urlParams.get('representanteLegalCliente') || ''
+                    representanteLegalCliente: dadosAssinaturaTemp?.nomeCompleto || urlParams.get('representanteLegalCliente') || '',
+                    melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || document.getElementById('melhorDiaPagamento')?.value || null
                 };
 
                 // Inicializar Supabase explicitamente
@@ -4234,10 +4445,10 @@
                 // Mostrar modal de sucesso
                 const linkDiv = document.getElementById('linkContratoGerado');
                 linkDiv.innerHTML = `
-                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration: none;">
+                    <a href="${contratoResult.pdfUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration: none;" download>
                         📥 Baixar Contrato em PDF
                     </a>
-                    <button class="btn" style="margin-left:10px;" onclick="navigator.clipboard.writeText('${contratoResult.pdfUrl}').then(()=>alert('Link do contrato copiado!'))">🔗 Copiar link</button>
+                    <button class="btn btn-secondary" onclick="copiarLinkContrato('${contratoResult.pdfUrl}')">🔗 Copiar link</button>
                 `;
                 // Parar contador de validade e ocultar UI
                 try {

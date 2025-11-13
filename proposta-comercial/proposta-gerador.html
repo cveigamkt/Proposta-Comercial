@@ -90,39 +90,38 @@
       <section class="form-section">
         <h2>📋 Informações do Cliente</h2>
         <div class="cliente-grid">
-          <div class="form-group fg-cpfcnpj">
+          <div class="form-group fg-selecionar">
+            <label for="clienteSelecionado">Selecionar Cliente Cadastrado</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="clienteSelecionado" name="clienteSelecionado">
+                <option value="">Carregando clientes…</option>
+              </select>
+              <button type="button" id="btnNovoCliente" class="btn-generate" style="padding:10px 14px; display:none;">Cadastrar novo cliente</button>
+              <a href="clientes.html" class="btn-preview" style="text-decoration:none; padding:10px 14px; display:none;">Gerenciar Clientes</a>
+            </div>
+            <small style="font-size:0.75rem; color:#888;">Os dados do cliente serão usados automaticamente.</small>
+          </div>
+          <div class="form-group fg-cpfcnpj" style="display:none;">
             <label for="cpfCnpjCliente">CPF/CNPJ do Cliente *</label>
-            <input type="text" id="cpfCnpjCliente" name="cpfCnpjCliente" required placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18" />
+            <input type="text" id="cpfCnpjCliente" name="cpfCnpjCliente" required placeholder="Selecionado automaticamente" maxlength="18" readonly />
             <small id="feedbackCpfCnpj" style="display:none; margin-top:5px; font-weight:600;"></small>
-            <div class="cnpj-actions" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-              <button type="button" id="btnBuscarCNPJ" class="btn-preview" style="padding:8px 14px; font-size:0.75rem;">🔎 Pesquisar CNPJ</button>
-              <span id="cnpjLoading" style="display:none; color:#bbb; font-size:0.75rem;">Carregando…</span>
-            </div>
-            <div id="cnpjResultado" class="info-box" style="display:none; margin-top:10px; font-size:0.75rem; line-height:1.4;">
-              <div><strong>Razão Social:</strong> <span id="cnpjRazao">—</span></div>
-              <div><strong>Nome Fantasia:</strong> <span id="cnpjFantasia" style="color:#9ad5bd;">—</span></div>
-              <div><strong>Sede:</strong> <span id="cnpjSedeTipo">—</span></div>
-              <div><strong>Endereço:</strong> <span id="cnpjEndereco">—</span></div>
-              <div><strong>Telefone:</strong> <span id="cnpjTelefone">—</span></div>
-              <div><strong>E-mail:</strong> <span id="cnpjEmail">—</span></div>
-            </div>
           </div>
-          <div class="form-group fg-empresa">
+          <div class="form-group fg-empresa" style="display:none;">
             <label for="empresaCliente">Nome da Empresa *</label>
-            <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Ex: Silva Comércio Ltda" />
-            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+            <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Selecionado automaticamente" readonly />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente pela seleção do cliente</small>
           </div>
-          <div class="form-group fg-responsavel">
+          <div class="form-group fg-responsavel" style="display:none;">
             <label for="responsavelProposta">Responsável pela Proposta (Heat Digital) *</label>
             <select id="responsavelProposta" name="responsavelProposta" required>
-              <option value="">Selecione o responsável</option>
+              <option value="">Definindo usuário…</option>
             </select>
-            <small style="font-size:0.75rem; color:#888;">Lista de usuários com papel admin/editor</small>
+            <small style="font-size:0.75rem; color:#888;">Definido automaticamente para o usuário logado</small>
           </div>
-          <div class="form-group fg-endereco">
+          <div class="form-group fg-endereco" style="display:none;">
             <label for="enderecoCliente">Endereço Completo *</label>
-            <input type="text" id="enderecoCliente" name="enderecoCliente" required placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
-            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+            <input type="text" id="enderecoCliente" name="enderecoCliente" required placeholder="Selecionado automaticamente" readonly />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente pela seleção do cliente</small>
           </div>
           <div class="form-group fg-validade">
             <label for="diasValidade">Dias de Validade da Proposta *</label>
@@ -446,5 +445,50 @@
       window.open(urlRelativa, '_blank');
     }
   </script>
+  
+  <!-- Modal: Cadastro Rápido de Cliente -->
+  <div id="modalNovoCliente" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <span id="fecharModalNovoCliente" class="close">&times;</span>
+      <h3 style="margin-top:0; color:#1E5942">Cadastrar novo cliente</h3>
+      <div class="form-group">
+        <label for="novoTipoDocumento">Tipo de Documento</label>
+        <select id="novoTipoDocumento">
+          <option value="cnpj" selected>CNPJ</option>
+          <option value="cpf">CPF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="novoDocumento">CPF/CNPJ</label>
+        <input type="text" id="novoDocumento" placeholder="Apenas dígitos" maxlength="18" />
+      </div>
+      <div class="form-group">
+        <label for="novoNome">Nome (se CPF)</label>
+        <input type="text" id="novoNome" placeholder="Ex: João Silva" />
+      </div>
+      <div class="form-group">
+        <label for="novaEmpresa">Empresa (se CNPJ)</label>
+        <input type="text" id="novaEmpresa" placeholder="Ex: Silva Comércio Ltda" />
+      </div>
+      <div class="form-group">
+        <label for="novoEndereco">Endereço</label>
+        <input type="text" id="novoEndereco" placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
+      </div>
+      <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <label for="novoEmail">E-mail</label>
+          <input type="email" id="novoEmail" placeholder="email@cliente.com" />
+        </div>
+        <div>
+          <label for="novoTelefone">Telefone</label>
+          <input type="text" id="novoTelefone" placeholder="(00) 00000-0000" />
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" id="btnSalvarNovoCliente" class="btn-generate">Salvar cliente</button>
+      </div>
+      <small id="novoClienteFeedback" style="display:none; margin-top:10px; font-weight:600;"></small>
+    </div>
+  </div>
 </body>
 </html>

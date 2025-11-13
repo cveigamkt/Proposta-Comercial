@@ -40,7 +40,8 @@
 
     nav.appendChild(link('proposta-gerador.html', 'Gerador de Proposta'));
     nav.appendChild(link('proposta-rapida.html', 'Criador de Proposta Rápida'));
-    nav.appendChild(link('admin.html', 'Admin'));
+    nav.appendChild(link('clientes.html', 'Clientes'));
+  nav.appendChild(link('admin.html', 'Propostas'));
 
     document.body.appendChild(nav);
 

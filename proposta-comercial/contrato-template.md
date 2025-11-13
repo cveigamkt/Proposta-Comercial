@@ -119,7 +119,13 @@ Valores e Condições de Pagamento:
 Valor Mensal: R$ {{VALOR_MENSAL}}
 Recorrência: {{RECORRENCIA}}
 Forma de Pagamento: {{FORMA_PAGAMENTO}}
+Melhor dia de pagamento: {{MELHOR_DIA_PAGAMENTO}}
 Valor Total do Período: R$ {{VALOR_TOTAL}}
+Detalhes de Pagamento: {{DETALHE_PAGAMENTO}}
+
+Dados de Contato para Faturamento:
+E-mail: {{EMAIL_CLIENTE}}
+Telefone: {{TELEFONE_CLIENTE}}
 
 Entregáveis Mensais Detalhados:
 

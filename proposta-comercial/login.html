@@ -34,7 +34,7 @@
       <div class="brand-logo">PC</div>
       <div>
         <h1>Entrar no Painel</h1>
-        <div class="subtitle">Autentique-se para acessar o Admin</div>
+        <div class="subtitle">Autentique-se para acessar Propostas</div>
       </div>
     </div>
 
@@ -48,7 +48,7 @@
 
     <button id="btnLogin" class="btn">Entrar</button>
     <div class="actions" style="display:flex;gap:8px;margin-top:8px">
-      <a class="link" href="admin.html">Ir para o Admin</a>
+        <a class="link" href="admin.html">Ir para Propostas</a>
       <a class="link" href="index.html">Página inicial</a>
     </div>
     <div class="footer">Dica: se não tiver acesso, fale com o administrador.</div>
@@ -80,7 +80,7 @@
         if (error) throw error;
         // Redirecionar
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect') || 'admin.html';
+    const redirect = params.get('redirect') || 'admin.html';
         window.location.href = baseLink() + redirect;
       }catch(e){
         showError('Falha no login: ' + e.message);
@@ -96,7 +96,7 @@
         const { data: { session } } = await client.auth.getSession();
         if (session && session.user){
           const params = new URLSearchParams(window.location.search);
-          const redirect = params.get('redirect') || 'admin.html';
+    const redirect = params.get('redirect') || 'admin.html';
           window.location.href = baseLink() + redirect;
         }
       }catch(_){ /* ignore */ }

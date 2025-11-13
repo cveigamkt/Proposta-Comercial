@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clientes - Heat Digital</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="menu-lateral.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    h1 { color: #1E5942; margin-bottom: 8px; }
+    .muted { color: #bbb; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #E0E0E0; }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 2px solid #333; border-radius: 8px; background: #111; color: #fff; }
+    .form-actions { display: flex; gap: 12px; }
+    .btn { padding: 10px 16px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .btn-primary { background: #1E5942; color: #fff; }
+    .btn-secondary { background: #666; color: #fff; }
+    .small { font-size: .8rem; color: #888; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { border-bottom: 1px solid #333; padding: 10px; text-align: left; }
+    .table th { color: #9ad5bd; font-weight: 800; }
+    .status { font-size: .85rem; color: #bbb; }
+    .pill { display:inline-block; border:1px solid #333; padding: 4px 8px; border-radius: 999px; margin-right:6px; }
+    /* UX/UI melhorias */
+    .card-new { background: #161616; }
+    .card-list { background: #111; }
+    .section-divider { height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); margin: 12px 0 20px 0; }
+    .btn { transition: transform .12s ease, box-shadow .12s ease, background .12s ease; }
+    .btn-primary:hover { background: #2F765A; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(46, 197, 139, 0.15); }
+    .btn-ghost { background: transparent; border: 1px solid #3a3a3a; color: #bbb; }
+    .btn-action { background: #222; color: #e5e5e5; border: 1px solid #333; }
+    .btn-action:hover { background: #2a2a2a; transform: translateY(-1px); }
+    .table thead th { position: sticky; top: 0; background: #0d0d0d; z-index: 1; }
+    .table th, .table td { color: #E5E5E5; }
+    .table tbody tr { animation: fadeIn .18s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+    .row-highlight { outline: 2px solid #2F765A; border-radius: 6px; }
+    .pill-status-aceita { border-color: #1E5942; color: #9ad5bd; }
+    .pill-status-pendente { border-color: #9b7f00; color: #e6c200; }
+    .pill-status-cancelada { border-color: #7a2b2b; color: #ff6b6b; }
+    .small-success { color: #10B981; }
+    .small-error { color: #FF6B6B; }
+    .input-error { border-color: #FF6B6B !important; }
+    .toast { position: fixed; right: 20px; bottom: 20px; background: #161616; color: #e5e5e5; border: 1px solid #333; border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: none; }
+    @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header style="margin-bottom: 16px;">
+      <h1>👥 Clientes</h1>
+      <p class="muted">Cadastre clientes com CPF ou CNPJ e vincule às propostas.</p>
+    </header>
+
+    <section class="card card-new">
+      <h2 style="color:#1E5942; margin-bottom:10px;">Novo Cliente</h2>
+      <div class="grid-2">
+        <div>
+          <div class="form-group">
+            <label>Tipo de Documento</label>
+            <div style="display:flex; gap:12px; align-items:center;">
+              <label><input type="radio" name="tipoDocumento" value="cpf" checked /> CPF</label>
+              <label><input type="radio" name="tipoDocumento" value="cnpj" /> CNPJ</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="docCliente">CPF/CNPJ</label>
+            <input type="text" id="docCliente" placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18" />
+            <small id="feedbackDoc" class="small"></small>
+          </div>
+          <div id="cnpjActions" class="form-group" style="display:none;">
+            <button class="btn btn-secondary" type="button" id="btnBuscarCNPJCliente">🔎 Buscar CNPJ</button>
+            <span id="cnpjLoadingCliente" class="small" style="display:none; margin-left:8px;">Carregando…</span>
+            <div id="cnpjResultadoCliente" class="small" style="display:none; margin-top:8px;"></div>
+          </div>
+        </div>
+        <div>
+          <div class="form-group" id="nomeGroup">
+            <label for="nomeCliente">Nome (obrigatório para CPF)</label>
+            <input type="text" id="nomeCliente" placeholder="Ex: João Silva" />
+          </div>
+          <div class="form-group" id="empresaGroup">
+            <label for="empresaClienteCadastro">Empresa (preenchida para CNPJ)</label>
+            <input type="text" id="empresaClienteCadastro" placeholder="Ex: Silva Comércio Ltda" />
+          </div>
+          <div class="form-group">
+            <label for="enderecoClienteCadastro">Endereço</label>
+            <input type="text" id="enderecoClienteCadastro" placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
+          </div>
+          <div class="form-group">
+            <label for="emailClienteCadastro">E-mail</label>
+            <input type="email" id="emailClienteCadastro" placeholder="email@cliente.com" />
+          </div>
+          <div class="form-group">
+            <label for="telefoneClienteCadastro">Telefone</label>
+            <input type="text" id="telefoneClienteCadastro" placeholder="(00) 00000-0000" />
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="button" id="btnSalvarCliente">Salvar Cliente</button>
+        <button class="btn btn-ghost" type="button" id="btnLimparCliente">Limpar</button>
+      </div>
+      <p class="small">Se CNPJ for informado, a empresa e endereço são preenchidos via BrasilAPI.</p>
+    </section>
+
+    <section class="card card-list">
+      <h2 style="color:#1E5942; margin-bottom:10px;">Clientes Cadastrados</h2>
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px;">
+        <input type="search" id="clientesBusca" placeholder="Buscar por nome, e-mail, empresa ou documento" style="flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#0f0f0f; color:#e5e5e5;" />
+        <span id="clientesResumo" class="small" style="white-space:nowrap;">—</span>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Documento</th>
+            <th>Empresa</th>
+            <th>E-mail</th>
+            <th>Telefone</th>
+            <th>Propostas</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="clientesTabela">
+          <tr><td colspan="7" class="muted">Carregando clientes…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="section-divider"></div>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=4"></script>
+  <script src="validacao-cpf-cnpj.js?v=2"></script>
+  <script src="clientes.js?v=2"></script>
+</body>
+</html>

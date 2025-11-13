@@ -16,7 +16,8 @@ function initSupabase() {
         const isAuthPage = (
             path.endsWith('/admin') || path.endsWith('/admin.html') ||
             path.endsWith('/login') || path.endsWith('/login.html') ||
-            path.endsWith('/proposta-gerador') || path.endsWith('/proposta-gerador.html')
+            path.endsWith('/proposta-gerador') || path.endsWith('/proposta-gerador.html') ||
+            path.endsWith('/clientes') || path.endsWith('/clientes.html')
         );
         const authOptions = isAuthPage
             ? { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
@@ -35,7 +36,7 @@ async function salvarPropostaAceita(dadosProposta) {
         const supabase = initSupabase();
         const urlParamsSafe = (function(){ try { return new URLSearchParams(window.location.search); } catch(e) { return null; } })();
         const propostaCriadaId = (dadosProposta && dadosProposta.propostaCriadaId) || (urlParamsSafe && urlParamsSafe.get('id')) || null;
-        
+
         // Obter IP do cliente (via API pública)
         let ip = '0.0.0.0';
         try {
@@ -47,73 +48,118 @@ async function salvarPropostaAceita(dadosProposta) {
         } catch (e) {
             console.warn('Não foi possível obter IP público. Prosseguindo sem IP.', e);
         }
-        
-        const { data, error } = await supabase
-            .from('propostas')
-            .insert({
-                nome_cliente: dadosProposta.nomeCliente,
-                empresa_cliente: dadosProposta.empresaCliente,
-                email_cliente: dadosProposta.emailCliente,
-                telefone_cliente: dadosProposta.telefoneCliente || '',
-                cpf_cnpj: dadosProposta.cpfCnpj,
-                servico_social_midia: dadosProposta.servicoSocialMidia,
-                servico_trafego_pago: dadosProposta.servicoTrafegoPago,
-                valor_social_midia: parseFloat(dadosProposta.valorSocialMidia || 0),
-                valor_trafego_pago: parseFloat(dadosProposta.valorTrafegoPago || 0),
-                tem_comissao_vendas: !!dadosProposta.temComissaoVendas,
-                percentual_comissao: parseFloat(dadosProposta.percentualComissao || 0),
-                valor_fixo_trafego: parseFloat(dadosProposta.valorFixoTrafego || 0),
-                investimento_midia: dadosProposta.investimentoMidia || '',
-                recorrencia: dadosProposta.recorrencia,
-                forma_pagamento: dadosProposta.formaPagamento,
-                valor_mensal: parseFloat(dadosProposta.valorMensal),
-                valor_total: parseFloat(dadosProposta.valorTotal),
-                desconto_aplicado: parseFloat(dadosProposta.descontoAplicado || 0),
-                observacoes: dadosProposta.observacoes || '',
+
+        // Atualiza somente a origem: a proposta criada vira "aceita"
+        if (propostaCriadaId) {
+            const { data: updData, error: updError } = await supabase
+              .from('propostas_criadas')
+              .update({
                 status: 'aceita',
                 aceita_em: new Date().toISOString(),
-                ip_cliente: ip,
-                user_agent: navigator.userAgent,
-                proposta_criada_id: propostaCriadaId,
+                recorrencia: dadosProposta.recorrencia,
+                forma_pagamento: dadosProposta.formaPagamento,
+                email_cliente: dadosProposta.emailCliente || null,
+                telefone_cliente: dadosProposta.telefoneCliente || null,
+                melhor_dia_pagamento: dadosProposta.melhorDiaPagamento || null,
+                representante_cliente: dadosProposta.representanteLegalCliente || '',
                 endereco_cliente: dadosProposta.enderecoCliente || '',
-                representante_cliente: dadosProposta.representanteLegalCliente || ''
-            })
-            // Seleciona apenas o id para minimizar necessidade de SELECT amplo
-            .select('id')
-            .single();
-        // Atualizar a proposta de origem como aceita (status, recorrência e forma de pagamento)
+                ip_criacao: ip,
+                user_agent: navigator.userAgent
+              })
+              .eq('id', propostaCriadaId)
+              .select('id, status, recorrencia, forma_pagamento, melhor_dia_pagamento')
+              .maybeSingle();
+            if (updError) {
+                console.error('❌ Erro ao atualizar propostas_criadas no aceite:', updError);
+                throw updError;
+            }
+            console.log('✅ Atualização confirmada:', updData);
+        }
+
+        // Inserir itens selecioandos (se houver) e registrar status 'itens_preenchidos'
         try {
-            if (propostaCriadaId) {
-                await supabase
-                  .from('propostas_criadas')
-                  .update({
-                    status: 'aceita',
-                    aceita_em: new Date().toISOString(),
-                    recorrencia: dadosProposta.recorrencia,
-                    forma_pagamento: dadosProposta.formaPagamento,
-                    representante_cliente: dadosProposta.representanteLegalCliente || '',
-                    endereco_cliente: dadosProposta.enderecoCliente || ''
-                  })
-                  .eq('id', propostaCriadaId);
+            const servicos = Array.isArray(dadosProposta?.servicosContratados)
+              ? dadosProposta.servicosContratados
+              : (Array.isArray(window.servicosContratados) ? window.servicosContratados : []);
+            if (propostaCriadaId && servicos.length > 0) {
+                const descontoPorForma = (forma) => {
+                    const f = (forma || '').toLowerCase();
+                    if (f.includes('vista')) return 10; // À Vista
+                    if (f.includes('parcel')) return 5; // Parcelado
+                    return 0; // Mensal / outros
+                };
+                const descontoPct = descontoPorForma(dadosProposta.formaPagamento || '');
+                const itensDetalhados = servicos.map((s) => {
+                    const preco = typeof s.valor === 'number'
+                      ? s.valor
+                      : parseFloat(String(s.valor).replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
+                    const total = +(preco * (1 - (descontoPct/100))).toFixed(2);
+                    const planoKey = s.tipo === 'Social Mídia'
+                      ? (window.propostaCarregada?.servico_social_midia_key || 'nao-se-aplica')
+                      : (window.propostaCarregada?.servico_trafego_pago_key || 'nao-se-aplica');
+                    return {
+                        proposta_criada_id: propostaCriadaId,
+                        nome_servico: s.tipo,
+                        descricao: s.plano || null,
+                        quantidade: 1,
+                        preco_unitario: preco,
+                        desconto_percentual: descontoPct,
+                        total: total,
+                        metadata: {
+                            plano_key: planoKey,
+                            recorrencia: dadosProposta.recorrencia || null,
+                            origem: 'cliente'
+                        }
+                    };
+                });
+                const { error: itensError } = await supabase
+                  .from('proposta_itens')
+                  .insert(itensDetalhados);
+                if (itensError) {
+                    console.warn('Falha ao inserir itens selecionados pelo cliente:', itensError);
+                } else {
+                    const { error: statusItensError } = await supabase
+                      .from('proposta_status_history')
+                      .insert({
+                        proposta_criada_id: propostaCriadaId,
+                        status: 'itens_preenchidos',
+                        observacao: `Cliente selecionou ${itensDetalhados.length} item(ns).`,
+                        created_by: null
+                      });
+                    if (statusItensError) {
+                        console.warn('Falha ao registrar status itens_preenchidos:', statusItensError);
+                    }
+                }
             }
         } catch (e) {
-            console.warn('Falha ao atualizar propostas_criadas no aceite (seguindo):', e);
+            console.warn('Erro ao persistir itens do aceite (seguir fluxo):', e);
         }
-        
-        if (error) {
-            console.error('❌ Erro ao salvar proposta:', error);
-            throw error;
+
+        // Registra no histórico
+        if (propostaCriadaId) {
+            const { error: histError } = await supabase
+              .from('proposta_status_history')
+              .insert({
+                proposta_criada_id: propostaCriadaId,
+                status: 'aceita',
+                observacao: 'Aceite registrado via fluxo público.',
+                created_by: null
+              });
+            if (histError) {
+                console.warn('Falha ao registrar histórico de status (seguindo):', histError);
+            }
         }
-        
-    console.log('✅ Proposta salva com sucesso:', data);
-    return data; // já é single()
+
+        // Retorna o id da proposta criada para ser usado como chave única
+        console.log('✅ Proposta aceita e atualizada (propostas_criadas).');
+        return { id: propostaCriadaId };
     } catch (error) {
         console.error('❌ Erro ao salvar proposta:', error);
         throw error;
     }
 }
 // Função para gerar e armazenar contrato em PDF no Supabase Storage
-async function gerarEArmazenarContrato(propostaId, dadosContrato) {
+async function gerarEArmazenarContrato(propostaCriadaId, dadosContrato) {
     try {
         // Inicializar cliente para garantir acesso a storage e DB
         const client = initSupabase();
@@ -122,7 +168,7 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         const pdfBlob = await gerarPDFContrato(dadosContrato);
         
         // Nome único para o arquivo
-        const nomeArquivo = `contrato-${propostaId}-${Date.now()}.pdf`;
+        const nomeArquivo = `contrato-${propostaCriadaId}-${Date.now()}.pdf`;
         
         // Upload para Supabase Storage
         const { data: uploadData, error: uploadError } = await client.storage
@@ -145,13 +191,13 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         
         // Salvar registro do contrato na tabela
         const { data: contratoData, error: contratoError } = await client
-            .from('contratos')
+            .from('proposta_contratos')
             .insert({
-                proposta_id: propostaId,
-                pdf_url: urlData.publicUrl,
-                assinatura_digital: gerarHashAssinatura(dadosContrato),
+                proposta_criada_id: propostaCriadaId,
+                contrato_url: urlData.publicUrl,
+                contrato_sha256: gerarHashAssinatura(dadosContrato),
                 ip_assinatura: dadosContrato.ipAssinatura,
-                timestamp_assinatura: new Date().toISOString()
+                // 'created_at' é preenchido automaticamente pelo banco; não definir manualmente
             })
             .select();
         
@@ -376,6 +422,34 @@ Suporte:
                     textoEntregaveisTrafego = textoEntregaveisTrafego.replace(/(Landing\s*Page[^\n]*)/i, '$1 (exclusivo para 12 meses)');
                 }
             }
+            // Detalhes de pagamento e formatação condicional
+            const formaPag = (dadosContrato.formaPagamento || '').toLowerCase();
+            const valorMensalNum = parseFloat(dadosContrato.valorMensal || '0') || 0;
+            const valorTotalNum = parseFloat(dadosContrato.valorTotal || '0') || 0;
+            const assinaturaDate = new Date(dadosContrato.timestamp);
+            function formatBR(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+            function addDays(d, days) { const nd = new Date(d); nd.setDate(nd.getDate() + days); return nd; }
+            function fmtDate(d) { return d.toLocaleDateString('pt-BR'); }
+
+            const valorMensalFmt = (formaPag.includes('vista') || formaPag.includes('50'))
+                ? 'Não se aplica'
+                : formatBR(valorMensalNum);
+
+            const detalhePagamento = (() => {
+                if (formaPag.includes('50')) {
+                    const primeira = (valorTotalNum / 2);
+                    const segunda = (valorTotalNum - primeira);
+                    const venc1 = fmtDate(addDays(assinaturaDate, 2));
+                    const venc2 = fmtDate(addDays(assinaturaDate, 30));
+                    return `1ª parcela: R$ ${formatBR(primeira)} (vencimento em ${venc1}) | 2ª parcela: R$ ${formatBR(segunda)} (vencimento em ${venc2}).`;
+                }
+                if (formaPag.includes('vista')) {
+                    return `Pagamento único de R$ ${formatBR(valorTotalNum)}.`;
+                }
+                // Recorrentes: mantém valor mensal como referência
+                return `Mensalidade de R$ ${formatBR(valorMensalNum)} totalizando R$ ${formatBR(valorTotalNum)} no período.`;
+            })();
+
             const mapa = {
                 '{{NOME_CLIENTE}}': dadosContrato.nomeCliente || '',
                 '{{EMPRESA_CLIENTE}}': dadosContrato.empresaCliente || '',
@@ -395,7 +469,7 @@ Suporte:
                 '{{INVESTIMENTO_MIDIA}}': dadosContrato.investimentoMidia || '',
                 '{{RECORRENCIA}}': dadosContrato.recorrencia || '',
                 '{{FORMA_PAGAMENTO}}': dadosContrato.formaPagamento || '',
-                '{{VALOR_MENSAL}}': parseFloat(dadosContrato.valorMensal || '0').toLocaleString('pt-BR', {minimumFractionDigits: 2}),
+                '{{VALOR_MENSAL}}': valorMensalFmt,
                 '{{VALOR_TOTAL}}': parseFloat(dadosContrato.valorTotal || '0').toLocaleString('pt-BR', {minimumFractionDigits: 2}),
                 '{{DATA_ASSINATURA}}': new Date(dadosContrato.timestamp).toLocaleString('pt-BR'),
                 '{{HASH_ASSINATURA}}': dadosContrato.hashAssinatura || '',
@@ -421,7 +495,8 @@ Suporte:
                     if (!temComissao || pct <= 0) return '';
                     return `Para o serviço de Tráfego Pago, as partes acordam a remuneração adicional de ${pct}% (por cento) sobre as vendas líquidas atribuídas às campanhas e esforços de mídia geridos pela CONTRATADA. Consideram-se vendas líquidas aquelas efetivamente faturadas, deduzidos cancelamentos, devoluções, estornos e tributos incidentes. O repasse da comissão ocorrerá até o dia 05 (cinco) do mês subsequente ao de competência, mediante relatório de vendas enviado pela CONTRATANTE e conferência da CONTRATADA. A CONTRATADA poderá solicitar evidências razoáveis para auditoria dos números reportados, respeitando-se a confidencialidade dos dados e o acesso limitado às informações estritamente necessárias. ${fixo > 0 ? `Esta comissão é devida cumulativamente ao valor fixo mensal de R$ ${fixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.` : ''}`;
                 })(),
-                '{{MELHOR_DIA_PAGAMENTO}}': (dadosContrato.melhorDiaPagamento || '').toString()
+                '{{MELHOR_DIA_PAGAMENTO}}': (formaPag.includes('50') ? '' : (dadosContrato.melhorDiaPagamento || '').toString()),
+                '{{DETALHE_PAGAMENTO}}': detalhePagamento
             };
             let texto = textoTemplate;
             Object.keys(mapa).forEach(k => { texto = texto.replaceAll(k, mapa[k]); });
@@ -533,10 +608,9 @@ Suporte:
     }
     return doc.output('blob');
 }
-// Salvar dados do representante vinculados à proposta criada
+// Salvar dados do representante diretamente em propostas_criadas.representante_cliente
 async function salvarDadosRepresentante(dados) {
     const client = initSupabase();
-    // Garantir que tenhamos o ID da proposta criada (necessário e NOT NULL na tabela)
     let propostaCriadaId = dados.propostaCriadaId || null;
     try {
         if (!propostaCriadaId && typeof window !== 'undefined' && window.location) {
@@ -549,34 +623,24 @@ async function salvarDadosRepresentante(dados) {
         console.error('Erro ao salvar representante:', err);
         throw err;
     }
-    const payload = {
-        proposta_criada_id: propostaCriadaId,
-        proposta_id: dados.propostaId || null,
-        nome: dados.nome,
-        sobrenome: dados.sobrenome,
-        cpf: dados.cpf,
-        data_nascimento: dados.dataNascimento,
-        email: dados.email,
-        telefone: dados.telefone,
-        melhor_dia_pagamento: dados.melhorDiaPagamento || null,
-        ip: dados.ip || null,
-        user_agent: dados.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : null),
-        observacoes: dados.observacoes || null
-    };
 
-    console.log('📨 Enviando representantes_proposta payload:', payload);
+    const nome = (dados.nome || '').trim();
+    const sobrenome = (dados.sobrenome || '').trim();
+    const nomeCompleto = [nome, sobrenome].filter(Boolean).join(' ').trim();
+
     const { data, error } = await client
-        .from('representantes_proposta')
-        .insert(payload)
-        .select('id')
+        .from('propostas_criadas')
+        .update({ representante_cliente: nomeCompleto || null })
+        .eq('id', propostaCriadaId)
+        .select('id, representante_cliente')
         .maybeSingle();
 
     if (error) {
-        console.error('Erro ao salvar representante:', error);
+        console.error('Erro ao salvar representante em propostas_criadas:', error);
         throw error;
     }
-    console.log('✅ Representante salvo:', data);
-    return { ok: true, id: data?.id };
+    console.log('✅ Representante atualizado em propostas_criadas:', data);
+    return { ok: true, id: data?.id, representante: data?.representante_cliente || null };
 }
 
 // Checa se a proposta já foi assinada para bloquear reassinatura
@@ -611,25 +675,13 @@ async function checarBloqueioReassinatura(propostaCriadaId) {
         return { bloqueada: true, status };
     }
 
-    // Verificação adicional: existe proposta assinada vinculada?
-    // Se houver qualquer registro em `propostas` com `proposta_criada_id`, bloquear.
+    // Verificação adicional: contrato já gerado?
+    // Se houver qualquer registro em `proposta_contratos` com `proposta_criada_id`, bloquear reassinatura.
     const { count, error: countError } = await client
-        .from('propostas')
+        .from('proposta_contratos')
         .select('id', { count: 'exact', head: true })
         .eq('proposta_criada_id', propostaCriadaId);
-    if (countError) {
-        // Fallback: tentar obter uma linha apenas
-        const { data: anyProposta } = await client
-            .from('propostas')
-            .select('id')
-            .eq('proposta_criada_id', propostaCriadaId)
-            .limit(1)
-            .maybeSingle();
-        if (anyProposta?.id) {
-            return { bloqueada: true, status: 'aceita' };
-        }
-    }
-    if ((count || 0) > 0) {
+    if ((count || 0) > 0 && !countError) {
         return { bloqueada: true, status: 'aceita' };
     }
 
