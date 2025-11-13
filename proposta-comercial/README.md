@@ -73,6 +73,12 @@ Clique em "Executar Todos os Testes"
 - Configuração de MIME types
 - Suporte a roteamento SPA
 
+### 🗂️ Estrutura Supabase
+
+- `proposta-comercial/supabase/sql`: scripts SQL (schemas, migrations, policies, updates)
+- `proposta-comercial/supabase/docs`: documentação e guias (`SUPABASE-SETUP.md`, `SUPABASE-GUIA-E-PDF.md`)
+- Observação: todos os arquivos iniciados por `SUPABASE-` foram organizados nessas pastas.
+
 ### 💰 Sistema de Descontos
 
 #### Desconto por Recorrência

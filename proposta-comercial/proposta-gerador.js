@@ -211,12 +211,12 @@ function atualizarSimulador(valorBase, descontoCustomizado = 0) {
     periodos.forEach(meses => {
         const descontoRecorrencia = valorBase * obterDescontoRecorrencia(meses);
         const totalAposRecorrencia = valorBase - descontoRecorrencia;
-        const descontoAdicional = totalAposRecorrencia * 0.05;
-        const valorFinalMensal = totalAposRecorrencia - descontoAdicional;
+        // Não incluir 5% condicional na simulação (apenas recorrência + eventual customizado)
+        const valorFinalMensal = totalAposRecorrencia; 
         const valorTotalPeriodo = valorFinalMensal * meses;
         
-        // Calcular economia total (desconto customizado + recorrência + adicional) por período
-        const economiaTotal = (descontoCustomizado + descontoRecorrencia + descontoAdicional) * meses;
+        // Economia total: desconto customizado + recorrência (sem adicional condicional)
+        const economiaTotal = (descontoCustomizado + descontoRecorrencia) * meses;
         
         document.getElementById(`sim${meses}Mensal`).textContent = formatarMoeda(valorFinalMensal) + '/mês';
         document.getElementById(`sim${meses}Total`).textContent = 'Total: ' + formatarMoeda(valorTotalPeriodo);
@@ -545,17 +545,14 @@ if (servicoTrafegoPago) {
     }
     
     atualizarValores();
-    // Inserir destaque no card de 12 meses do simulador
+    // Inserir destaque discreto no card de 12 meses do simulador
     const bonusEl = document.getElementById('bonus12');
     if (!bonusEl) {
         const total12 = document.getElementById('sim12Total');
         if (total12) {
             const div = document.createElement('div');
             div.id = 'bonus12';
-            div.className = 'periodo-bonus';
-            div.style.marginTop = '6px';
-            div.style.color = '#1E5942';
-            div.style.fontWeight = '700';
+            div.className = 'bonus-12m';
             div.textContent = '🎁 Bônus 12 meses: Você ganha 1 site (LP de alta conversão)';
             total12.insertAdjacentElement('afterend', div);
         }

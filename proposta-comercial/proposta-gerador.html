@@ -18,12 +18,12 @@
     .form-section { margin-bottom: 40px; padding: 30px; background: #252525; border-radius: 15px; }
     .form-section h2 { color: #1E5942; margin-bottom: 20px; font-size: 1.5rem; }
     .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; font-size: 0.95rem; white-space: nowrap; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 1rem; }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1E5942; outline: none; }
 
-    /* Grid 3x2 para Informações do Cliente */
-    .cliente-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    /* Grid 2 colunas equilibradas para Informações do Cliente */
+    .cliente-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 
     /* Cards dos serviços e simulador */
     .servicos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
@@ -40,6 +40,7 @@
     .periodo-mensal { font-size: 1.1rem; font-weight: 800; color: #1E5942; margin-bottom: 6px; }
     .periodo-total { color: #bbb; font-size: 0.9rem; }
     .badge-recomendado { position: absolute; top: -8px; right: 8px; background: #FFD700; color: #000; padding: 3px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; }
+    .bonus-12m { margin-top: 6px; color: #9aa0a6; font-size: 0.8rem; font-weight: 500; opacity: 0.85; }
 
     /* Desconto customizado */
     .desconto-customizado-group { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
@@ -59,6 +60,28 @@
     .btn-preview:hover { background: #777; }
     .btn-generate:hover { background: #267356; }
 
+    /* Novos estilos de botões para melhor UI/UX */
+    .btn { display:inline-flex; align-items:center; gap:8px; border-radius:10px; font-weight:600; cursor:pointer; transition: all .2s ease; text-decoration:none; }
+    .btn-sm { padding:8px 12px; font-size:0.9rem; }
+    .btn-primary { background:#1E5942; color:#fff; border:1px solid #1E5942; }
+    .btn-primary:hover { background:#267356; border-color:#267356; }
+    .btn-secondary { background:transparent; color:#E0E0E0; border:1px solid #444; }
+    .btn-secondary:hover { background:#2a2a2a; border-color:#1E5942; color:#fff; }
+    .btn:focus-visible { outline: 2px solid #1E5942; outline-offset: 2px; }
+
+    /* Botões discretos (ghost) para ações auxiliares */
+    .btn-ghost { background: transparent; color: #bbb; border: 1px solid #3a3a3a; }
+    .btn-ghost:hover { background: #222; color: #fff; border-color: #555; }
+    .btn-xs { padding: 6px 10px; font-size: 10px; }
+
+    /* Labels da seção cliente ocupam 90% da coluna */
+    .cliente-grid .form-group label { max-width: 90%; }
+
+    /* Container da seleção de cliente com ações abaixo */
+    .select-client-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .select-client-wrap > label { margin-bottom: 0; }
+    .client-actions { display: flex; gap: 8px; }
+
     /* Modal */
     .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,0.8); }
     .modal-content { background: #1a1a1a; margin: 10% auto; padding: 24px; border-radius: 14px; width: 90%; max-width: 640px; }
@@ -71,6 +94,7 @@
       .cliente-grid { grid-template-columns: 1fr; }
       .periodos-grid { grid-template-columns: 1fr; gap: 12px; }
       .desconto-controls { grid-template-columns: 1fr; gap: 10px; }
+      .form-group label { white-space: normal; }
     }
   </style>
 </head>
@@ -91,13 +115,15 @@
         <h2>📋 Informações do Cliente</h2>
         <div class="cliente-grid">
           <div class="form-group fg-selecionar">
-            <label for="clienteSelecionado">Selecionar Cliente Cadastrado</label>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div class="select-client-wrap">
+              <label for="clienteSelecionado">Selecionar clientes cadastrados</label>
               <select id="clienteSelecionado" name="clienteSelecionado">
                 <option value="">Carregando clientes…</option>
               </select>
-              <button type="button" id="btnNovoCliente" class="btn-generate" style="padding:10px 14px;">Cadastrar novo cliente</button>
-              <a href="clientes" class="btn-preview" style="text-decoration:none; padding:10px 14px;">Gerenciar Clientes</a>
+              <div class="client-actions">
+                <button type="button" id="btnNovoCliente" class="btn btn-xs btn-ghost">Cadastrar novos clientes</button>
+                <a href="clientes" class="btn btn-xs btn-ghost">gerenciar clientes</a>
+              </div>
             </div>
             <small style="font-size:0.75rem; color:#888;">Os dados do cliente serão usados automaticamente.</small>
           </div>
@@ -124,7 +150,7 @@
             <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente pela seleção do cliente</small>
           </div>
           <div class="form-group fg-validade">
-            <label for="diasValidade">Dias de Validade da Proposta *</label>
+            <label for="diasValidade">Dias de validade da proposta *</label>
             <select id="diasValidade" name="diasValidade" required>
               <option value="3">3 dias</option>
               <option value="5">5 dias</option>
@@ -259,29 +285,28 @@
           <div class="periodos-grid">
             <div class="periodo-card">
               <div class="periodo-header">1 mês</div>
-              <div class="periodo-desconto">Apenas 5% condicional</div>
+              <div class="periodo-desconto">Sem desconto</div>
               <div class="periodo-economia" id="sim1Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim1Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim1Total">Total: R$ 0,00</div>
             </div>
             <div class="periodo-card">
               <div class="periodo-header">3 meses</div>
-              <div class="periodo-desconto">10% total (5% + 5%)</div>
+              <div class="periodo-desconto">5% desconto</div>
               <div class="periodo-economia" id="sim3Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim3Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim3Total">Total: R$ 0,00</div>
             </div>
             <div class="periodo-card destaque">
               <div class="periodo-header">6 meses</div>
-              <div class="periodo-desconto">15% total (5% + 10%)</div>
+              <div class="periodo-desconto">10% desconto</div>
               <div class="periodo-economia" id="sim6Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim6Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim6Total">Total: R$ 0,00</div>
-              <span class="badge-recomendado">⭐ RECOMENDADO</span>
             </div>
             <div class="periodo-card">
               <div class="periodo-header">12 meses</div>
-              <div class="periodo-desconto">20% total (5% + 15%)</div>
+              <div class="periodo-desconto">15% desconto</div>
               <div class="periodo-economia" id="sim12Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim12Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim12Total">Total: R$ 0,00</div>

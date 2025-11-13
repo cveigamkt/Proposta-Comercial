@@ -156,6 +156,13 @@
             background: rgba(100, 100, 100, 0.2);
             color: #ccc;
         }
+
+        /* Estado de proposta assinada */
+        .timer-validade.assinada {
+            background: rgba(30, 89, 66, 0.25);
+            border-bottom-color: rgba(0, 227, 136, 0.5);
+            color: #B7FFD7;
+        }
         
         .timer-texto {
             font-size: 0.85rem;
@@ -3050,6 +3057,7 @@
         function iniciarTimer(timestampCriacao, diasValidade) {
             const timerElement = document.getElementById('timerValidade');
             const textoElement = document.getElementById('textoTimer');
+            const contadorElement = document.getElementById('timerContador');
             
             // Elementos do contador
             const diasEl = document.getElementById('dias');
@@ -3058,6 +3066,18 @@
             const segundosEl = document.getElementById('segundos');
             const diasContainer = document.getElementById('diasContainer');
             const sep1 = document.getElementById('sep1');
+
+            // Se a proposta já estiver assinada/aceita, apenas exibir mensagem
+            const propostaAssinada = !!(window.propostaCarregada && (window.propostaCarregada.status === 'aceita' || window.propostaCarregada.aceita_em || window.propostaCarregada.assinada_em));
+            if (propostaAssinada) {
+                timerElement.style.display = 'block';
+                document.body.classList.add('timer-ativo');
+                timerElement.classList.remove('expirada');
+                timerElement.classList.add('assinada');
+                if (textoElement) textoElement.textContent = 'Proposta assinada';
+                if (contadorElement) contadorElement.style.display = 'none';
+                return;
+            }
             
             // Converter timestamp para data
             let dataCriacao;
@@ -3770,11 +3790,19 @@
                     </a>
                     <button class="btn btn-secondary" onclick="copiarLinkContrato('${contratoResult.pdfUrl}')">🔗 Copiar link</button>
                 `;
-                // Parar contador de validade e ocultar UI
+                // Atualizar timer para estado assinada (sem ocultar)
                 try {
                     if (window.timerInterval) clearInterval(window.timerInterval);
                     const timerValidade = document.getElementById('timerValidade');
-                    if (timerValidade) timerValidade.style.display = 'none';
+                    const textoTimer = document.getElementById('textoTimer');
+                    const timerContador = document.getElementById('timerContador');
+                    if (timerValidade) {
+                        timerValidade.style.display = 'block';
+                        timerValidade.classList.remove('expirada');
+                        timerValidade.classList.add('assinada');
+                    }
+                    if (textoTimer) textoTimer.textContent = 'Proposta assinada';
+                    if (timerContador) timerContador.style.display = 'none';
                 } catch (_) {}
                 // Enviar contrato por e-mail automaticamente
                 try {
@@ -4450,11 +4478,19 @@
                     </a>
                     <button class="btn btn-secondary" onclick="copiarLinkContrato('${contratoResult.pdfUrl}')">🔗 Copiar link</button>
                 `;
-                // Parar contador de validade e ocultar UI
+                // Atualizar timer para estado assinada (sem ocultar)
                 try {
                     if (window.timerInterval) clearInterval(window.timerInterval);
                     const timerValidade = document.getElementById('timerValidade');
-                    if (timerValidade) timerValidade.style.display = 'none';
+                    const textoTimer = document.getElementById('textoTimer');
+                    const timerContador = document.getElementById('timerContador');
+                    if (timerValidade) {
+                        timerValidade.style.display = 'block';
+                        timerValidade.classList.remove('expirada');
+                        timerValidade.classList.add('assinada');
+                    }
+                    if (textoTimer) textoTimer.textContent = 'Proposta assinada';
+                    if (timerContador) timerContador.style.display = 'none';
                 } catch (_) {}
                 // Preencher resumo no modal de sucesso
                 if (typeof preencherResumoAssinaturaFinal === 'function') {
