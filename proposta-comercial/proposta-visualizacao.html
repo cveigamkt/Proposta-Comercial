@@ -166,7 +166,7 @@
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            padding: 12px 20px;
+            padding: 14px 22px;
             text-align: center;
             font-weight: 600;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -197,7 +197,7 @@
         
         .timer-texto {
             font-size: 0.85rem;
-            margin-bottom: 8px;
+            margin: 4px 0;
             opacity: 0.9;
             font-weight: 500;
         }
@@ -207,6 +207,7 @@
             justify-content: center;
             align-items: center;
             gap: 15px;
+            margin: 4px 0;
         }
         
         .timer-unidade {
@@ -430,28 +431,69 @@
 
         .entregaveis h4 {
             color: #1E5942;
-            margin-bottom: 20px;
-            font-size: 1.2rem;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .entregaveis ul {
+        .entregaveis-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 24px;
+            align-items: stretch;
+        }
+        @media (max-width: 1024px) {
+            .entregaveis-grid { grid-template-columns: repeat(2, minmax(260px, 1fr)); }
+        }
+        @media (max-width: 680px) {
+            .entregaveis-grid { grid-template-columns: 1fr; }
+        }
+
+        .entregavel-card {
+            background: #151515;
+            border: 1px solid #262626;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .entregavel-card h5 {
+            color: #1E5942;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: .2px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .entregavel-card ul {
             list-style: none;
+            margin-left: 10px;
+            flex: 1;
         }
 
-        .entregaveis li {
-            padding: 10px 0;
-            padding-left: 30px;
+        .entregavel-card li {
             position: relative;
-            border-bottom: 1px solid #333;
+            padding-left: 18px;
+            margin: 8px 0;
+            line-height: 1.6;
+            font-size: .95rem;
         }
 
-        .entregaveis li::before {
-            content: '✓';
+        .entregavel-card li::before {
+            content: '●';
             position: absolute;
             left: 0;
-            color: #1E5942;
+            color: #00E388;
             font-weight: 700;
-            font-size: 1.2rem;
+            font-size: 0.9rem;
         }
 
         .valor-mensal {
@@ -1225,7 +1267,7 @@
     <!-- Timer Fixo -->
     <div class="timer-validade" id="timerValidade" style="display: none;">
         <div class="timer-texto">
-            <span>⏳</span> <span id="textoTimer">Oferta válida por tempo limitado — garanta seus valores promocionais antes que expire</span>
+            <span>⏳</span> <span id="textoTimerTopo">Oferta válida por tempo limitado</span>
         </div>
         <div class="timer-contador" id="timerContador">
             <div class="timer-unidade" id="diasContainer" style="display: none;">
@@ -1247,6 +1289,9 @@
                 <div class="timer-numero" id="segundos">00</div>
                 <div class="timer-label">Segundos</div>
             </div>
+        </div>
+        <div class="timer-texto" id="timerRodape">
+            <span id="textoTimerRodape">Garanta seus valores promocionais antes que expire</span>
         </div>
     </div>
 
@@ -2495,36 +2540,53 @@
                     return isLP ? `${base} (exclusivo para plano de 12 meses de recorrência)` : base;
                 };
 
-                let entregaveisHtml = '';
+                const metaCatHeader = obterMetadataCatalogo();
+                const headerTitulo = (servico.tipo === 'Catálogo')
+                    ? (metaCatHeader?.produto_nome || servico.plano || 'Catálogo')
+                    : `${servico.tipo} — ${servico.plano}`;
+                const baseSections = [];
+                const addonSections = [];
                 if (servico.secoes) {
-                    // Formato com seções — aceitar objeto de arrays OU array de objetos { titulo, itens }
                     if (Array.isArray(servico.secoes)) {
                         servico.secoes.forEach(sec => {
                             const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
                             const itens = Array.isArray(sec?.itens) ? sec.itens : [];
-                            entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${titulo}:</h5><ul style="margin-left: 15px;">`;
-                            itens.forEach(item => {
-                                const itemTexto = textoItem(item);
-                                entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
-                            });
-                            entregaveisHtml += '</ul></div>';
+                            baseSections.push({ titulo, itens });
                         });
                     } else if (typeof servico.secoes === 'object') {
                         Object.keys(servico.secoes).forEach(secaoNome => {
                             const lista = servico.secoes[secaoNome];
                             const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
-                            entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${secaoNome}:</h5><ul style="margin-left: 15px;">`;
-                            itens.forEach(item => {
-                                const itemTexto = textoItem(item);
-                                entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
-                            });
-                            entregaveisHtml += '</ul></div>';
+                            const alvo = /add[- ]?ons/i.test(secaoNome) ? addonSections : baseSections;
+                            alvo.push({ titulo: secaoNome, itens });
                         });
                     }
                 } else {
-                    // Formato antigo (lista simples) — manter LP visível sempre, com observação
                     const lista = Array.isArray(servico.entregaveis) ? servico.entregaveis : [];
-                    entregaveisHtml = `<ul>${lista.map(item => `<li>${textoItem(item)}</li>`).join('')}</ul>`;
+                    if (lista.length) baseSections.push({ titulo: 'Entregáveis', itens: lista });
+                }
+                let entregaveisHtml = '';
+                entregaveisHtml += `<div class="entregaveis"><h4>Entregáveis incluídos neste plano</h4><div class="entregaveis-grid">`;
+                baseSections.forEach(sec => {
+                    entregaveisHtml += `<div class="entregavel-card"><h5>📦 ${sec.titulo}</h5><ul>`;
+                    (Array.isArray(sec.itens) ? sec.itens : []).forEach(item => {
+                        const itemTexto = textoItem(item);
+                        entregaveisHtml += `<li>${itemTexto}</li>`;
+                    });
+                    entregaveisHtml += `</ul></div>`;
+                });
+                entregaveisHtml += `</div></div>`;
+                if (addonSections.length) {
+                    entregaveisHtml += `<div class="entregaveis"><h4>🧩 Add-ons Selecionados</h4><div class="entregaveis-grid">`;
+                    addonSections.forEach(sec => {
+                        entregaveisHtml += `<div class="entregavel-card"><h5>🧩 ${sec.titulo}</h5><ul>`;
+                        (Array.isArray(sec.itens) ? sec.itens : []).forEach(item => {
+                            const itemTexto = textoItem(item);
+                            entregaveisHtml += `<li>${itemTexto}</li>`;
+                        });
+                        entregaveisHtml += `</ul></div>`;
+                    });
+                    entregaveisHtml += `</div></div>`;
                 }
                 
                 // Informações de cobrança específicas para Tráfego Pago
@@ -2556,15 +2618,10 @@
                 
                 card.innerHTML = `
                     <div class="servico-header">
-                        <h3>${servico.tipo}</h3>
-                        <div class="servico-badge">Plano Base incluído</div>
+                        <h3>${headerTitulo}</h3>
+                        <div class="servico-badge">🔒 Plano Base Incluído</div>
                     </div>
-                    <div class="incluidos-card">
-                        <h4>🔒 Entregáveis incluídos no plano base</h4>
-                        <div class="grid-entregaveis">
-                            ${entregaveisHtml}
-                        </div>
-                    </div>
+                    ${entregaveisHtml}
                     ${cobrancaHtml}
                 `;
                 container.appendChild(card);
@@ -3614,6 +3671,21 @@
                     const lista = Array.isArray(servico.entregaveis) ? servico.entregaveis : [];
                     entregaveisHtml = `<ul>${lista.map(item => `<li>${textoItemResumo(item)}</li>`).join('')}</ul>`;
                 }
+                // Add-ons selecionados no resumo
+                let addonsHtml = '';
+                try {
+                    const addons = Array.isArray(servico.addOnsContratados) ? servico.addOnsContratados : [];
+                    if (addons.length) {
+                        const linhas = addons.map(a => {
+                            const unit = (a.tipoPreco === 'unitario');
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const precoUnit = unit ? (a.valorUnitario || 0) : (a.valor || 0);
+                            const detalhe = unit ? `${qtd}× R$ ${Number(precoUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${Number(precoUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                            return `<li style="margin-bottom: 2px;">${a.nome} — ${detalhe}</li>`;
+                        }).join('');
+                        addonsHtml = `<div style="margin-top:10px;"><strong style="color:#1E5942; font-size:0.9rem;">Add-ons Selecionados:</strong><ul style="margin-left:15px;">${linhas}</ul></div>`;
+                    }
+                } catch(_) {}
                 
                 // Linha com modelo de cobrança no resumo
                 let cobrancaLinha = '';
@@ -3645,6 +3717,7 @@
                     <div class="resumo-servico">
                         <strong>${servico.tipo} (${servico.plano})</strong>
                         ${entregaveisHtml}
+                        ${addonsHtml}
                         ${cobrancaLinha}
                     </div>
                 `;
@@ -4524,7 +4597,8 @@ function iniciarTimer(timestampCriacao, diasValidade) {
             return; // não renderiza countdown
         }
     } catch(_) {}
-    const textoElement = document.getElementById('textoTimer');
+    const textoTopoEl = document.getElementById('textoTimerTopo');
+    const textoRodapeEl = document.getElementById('textoTimerRodape');
     const contadorElement = document.getElementById('timerContador');
             
             // Elementos do contador
@@ -4542,7 +4616,8 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                 document.body.classList.add('timer-ativo');
                 timerElement.classList.remove('expirada');
                 timerElement.classList.add('assinada');
-                if (textoElement) textoElement.textContent = 'Proposta assinada';
+                if (textoTopoEl) textoTopoEl.textContent = 'Proposta assinada';
+                if (textoRodapeEl) textoRodapeEl.textContent = '';
                 if (contadorElement) contadorElement.style.display = 'none';
                 return;
             }
@@ -4576,7 +4651,8 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                     // Proposta expirada
                     propostaExpirada = true;
                     timerElement.classList.add('expirada');
-                    textoElement.textContent = 'Proposta Expirada - Esta proposta não é mais válida';
+                    if (textoTopoEl) textoTopoEl.textContent = 'Proposta expirada';
+                    if (textoRodapeEl) textoRodapeEl.textContent = 'Esta proposta não é mais válida';
                     document.getElementById('timerContador').style.display = 'none';
                     
                     // Desabilitar botões de aceite
