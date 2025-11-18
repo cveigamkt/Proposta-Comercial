@@ -69,6 +69,10 @@
     .actions-menu[open] > summary{background:#2a2a2a}
     .actions-dropdown{position:absolute;right:0;top:36px;background:#151515;border:1px solid var(--border);border-radius:10px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px;display:grid;gap:6px;z-index:10}
     .actions-dropdown .btn-action{width:100%;text-align:left}
+    /* Painel de detalhes por linha */
+    .details-panel > summary{list-style:none;cursor:pointer;background:#222;color:#e5e5e5;border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center}
+    .details-panel[open] > summary{background:#2a2a2a}
+    .details-content{margin-top:8px;background:#151515;border:1px solid var(--border);border-radius:10px;padding:8px;display:grid;gap:6px}
     @media (max-width:900px){
       .filters{grid-template-columns:1fr;gap:10px}
       .stats{grid-template-columns:repeat(2,1fr)}
@@ -147,9 +151,10 @@
             <th class="right">Valor Total</th>
             <th>Status</th>
             <th>Responsável</th>
-            <th>Última Atualização</th>
-            <th>Ações</th>
-          </tr>
+          <th>Última Atualização</th>
+          <th>Detalhes</th>
+          <th>Ações</th>
+        </tr>
         </thead>
         <tbody id="tbodyPropostas">
           <tr><td colspan="9" class="muted" id="estadoLista">Carregando…</td></tr>
@@ -261,6 +266,7 @@ async function queryResumo(filtros){
         const { data, error } = await q;
         if (error) throw error;
         const baseView = data || [];
+        console.log('[Admin] View resumo_propostas carregada:', { qtd: baseView.length });
         if (baseView.length === 0) return baseView;
 
         // Enriquecer com contrato PDF (normalizado) usando proposta_criada_id
@@ -282,6 +288,7 @@ async function queryResumo(filtros){
         // Enriquecer com itens de catálogo (proposta_itens)
         let itensMap = new Map();
         if (ids.length > 0) {
+          console.log('[Admin] Buscando proposta_itens para IDs:', ids);
           const { data: itens } = await client
             .from('proposta_itens')
             .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
@@ -292,6 +299,7 @@ async function queryResumo(filtros){
             arr.push(it);
             agrupado.set(it.proposta_criada_id, arr);
           });
+          console.log('[Admin] Itens de catálogo retornados:', { qtd: (itens||[]).length });
           itensMap = agrupado;
         }
         let contratosLegadoMap = new Map();
@@ -321,6 +329,7 @@ async function queryResumo(filtros){
         }
         const { data: base, error: e1 } = await q;
         if (e1) throw e1;
+        console.log('[Admin] Fallback propostas_criadas carregado:', { qtd: (base||[]).length });
         const ids = base.map(r => r.id);
         if (ids.length===0) return [];
         // Sem tabela legado 'propostas': usar apenas dados de propostas_criadas e contratos normalizados
@@ -340,6 +349,7 @@ async function queryResumo(filtros){
         // Itens de catálogo
         let itensMap = new Map();
         if (ids.length > 0) {
+          console.log('[Admin] Fallback: buscando proposta_itens para IDs:', ids);
           const { data: itens } = await client
             .from('proposta_itens')
             .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
@@ -350,6 +360,7 @@ async function queryResumo(filtros){
             arr.push(it);
             agrupado.set(it.proposta_criada_id, arr);
           });
+          console.log('[Admin] Fallback: itens retornados:', { qtd: (itens||[]).length });
           itensMap = agrupado;
         }
         let contratosLegadoMap = new Map();
@@ -465,7 +476,8 @@ async function queryResumo(filtros){
       }
       document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
       for (const r of rows){
-  const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
+        try { console.log('[Admin] Render linha', { id: r.id, itens_catalogo: (r.itens_catalogo||[]).length }); } catch(_) {}
+        const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
         const cnpj = r.cpf_cnpj || '—';
         const tr = document.createElement('tr');
         const vf = r.status === 'aceita' ? calcularValorFinal(r) : { mensal: Number(r.valor_mensal)||0, total: Number(r.valor_total)||0, meses: 0 };
@@ -490,6 +502,20 @@ async function queryResumo(filtros){
             <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
             ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
           </td>
+          <td class="nowrap">
+            <details class="details-panel" data-id="${r.id}">
+              <summary>+ Detalhes</summary>
+              <div class="details-content">
+                <div><strong>Representante:</strong> ${r.representante_nome || r.representante_cliente || '—'}</div>
+                <div><strong>Melhor dia pagamento:</strong> ${(r.melhor_dia_pagamento ?? '—')}</div>
+                <div><strong>Email:</strong> ${r.email_cliente || '—'}</div>
+                <div><strong>Telefone:</strong> ${r.telefone_cliente || '—'}</div>
+                ${(r.recorrencia_assinada || r.forma_pagamento_assinada) ? `<div><strong>Assinado:</strong> ${(r.recorrencia_assinada || '—')} • ${(r.forma_pagamento_assinada || '—')}</div>` : ''}
+                ${r.assinado_em ? `<div><strong>Assinado em:</strong> ${formatarDataHora(r.assinado_em)}</div>` : ''}
+                ${r.contrato_pdf_url ? `<div><a class="link" href="${r.contrato_pdf_url}" target="_blank">📄 Contrato</a></div>` : ''}
+              </div>
+            </details>
+          </td>
           <td class="actions">
             <a class="link" href="${url}" target="_blank" rel="noopener" onclick="return abrirProposta('${r.id}')">Abrir</a>
             <details class="actions-menu">
@@ -504,6 +530,10 @@ async function queryResumo(filtros){
           </td>
         `;
         tb.appendChild(tr);
+        try {
+          const det = tr.querySelector('details.details-panel');
+          if (det) det.addEventListener('toggle', () => { console.log('[Admin] Detalhes', { id: r.id, open: det.open }); });
+        } catch(_) {}
       }
     }
 
@@ -730,8 +760,11 @@ async function queryResumo(filtros){
         confirmacao = window.confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nIsto irá remover registros relacionados (proposta assinada, contrato e PDF no Storage). Esta ação não pode ser desfeita.`);
       } catch(_) { confirmacao = false; }
       if (confirmacao !== true) { console.debug('Exclusão cancelada pelo usuário'); return false; }
+      try { window.__deletingPropostaIds = window.__deletingPropostaIds || new Set(); } catch(_) {}
+      if (window.__deletingPropostaIds && window.__deletingPropostaIds.has(id)) { console.warn('Exclusão já em progresso', { id }); return false; }
+      try { window.__deletingPropostaIds.add(id); } catch(_) {}
       try { if (evt?.currentTarget) { evt.currentTarget.disabled = true; evt.currentTarget.textContent = 'Excluindo…'; } } catch(_){}
-      alert('🗑️ Iniciando exclusão da proposta e registros relacionados…');
+      console.log('🗑️ Iniciando exclusão', { id, nomeCliente });
       
       try {
         client = client || window.supabaseConfig.initSupabase();
@@ -799,6 +832,7 @@ async function queryResumo(filtros){
         if (error) {
           console.error('Erro ao excluir proposta:', error);
           alert('❌ Erro ao excluir proposta: ' + error.message);
+          try { window.__deletingPropostaIds.delete(id); } catch(_) {}
           return false;
         }
         // Remover da lista local e atualizar UI imediatamente
@@ -808,12 +842,15 @@ async function queryResumo(filtros){
         } catch(_) { /* ignora: render falhar não impede recarregar */ }
         
         alert('✅ Proposta e registros relacionados excluídos com sucesso!');
+        console.log('✅ Exclusão concluída', { id });
+        try { window.__deletingPropostaIds.delete(id); } catch(_) {}
         carregar(); // Recarregar lista
         return true;
       } catch (e) {
         console.error('Erro ao excluir em cascata:', e);
         const msg = e?.message || e?.error_description || e?.hint || 'Erro desconhecido (verifique políticas de DELETE e Storage)';
         alert('❌ Erro ao excluir: ' + msg);
+        try { window.__deletingPropostaIds.delete(id); } catch(_) {}
         return false;
       }
     }

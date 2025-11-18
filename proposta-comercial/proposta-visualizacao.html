@@ -1989,6 +1989,7 @@
                 }
 
                 // Itens do Catálogo vinculados à proposta (public.proposta_itens)
+                let hasItensCatalogo = false;
                 try {
                     const { data: itensCat, error: itensErr } = await client
                         .from('proposta_itens')
@@ -2001,18 +2002,45 @@
                         window.reportInfo('Itens do catálogo carregados', itensCat);
                     }
                     if (!itensErr && Array.isArray(itensCat) && itensCat.length) {
+                        hasItensCatalogo = true;
                         itensCat.forEach(item => {
                             const valorItem = Number(item.total) || 0;
                             valorBase += valorItem;
                             const serv = {
                                 tipo: 'Catálogo',
-                                plano: item.nome_servico || 'Item do Catálogo',
+                                plano: (item.descricao || item.nome_servico || 'Item do Catálogo'),
                                 valor: valorItem
                             };
                             const desc = (item.descricao || '').toString().trim();
                             serv.entregaveis = desc ? [desc] : [];
                             servicosContratados.push(serv);
                         });
+                        // Enriquecer com metadata.catalogo (nome do plano e entregáveis/seções)
+                        try {
+                            const metaCatEnrich = obterMetadataCatalogo();
+                            if (metaCatEnrich && (metaCatEnrich.plano_nome || metaCatEnrich.sessoes || (Array.isArray(metaCatEnrich.addons) && metaCatEnrich.addons.length))) {
+                                servicosContratados = servicosContratados.map(s => {
+                                    if (s.tipo !== 'Catálogo') return s;
+                                    const sc = { ...s };
+                                    if (metaCatEnrich.plano_nome) sc.plano = metaCatEnrich.plano_nome;
+                                    if (metaCatEnrich.sessoes) sc.secoes = metaCatEnrich.sessoes;
+                                    if (Array.isArray(metaCatEnrich.addons) && metaCatEnrich.addons.length) {
+                                        const selecionados = metaCatEnrich.addons.filter(a => a && a.selecionado);
+                                        if (selecionados.length) {
+                                            const itens = selecionados.map(a => {
+                                                const label = (a.nome || '').toString();
+                                                const desc = (a.descricao || '').toString();
+                                                return desc ? `${label} — ${desc}` : label;
+                                            });
+                                            sc.secoes = sc.secoes || {};
+                                            sc.secoes['Add-ons'] = itens;
+                                        }
+                                    }
+                                    return sc;
+                                });
+                                console.log('[Visualização] Catálogo enriquecido via metadata', metaCatEnrich);
+                            }
+                        } catch(_) {}
                     }
                 } catch (e) {
                     window.reportError('Falha ao carregar itens de catálogo da proposta', e, { uuid: id });
@@ -2058,7 +2086,8 @@
                             console.warn('[Add-ons] Fallback(meta) exceção ao buscar planos:', e);
                         }
                     }
-                    if (catNome || catPlano || catValorNum > 0) {
+                    // Evitar duplicação: se já há itens de catálogo vinculados, não adicionar bloco de catálogo base
+                    if (!hasItensCatalogo && (catNome || catPlano || catValorNum > 0)) {
                         valorBase += (catValorNum > 0 ? catValorNum : 0);
                         const serv = {
                             tipo: 'Catálogo',
@@ -2111,6 +2140,17 @@
                     diasValidade: (data.dias_validade || 7).toString()
                 };
 
+                // Deduplicação defensiva por (tipo, plano)
+                try {
+                    const seen = new Set();
+                    servicosContratados = servicosContratados.filter(s => {
+                        const key = `${String(s.tipo)}:${String(s.plano)}`;
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                    console.log('[Visualização] Serviços após dedup:', servicosContratados.map(s => `${s.tipo}:${s.plano}`));
+                } catch(_) {}
                 renderizarServicos();
                 try { calcularValores(); } catch(e) { window.reportError('Falha ao calcular valores iniciais com campos assinados', e); }
                 atualizarResumo();

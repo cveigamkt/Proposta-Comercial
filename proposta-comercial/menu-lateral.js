@@ -17,7 +17,7 @@
     style.textContent = `
       .menu-lateral{position:fixed;left:0;top:0;height:100vh;width:240px;background:#151515;border-right:1px solid #262626;padding:16px;z-index:9999;transition:width .2s}
       .menu-lateral .brand{color:#fff;font-weight:800;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
-      .menu-lateral .toggle{background:#111;border:1px solid #333;color:#e5e5e5;border-radius:8px;padding:6px 8px;cursor:pointer}
+      .menu-lateral .toggle{display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#111;border:1px solid #333;color:#e5e5e5;border-radius:8px;cursor:pointer;font-weight:700}
       .menu-lateral .menu-section-title{font-size:.75rem;color:#aaa;text-transform:uppercase;letter-spacing:.6px;margin:14px 8px 6px;padding:4px 8px;border-bottom:1px solid #262626}
       .menu-lateral a{display:flex;align-items:center;gap:10px;color:#00E388;text-decoration:none;padding:10px 12px;border-radius:8px;background:#111;margin:6px 0;font-weight:600}
       .menu-lateral a:hover{background:#181818}
@@ -52,13 +52,14 @@
     const toggle = document.createElement('button');
     toggle.className = 'toggle';
     toggle.title = 'Recolher/expandir menu';
-    toggle.textContent = '«';
+    toggle.textContent = '<';
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
       const collapsed = nav.classList.toggle('collapsed');
       document.body.classList.toggle('menu-lateral-collapsed', collapsed);
       document.body.classList.toggle('menu-lateral-active', !collapsed);
       localStorage.setItem('menuCollapsed', collapsed ? '1' : '0');
+      toggle.textContent = collapsed ? '>' : '<';
     });
     brand.appendChild(brandLabel);
     brand.appendChild(toggle);
@@ -107,8 +108,10 @@
       if (preferCollapsed) {
         nav.classList.add('collapsed');
         document.body.classList.add('menu-lateral-collapsed');
+        toggle.textContent = '>';
       } else {
         document.body.classList.add('menu-lateral-active');
+        toggle.textContent = '<';
       }
     } else {
       document.addEventListener('click', (e) => {

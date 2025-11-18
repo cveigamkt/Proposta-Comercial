@@ -1215,9 +1215,9 @@ window.gerarLinkProposta = async function() {
 
         // Persistir item de Catálogo imediatamente (para aparecer no Admin), se houver
         try {
-            const nomeCat = (dadosInsercao.catalogoProdutoNome || '').trim();
-            const planoCat = (dadosInsercao.catalogoPlanoNome || '').trim();
-            const valorCat = parseFloat(String(dadosInsercao.catalogoValor || '0').replace(',', '.')) || 0;
+            const nomeCat = (dadosVisualizacao.catalogoProdutoNome || '').trim();
+            const planoCat = (dadosVisualizacao.catalogoPlanoNome || '').trim();
+            const valorCat = parseFloat(String(dadosVisualizacao.catalogoValor || '0').replace(',', '.')) || 0;
 
             if (valorCat > 0 || (nomeCat && planoCat)) {
                 const item = {
