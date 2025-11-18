@@ -213,7 +213,7 @@
   async function listarClientes() {
     const tbody = document.getElementById('clientesTabela');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7" class="muted">Carregando clientes…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="muted">Carregando clientes…</td></tr>';
     try {
       const { data: clientes, error } = await supabase
         .from('clientes')
@@ -261,19 +261,52 @@
       const nomeOuEmpresa = c.tipo_documento === 'cpf' ? (c.nome || '—') : (c.empresa || '—');
       const props = mapaPropostas[c.documento] || {};
       const total = Object.values(props).reduce((a,b)=>a+b,0) || 0;
-      const statusResumo = Object.keys(props).map(s => `<span class="pill pill-status-${s}">${s} 📄 ${props[s]}</span>`).join(' ');
       const highlight = (lastAddedId && c.id === lastAddedId) ? ' class="row-highlight"' : '';
-      return `<tr${highlight}>
+      const docDigits = (c.documento||'').replace(/\D/g,'');
+      const rowId = `cli-${c.id}`;
+      return `<tr id="${rowId}"${highlight}>
         <td>${nomeOuEmpresa}</td>
         <td>${docFmt}</td>
         <td>${c.empresa || '—'}</td>
         <td>${c.email || '—'}</td>
         <td>${c.telefone || '—'}</td>
-        <td><strong>${total}</strong><div class="status">${statusResumo || '—'}</div></td>
-        <td><a href="proposta-gerador.html" class="btn btn-action" title="Importar dados deste cliente para o Gerador de Propostas" style="padding:6px 10px; display:inline-block;">⚡ Usar no Gerador</a></td>
+        <td><strong>${total}</strong></td>
+        <td class="nowrap">
+          <button type="button" class="btn btn-action btn-xs" data-doc="${docDigits}" data-tipo="${c.tipo_documento}" data-row="${rowId}" title="Mostrar propostas deste cliente">+</button>
+        </td>
       </tr>`;
     }).join('');
-    tbody.innerHTML = rows || '<tr><td colspan="7" class="muted">Nenhum cliente encontrado.</td></tr>';
+    tbody.innerHTML = rows || '<tr><td colspan="8" class="muted">Nenhum cliente encontrado.</td></tr>';
+
+    // Wire expand buttons
+    Array.from(tbody.querySelectorAll('button[data-doc]')).forEach(btn => {
+      btn.addEventListener('click', async function(){
+        const doc = this.getAttribute('data-doc');
+        const tipo = this.getAttribute('data-tipo') || 'cpf';
+        const rowId = this.getAttribute('data-row');
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        // Toggle: if next is expand row, remove
+        const next = row.nextElementSibling;
+        if (next && next.classList.contains('expand-row')) { next.remove(); return; }
+        // Insert loading row
+        const exp = document.createElement('tr');
+        exp.className = 'expand-row';
+        exp.innerHTML = `<td colspan="8" style="background:#0b0b0b;">
+          <div class="muted">Carregando propostas…</div>
+        </td>`;
+        row.after(exp);
+        try {
+          const { lista, itensMap } = await carregarPropostasDoCliente(doc, tipo);
+          exp.innerHTML = `<td colspan="8">
+            ${renderTabelaPropostasCliente(lista, itensMap)}
+          </td>`;
+        } catch(e) {
+          console.error('Erro ao carregar propostas do cliente:', e);
+          exp.innerHTML = `<td colspan="8" class="muted">Erro ao carregar propostas.</td>`;
+        }
+      });
+    });
   }
 
   function formatarDocumento(doc, tipo) {
@@ -285,6 +318,120 @@
       return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     }
     return doc || '—';
+  }
+
+  async function carregarPropostasDoCliente(docDigits, tipo){
+    // 1) Tentar match exato por dígitos
+    let { data, error } = await supabase
+      .from('propostas_criadas')
+      .select('id, status, cpf_cnpj, servico_social_midia, servico_trafego_pago, valor_mensal, valor_total, valor_social_midia, valor_trafego_pago, criada_em')
+      .eq('cpf_cnpj', docDigits)
+      .order('criada_em', { ascending: false });
+    if (error) throw error;
+    let lista = data || [];
+    // 2) Fallback: procurar pela máscara formatada (CPF/CNPJ com pontuação)
+    if (!lista || lista.length === 0) {
+      try {
+        const docFmt = formatarDocumento(docDigits, tipo);
+        const res = await supabase
+          .from('propostas_criadas')
+          .select('id, status, cpf_cnpj, servico_social_midia, servico_trafego_pago, valor_mensal, valor_total, valor_social_midia, valor_trafego_pago, criada_em')
+          .ilike('cpf_cnpj', `%${docFmt}%`)
+          .order('criada_em', { ascending: false });
+        if (!res.error) lista = res.data || [];
+      } catch (e) { /* ignora fallback */ }
+    }
+    // 3) Fallback final: buscar por últimos 4 dígitos
+    if (!lista || lista.length === 0) {
+      const ult4 = docDigits.slice(-4);
+      const res = await supabase
+        .from('propostas_criadas')
+        .select('id, status, cpf_cnpj, servico_social_midia, servico_trafego_pago, valor_mensal, valor_total, valor_social_midia, valor_trafego_pago, criada_em')
+        .ilike('cpf_cnpj', `%${ult4}%`)
+        .order('criada_em', { ascending: false });
+      if (!res.error) lista = res.data || [];
+    }
+    // 4) Agregar itens de catálogo (proposta_itens) para todas as propostas encontradas
+    const ids = (lista || []).map(p => p.id).filter(Boolean);
+    const itensMap = new Map();
+    if (ids.length > 0) {
+      try {
+        const { data: itens, error: itensErr } = await supabase
+          .from('proposta_itens')
+          .select('proposta_criada_id, nome_servico, descricao, quantidade, preco_unitario, desconto_percentual, total')
+          .in('proposta_criada_id', ids);
+        if (!itensErr) {
+          (itens || []).forEach(it => {
+            const k = it.proposta_criada_id;
+            const arr = itensMap.get(k) || [];
+            arr.push(it);
+            itensMap.set(k, arr);
+          });
+        } else {
+          console.warn('Falha ao carregar itens de catálogo:', itensErr);
+        }
+      } catch (e) {
+        console.warn('Erro ao agregar itens de catálogo:', e);
+      }
+    }
+    return { lista, itensMap };
+  }
+
+  function fmtMoeda(v){
+    const n = Number(v) || 0;
+    return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  }
+
+  function renderTabelaPropostasCliente(lista, itensMap){
+    if (!lista || lista.length===0) {
+      return '<div class="muted">Nenhuma proposta para este cliente.</div>';
+    }
+    const header = `
+      <table class="table nested-table">
+        <thead>
+          <tr>
+            <th>Proposta</th>
+            <th>Itens de Catálogo</th>
+            <th>Valor (R$)</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    const rows = lista.map(p => {
+      const itens = (itensMap && itensMap.get(p.id)) || [];
+      const servicos = (itens.length > 0)
+        ? itens.map(it => {
+            const nome = String(it.nome_servico || '').toUpperCase();
+            const desc = it.descricao ? ` • ${String(it.descricao).toUpperCase()}` : '';
+            return `🧩 ${nome}${desc}`;
+          }).join('<br>')
+        : '<span class="muted">—</span>';
+      const totalItens = itens.reduce((acc, it) => acc + (Number(it.total)||0), 0);
+      const valorBase = Number(p.valor_mensal)||0;
+      const valor = fmtMoeda(totalItens > 0 ? totalItens : valorBase);
+      const status = p.status || 'pendente';
+      const adminUrl = `${baseLink()}admin.html?proposta=${encodeURIComponent(p.id)}`;
+      return `
+        <tr>
+          <td class="nowrap">${p.id}</td>
+          <td>${servicos}</td>
+          <td class="nowrap">${valor}/mês</td>
+          <td class="nowrap"><span class="pill pill-status-${status}">${status}</span></td>
+          <td class="nowrap"><a class="link" href="${adminUrl}" target="_blank" rel="noopener">Ver no Admin</a></td>
+        </tr>
+      `;
+    }).join('');
+    const footer = `</tbody></table>`;
+    return header + rows + footer;
+  }
+
+  function baseLink(){
+    const current = (location.pathname || '').toLowerCase();
+    const inSubdir = current.includes('/proposta-comercial/');
+    const base = inSubdir ? '/proposta-comercial/' : '/';
+    return base;
   }
 
   if (document.readyState === 'loading') {

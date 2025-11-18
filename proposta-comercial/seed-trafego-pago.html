@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seed: Tráfego Pago</title>
+  <link rel="stylesheet" href="proposta-styles.css" />
+  <style>
+    body { background:#0f0f0f; color:#eee; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .card { background:#151515; border:1px solid #2a2a2a; border-radius:12px; padding:18px; }
+    h1 { color:#00E388; font-size:1.6rem; margin:0 0 12px; }
+    .log { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background:#111; border:1px solid #333; border-radius:8px; padding:10px; min-height:120px; }
+    .btn { background:#1E5942; color:#fff; border:none; border-radius:10px; padding:8px 12px; cursor:pointer; }
+    .btn.secondary { background:#2a2a2a; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Seed – Planos de Tráfego Pago</h1>
+      <p>Esta página insere o produto "Tráfego Pago" com três planos e suas sessões no Supabase.</p>
+      <div style="margin:12px 0; display:flex; gap:10px;">
+        <button id="runSeed" class="btn">Executar Seed</button>
+        <button id="deleteSeed" class="btn secondary">Remover Produto</button>
+      </div>
+      <div id="log" class="log"></div>
+    </div>
+  </div>
+
+  <!-- Supabase client via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Config do Supabase do projeto -->
+  <script src="supabase-config.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    const btnRun = document.getElementById('runSeed');
+    const btnDelete = document.getElementById('deleteSeed');
+    const PRODUTO_NOME = 'Tráfego Pago';
+
+    function log(msg) { logEl.textContent += (msg + '\n'); }
+
+    async function getClient() {
+      try {
+        if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+          return window.supabaseConfig.initSupabase();
+        }
+      } catch (e) {}
+      throw new Error('Supabase não inicializado.');
+    }
+
+    function planosTrafego() {
+      return [
+        {
+          nome: 'Foco',
+          valor: 1200.00,
+          info: 'Para validar campanhas com segurança. Plano recomendado para investimento de até R$ 5.000/mês em mídia.',
+          sessoes: [
+            { titulo: 'Execução', itens: ['3 criativos estáticos (imagem) por mês', '1 reunião mensal'] },
+            { titulo: 'Gestão e Acompanhamento', itens: ['Planejamento de campanhas', 'Rastreamento de leads', 'Relatórios semanais de performance', 'Dashboard de resultados'] },
+            { titulo: 'Estratégia e Configuração', itens: ['Script de vendas', 'Análise de concorrência', 'Definição de ICP (público ideal)', 'Landing Page de alta conversão (exclusivo para plano de 12 meses de recorrência)', 'Configuração inicial de BM + Tags (Meta/Google)'] },
+            { titulo: 'Suporte', itens: ['Suporte direto (grupo de acompanhamento)'] }
+          ]
+        },
+        {
+          nome: 'Aceleração',
+          valor: 2200.00,
+          info: 'Equilíbrio entre custo e performance. Plano recomendado para investimento entre R$ 5.001 e R$ 10.000/mês em mídia.',
+          sessoes: [
+            { titulo: 'Execução', itens: ['5 criativos estáticos (imagem) por mês', '2 reuniões mensais'] },
+            { titulo: 'Gestão e Acompanhamento', itens: ['Planejamento de campanhas', 'Rastreamento de leads', 'Relatórios semanais de performance', 'Dashboard de resultados'] },
+            { titulo: 'Estratégia e Configuração', itens: ['Script de vendas', 'Análise de concorrência', 'Definição de ICP (público ideal)', 'Landing Page de alta conversão (exclusivo para plano de 12 meses de recorrência)', 'Configuração inicial de BM + Tags (Meta/Google)'] },
+            { titulo: 'Suporte', itens: ['Suporte direto (grupo de acompanhamento)'] }
+          ]
+        },
+        {
+          nome: 'Destaque',
+          valor: 3500.00,
+          info: 'Para escalar e dominar o funil. Plano recomendado para investimento acima de R$ 10.000/mês em mídia.',
+          sessoes: [
+            { titulo: 'Execução', itens: ['8 criativos estáticos (imagem) por mês', '4 reuniões mensais'] },
+            { titulo: 'Gestão e Acompanhamento', itens: ['Planejamento de campanhas', 'Rastreamento de leads', 'Relatórios semanais de performance', 'Dashboard de resultados'] },
+            { titulo: 'Estratégia e Configuração', itens: ['Script de vendas', 'Análise de concorrência', 'Definição de ICP (público ideal)', 'Landing Page de alta conversão (exclusivo para plano de 12 meses de recorrência)', 'Configuração inicial de BM + Tags (Meta/Google)', 'Consultoria estratégica de crescimento', 'Ajustes contínuos de LP e otimização de conversão (CRO)'] },
+            { titulo: 'Suporte', itens: ['Suporte direto (grupo de acompanhamento)', 'Suporte prioritário via WhatsApp'] }
+          ]
+        }
+      ];
+    }
+
+    async function runSeed() {
+      btnRun.disabled = true; btnRun.textContent = 'Executando…';
+      log('Iniciando seed para "' + PRODUTO_NOME + '"...');
+      try {
+        const client = await getClient();
+        const { data: existing, error: findErr } = await client
+          .from('produtos')
+          .select('id, nome')
+          .eq('nome', PRODUTO_NOME)
+          .maybeSingle();
+        if (findErr) { throw findErr; }
+
+        let produtoId = existing?.id || null;
+        if (!produtoId) {
+          log('Produto não encontrado. Criando…');
+          const { data: created, error: insErr } = await client
+            .from('produtos')
+            .insert([{ nome: PRODUTO_NOME, tipo: 'fixo', recorrencia: true, desconto_recorrencia: false, desconto_pagamento: false, desconto_condicional: false }])
+            .select('id')
+            .single();
+          if (insErr) {
+            const mismatch = String(insErr.message || '').includes('Could not find the') || insErr.code === 'PGRST204';
+            if (mismatch) {
+              log('Schema parcial detectado. Inserindo com campos mínimos…');
+              const { data: createdMin, error: insMinErr } = await client
+                .from('produtos')
+                .insert([{ nome: PRODUTO_NOME, tipo: 'fixo', recorrencia: true }])
+                .select('id')
+                .single();
+              if (insMinErr) throw insMinErr;
+              produtoId = createdMin.id;
+              log('Produto criado (mínimo): ' + produtoId + '. Atualize tabela para colunas completas quando possível.');
+            } else {
+              throw insErr;
+            }
+          } else {
+            produtoId = created.id;
+            log('Produto criado: ' + produtoId);
+          }
+        } else {
+          log('Produto existente: ' + produtoId + ' – atualizando planos…');
+        }
+
+        // Limpa planos antigos e insere novamente
+        const { error: delErr } = await client.from('produto_planos').delete().eq('produto_id', produtoId);
+        if (delErr) throw delErr;
+        const rows = planosTrafego().map(pl => ({
+          produto_id: produtoId,
+          nome: pl.nome,
+          valor: pl.valor,
+          info: pl.info,
+          sessoes: pl.sessoes
+        }));
+        let { error: insPlanErr } = await client.from('produto_planos').insert(rows);
+        if (insPlanErr) {
+          const mismatchPlan = String(insPlanErr.message || '').includes('Could not find the') || insPlanErr.code === 'PGRST204';
+          if (mismatchPlan) {
+            log('Schema de planos parcial. Inserindo campos mínimos (nome, valor)…');
+            const rowsMin = rows.map(pl => ({ produto_id: pl.produto_id, nome: pl.nome, valor: pl.valor }));
+            const { error: insPlanMinErr } = await client.from('produto_planos').insert(rowsMin);
+            if (insPlanMinErr) throw insPlanMinErr;
+            log('✅ Planos inseridos (mínimo).');
+          } else {
+            throw insPlanErr;
+          }
+        } else {
+          log('✅ Planos inseridos com sucesso.');
+        }
+
+        // Consulta para confirmar
+        const { data: check, error: checkErr } = await client
+          .from('produto_planos')
+          .select('id, nome, valor, info')
+          .eq('produto_id', produtoId)
+          .order('nome', { ascending: true });
+        if (checkErr) throw checkErr;
+        log('Planos cadastrados:\n' + check.map(p => `- ${p.nome} (R$ ${p.valor?.toFixed?.(2) || p.valor})`).join('\n'));
+        btnRun.textContent = 'Seed finalizado';
+      } catch (e) {
+        log('❌ Erro: ' + (e.message || e));
+        btnRun.textContent = 'Tentar novamente';
+        btnRun.disabled = false;
+      }
+    }
+
+    async function deleteProduct() {
+      btnDelete.disabled = true; btnDelete.textContent = 'Removendo…';
+      try {
+        const client = await getClient();
+        const { data: existing, error: findErr } = await client
+          .from('produtos')
+          .select('id')
+          .eq('nome', PRODUTO_NOME)
+          .maybeSingle();
+        if (findErr) throw findErr;
+        if (!existing?.id) { log('Produto não encontrado.'); btnDelete.disabled = false; btnDelete.textContent = 'Remover Produto'; return; }
+        const id = existing.id;
+        await client.from('produto_planos').delete().eq('produto_id', id);
+        const { error: delProdErr } = await client.from('produtos').delete().eq('id', id);
+        if (delProdErr) throw delProdErr;
+        log('🗑️ Produto removido: ' + id);
+        btnDelete.textContent = 'Removido';
+      } catch (e) {
+        log('❌ Erro ao remover: ' + (e.message || e));
+        btnDelete.textContent = 'Remover Produto'; btnDelete.disabled = false;
+      }
+    }
+
+    btnRun.addEventListener('click', runSeed);
+    btnDelete.addEventListener('click', deleteProduct);
+    // Executa automaticamente ao carregar a página para garantir cadastro imediato
+    window.addEventListener('load', () => {
+      // Evita dupla execução caso o usuário clique manualmente durante o carregamento
+      if (!btnRun.disabled) {
+        runSeed();
+      }
+    });
+  </script>
+</body>
+</html>

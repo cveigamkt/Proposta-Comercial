@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS public.propostas_criadas (
   dias_validade INTEGER DEFAULT 7,
   observacoes TEXT,
   
+  -- Metadados flexíveis da proposta (armazenar catálogo, flags, etc.)
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  
   -- Metadados
   criada_em TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   expira_em TIMESTAMP WITH TIME ZONE,
@@ -105,13 +108,25 @@ CREATE POLICY "Permitir UPDATE de status para aceita"
 
 -- Adicionar coluna de referência (se não existir)
 DO $$
+DECLARE
+  t_exists BOOLEAN;
+  col_exists BOOLEAN;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'propostas' AND column_name = 'proposta_criada_id'
-  ) THEN
-    ALTER TABLE public.propostas ADD COLUMN proposta_criada_id UUID REFERENCES public.propostas_criadas(id);
-    CREATE INDEX idx_propostas_proposta_criada_id ON public.propostas(proposta_criada_id);
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'propostas'
+  ) INTO t_exists;
+
+  IF t_exists THEN
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'propostas' AND column_name = 'proposta_criada_id'
+    ) INTO col_exists;
+
+    IF NOT col_exists THEN
+      ALTER TABLE public.propostas ADD COLUMN proposta_criada_id UUID REFERENCES public.propostas_criadas(id);
+      CREATE INDEX IF NOT EXISTS idx_propostas_proposta_criada_id ON public.propostas(proposta_criada_id);
+    END IF;
   END IF;
 END $$;
 

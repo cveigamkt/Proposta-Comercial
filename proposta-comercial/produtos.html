@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Produtos</title>
+  <link rel="stylesheet" href="proposta-styles.css" />
+  <script src="menu-lateral.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #0f0f0f; --card: #151515; --text: #eee; --muted: #aaa; --accent: #00E388; --accent2: #1E5942; --border: #2a2a2a;
+    }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 1.8rem; margin: 8px 0 20px; color: var(--accent); }
+    .section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+    .btn { background: var(--accent2); color: var(--text); border: none; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+    .btn.secondary { background: #2a2a2a; }
+    .btn.small { padding: 4px 8px; font-size: 0.85rem; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; padding: 10px 12px; color: #cfcfcf; border-bottom: 1px solid var(--border); }
+    tbody td { padding: 10px 12px; border-bottom: 1px solid #1f1f1f; }
+    tr.details td { background: #101010; }
+    .hint { font-size: 0.85rem; color: var(--muted); }
+    .inline { display:flex; gap:12px; align-items:center; }
+    /* Modal simples de confirmação */
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; }
+    .modal-backdrop.show { display:flex; }
+    .modal { background:#151515; border:1px solid var(--border); border-radius:12px; padding:16px; width:320px; box-shadow:0 10px 30px rgba(0,0,0,0.4); }
+    .modal h3 { margin:0 0 10px; font-size:1rem; color:#cfcfcf; }
+    .modal .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Produtos</h1>
+    <div id="supabaseStatus" style="position:fixed; top:10px; right:14px; background:#1E5942; color:#fff; padding:6px 10px; border-radius:10px; font-size:0.85rem; box-shadow:0 6px 16px rgba(0,0,0,0.35); z-index:1000; display:inline-flex; align-items:center; gap:8px;">
+      <span id="supabaseStatusDot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#ff5252;"></span>
+      <span id="supabaseStatusText">Supabase: verificando…</span>
+    </div>
+
+    <!-- Avisos inline de ações (ex.: exclusão iniciada/excluída) -->
+    <div id="actionStatus" aria-live="polite" style="position:fixed; top:50px; right:14px; background:#2a2a2a; color:#fff; padding:6px 10px; border-radius:10px; font-size:0.85rem; box-shadow:0 6px 16px rgba(0,0,0,0.35); z-index:1000; display:none; align-items:center; gap:8px;">
+      <span id="actionStatusDot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#888;"></span>
+      <span id="actionStatusText">—</span>
+    </div>
+
+    <!-- Tabela de produtos cadastrados -->
+    <section class="section">
+      <h2 style="font-size:1.2rem; margin-bottom:10px;">Tabela de produtos cadastrados</h2>
+      <table aria-label="Tabela de produtos">
+        <thead>
+          <tr>
+            <th>Nome do Produto/Serviço</th>
+            <th>Quantos planos possui</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="produtosTbody"></tbody>
+      </table>
+      <p class="hint" style="margin-top:8px;">Clique no botão "+" para visualizar os planos e valores do produto.</p>
+    </section>
+
+    <!-- Botão cadastrar novo produto -->
+    <section class="section">
+      <div class="inline">
+        <button class="btn" id="btnCadastrar">Cadastrar novo produto</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal de confirmação de exclusão -->
+  <div class="modal-backdrop" id="deleteModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+      <h3 id="deleteTitle">Tem certeza que deseja excluir?</h3>
+      <div class="actions">
+        <button class="btn" id="btnDeleteConfirm">Ok</button>
+        <button class="btn secondary" id="btnDeleteCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS client + Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth-guard.js"></script>
+  <script src="produtos.js"></script>
+</body>
+</html>

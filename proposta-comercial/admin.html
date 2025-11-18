@@ -58,11 +58,22 @@
     .btn-assinar:hover{background:#00cc7a}
     .btn-assinar:disabled{background:#555;color:#999;cursor:not-allowed}
     .hidden{display:none}
+    /* Hierarquia visual refinada */
+    .cliente-col strong{font-weight:800}
+    .contato-sub{font-size:.85rem;color:var(--muted);margin-top:4px}
+    .valor-destaque{color:var(--brand-2);font-weight:800}
+    /* Menu de ações com summary */
+    .actions{display:flex;gap:8px;align-items:center}
+    .actions-menu{position:relative;display:inline-block}
+    .actions-menu > summary{list-style:none;cursor:pointer;background:#222;color:#e5e5e5;border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;}
+    .actions-menu[open] > summary{background:#2a2a2a}
+    .actions-dropdown{position:absolute;right:0;top:36px;background:#151515;border:1px solid var(--border);border-radius:10px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px;display:grid;gap:6px;z-index:10}
+    .actions-dropdown .btn-action{width:100%;text-align:left}
     @media (max-width:900px){
       .filters{grid-template-columns:1fr;gap:10px}
       .stats{grid-template-columns:repeat(2,1fr)}
       .table{overflow-x:auto}
-      table{min-width:1200px}
+      table{min-width:1000px}
       .toolbar{flex-direction:column;gap:8px;width:100%}
       .toolbar .btn,.toolbar button{width:100%}
     }
@@ -129,29 +140,19 @@
       <table>
         <thead>
           <tr>
-            <th>Data</th>
             <th>Cliente</th>
-            <th>Email</th>
-            <th>Telefone</th>
-            <th>Empresa</th>
-            <th>CPF/CNPJ</th>
-            <th>Representante</th>
-            <th>Serviços</th>
-            <th>Modelo Cobrança</th>
-            <th class="right">Valores</th>
-            <th>Recorrência</th>
-            <th>Pagamento</th>
-            <th>Vencimento</th>
-            <th>Responsável</th>
+            <th>Empresa/CNPJ</th>
+            <th>Serviço(s)</th>
+            <th>Modelo</th>
+            <th class="right">Valor Total</th>
             <th>Status</th>
+            <th>Responsável</th>
             <th>Última Atualização</th>
-            <th>Proposta</th>
-            <th>Contrato</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="19" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="9" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -277,6 +278,22 @@ async function queryResumo(filtros){
             .in('proposta_criada_id', ids);
           contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
         }
+
+        // Enriquecer com itens de catálogo (proposta_itens)
+        let itensMap = new Map();
+        if (ids.length > 0) {
+          const { data: itens } = await client
+            .from('proposta_itens')
+            .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
+            .in('proposta_criada_id', ids);
+          const agrupado = new Map();
+          (itens||[]).forEach(it => {
+            const arr = agrupado.get(it.proposta_criada_id) || [];
+            arr.push(it);
+            agrupado.set(it.proposta_criada_id, arr);
+          });
+          itensMap = agrupado;
+        }
         let contratosLegadoMap = new Map();
 
         return baseView.map(pc => ({
@@ -288,7 +305,8 @@ async function queryResumo(filtros){
           forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
           proposta_aceita_id: null,
           contrato_pdf_url: (contratosNormMap.get(pc.id) ?? pc.contrato_pdf_url ?? null),
-          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
+          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false,
+          itens_catalogo: itensMap.get(pc.id) || []
         }));
       } catch (e) {
         console.warn('View resumo_propostas indisponível. Aplicando fallback.', e.message);
@@ -318,6 +336,21 @@ async function queryResumo(filtros){
             .select('proposta_criada_id, contrato_url')
             .in('proposta_criada_id', ids);
           contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
+        }
+        // Itens de catálogo
+        let itensMap = new Map();
+        if (ids.length > 0) {
+          const { data: itens } = await client
+            .from('proposta_itens')
+            .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
+            .in('proposta_criada_id', ids);
+          const agrupado = new Map();
+          (itens||[]).forEach(it => {
+            const arr = agrupado.get(it.proposta_criada_id) || [];
+            arr.push(it);
+            agrupado.set(it.proposta_criada_id, arr);
+          });
+          itensMap = agrupado;
         }
         let contratosLegadoMap = new Map();
         return base.map(pc => ({
@@ -351,7 +384,8 @@ async function queryResumo(filtros){
           hash_assinatura: pc.hash_assinatura,
           proposta_aceita_id: null,
           contrato_pdf_url: (contratosNormMap.get(pc.id) ?? null),
-          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
+          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false,
+          itens_catalogo: itensMap.get(pc.id) || []
         }));
       }
     }
@@ -374,6 +408,24 @@ async function queryResumo(filtros){
       // Investimento em mídia
       if (r.investimento_midia) {
         parts.push(`💰 Mídia: ${r.investimento_midia}`);
+      }
+
+      // Itens de Catálogo (proposta_itens)
+      const itens = Array.isArray(r.itens_catalogo) ? r.itens_catalogo : [];
+      if (itens.length) {
+        const max = 3;
+        const mostrar = itens.slice(0, max);
+        mostrar.forEach(it => {
+          const nome = (it.nome_servico || 'Catálogo');
+          const desc = it.descricao ? ` ${String(it.descricao).toUpperCase()}` : '';
+          const valor = typeof it.total === 'number' && it.total > 0 ? it.total : (typeof it.preco_unitario === 'number' ? it.preco_unitario : 0);
+          const valorTxt = valor ? ` (${fmtMoeda(valor)})` : '';
+          const ic = nome.toLowerCase().includes('cat') ? '🧩' : '🧾';
+          parts.push(`${ic} ${String(nome)}${desc}${valorTxt}`);
+        });
+        if (itens.length > max) {
+          parts.push(`<span class="muted">+${itens.length - max} item(ns)</span>`);
+        }
       }
       
       return parts.join('<br>') || '<span class="muted">—</span>';
@@ -407,58 +459,48 @@ async function queryResumo(filtros){
       atualizarEstatisticas(rows);
       
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="19" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="9" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
       document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
       for (const r of rows){
   const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
-        
-        // Mostrar recorrência e pagamento sempre que houver valores (assinados ou originais)
-        const recorrenciaFinal = (r.recorrencia_assinada || r.recorrencia) || '<span class="muted">—</span>';
-        const pagamentoFinal = (r.forma_pagamento_assinada || r.forma_pagamento) || '<span class="muted">—</span>';
-        const vencimentoFinal = (r.melhor_dia_pagamento && Number(r.melhor_dia_pagamento) > 0)
-          ? `Dia ${String(r.melhor_dia_pagamento).padStart(2, '0')}`
-          : '<span class="muted">—</span>';
-        
+        const cnpj = r.cpf_cnpj || '—';
         const tr = document.createElement('tr');
         const vf = r.status === 'aceita' ? calcularValorFinal(r) : { mensal: Number(r.valor_mensal)||0, total: Number(r.valor_total)||0, meses: 0 };
         tr.innerHTML = `
-          <td class="nowrap">${r.criada_em ? new Date(r.criada_em).toLocaleString('pt-BR') : '—'}</td>
-          <td>${r.nome_cliente || '—'}</td>
-          <td class="nowrap">${r.email_cliente || '—'}</td>
-          <td class="nowrap">${r.telefone_cliente || '—'}</td>
-          <td>${r.empresa_cliente || '—'}</td>
-          <td class="nowrap">${r.cpf_cnpj || '—'}</td>
+          <td class="cliente-col">
+            <div class="cliente-nome"><strong>${r.nome_cliente || '—'}</strong></div>
+            <div class="contato-sub">${r.telefone_cliente || '—'} • ${r.email_cliente || '—'}</div>
+          </td>
           <td>
-            ${r.representante_nome ? `<div>${r.representante_nome}</div>` : '<span class="muted">—</span>'}
+            <div>${r.empresa_cliente || '—'}</div>
+            <div class="muted">${cnpj}</div>
           </td>
           <td>${linhaServico(r)}</td>
           <td>${formatarModeloCobranca(r)}</td>
           <td class="right">
-            <div><strong>${fmtMoeda(vf.mensal)}/mês</strong></div>
+            <div class="valor-destaque">${fmtMoeda(vf.mensal)}/mês</div>
             <div class="muted" style="font-size:.85rem">Total${vf.meses?` (${vf.meses}m)`:''}: ${fmtMoeda(vf.total)}</div>
           </td>
-          <td class="nowrap">${recorrenciaFinal}</td>
-          <td class="nowrap">${pagamentoFinal}</td>
-          <td class="nowrap">${vencimentoFinal}</td>
-          <td>${r.responsavel_proposta || '<span class="muted">—</span>'}</td>
           <td>${statusChip(r.status, r.expirada)}</td>
+          <td>${r.responsavel_proposta || '<span class="muted">—</span>'}</td>
           <td class="nowrap">
             <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
             ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
           </td>
-          <td>
-        <a class="link" href="${url}" target="_blank" rel="noopener" onclick="return abrirProposta('${r.id}')">Abrir</a>
-          </td>
-          <td>${r.contrato_pdf_url ? `<a class="link" href="${r.contrato_pdf_url}" target="_blank">PDF</a>` : '<span class="muted">—</span>'}</td>
-          <td>
-            <div class="actions-cell">
-              <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')" title="Editar proposta">✏️</button>
-              <button type="button" class="btn-action btn-delete" onclick="return confirmarExclusao(event, '${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
-              ${r.status === 'aceita' && r.contrato_pdf_url ? `<button type="button" class="btn-action" onclick="enviarContratoPorEmailAdmin('${r.id}')" title="Enviar contrato assinado por e-mail">✉️</button>` : ''}
-            </div>
+          <td class="actions">
+            <a class="link" href="${url}" target="_blank" rel="noopener" onclick="return abrirProposta('${r.id}')">Abrir</a>
+            <details class="actions-menu">
+              <summary title="Mais ações">•••</summary>
+              <div class="actions-dropdown">
+                <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')">✏️ Editar</button>
+                <button type="button" class="btn-action btn-delete" onclick="return confirmarExclusao(event, '${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')">🗑️ Excluir</button>
+                ${r.contrato_pdf_url ? `<a class="btn-action" href="${r.contrato_pdf_url}" target="_blank">📄 PDF</a>` : ''}
+                ${r.status === 'aceita' && r.contrato_pdf_url ? `<button type="button" class="btn-action" onclick="enviarContratoPorEmailAdmin('${r.id}')">✉️ Enviar contrato</button>` : ''}
+              </div>
+            </details>
           </td>
         `;
         tb.appendChild(tr);
@@ -492,7 +534,7 @@ async function queryResumo(filtros){
           const { data: { session } } = await client.auth.getSession();
           if (!session || !session.user) {
             const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = '<tr><td colspan="19" class="muted">Faça login para acessar o painel.</td></tr>';
+        tb.innerHTML = '<tr><td colspan="9" class="muted">Faça login para acessar o painel.</td></tr>';
             return;
           }
         } catch(_){ /* fallback: se falhar, continua mas sem dados */ }
@@ -512,10 +554,19 @@ async function queryResumo(filtros){
         }
         
         renderTabela(rows);
+        // Abrir proposta automaticamente se parâmetro estiver presente
+        try {
+          const params = new URLSearchParams(location.search);
+          const pid = params.get('proposta');
+          if (pid && !window.__openedByParam) {
+            window.__openedByParam = true;
+            abrirProposta(pid);
+          }
+        } catch(_) { /* ignora */ }
       }catch(e){
         console.error(e);
         const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = `<tr><td colspan="19" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="9" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
       }finally{
         btn.disabled = false; btn.textContent = 'Buscar';
       }

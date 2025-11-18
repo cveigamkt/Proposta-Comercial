@@ -49,6 +49,12 @@
     .input-error { border-color: #FF6B6B !important; }
     .toast { position: fixed; right: 20px; bottom: 20px; background: #161616; color: #e5e5e5; border: 1px solid #333; border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: none; }
     @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+    /* Expansão de propostas por cliente */
+    .expand-row td { background: #0d0d0d; border-top: 1px solid #333; }
+    .nested-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .nested-table th, .nested-table td { border-bottom: 1px solid #333; padding: 8px; }
+    .nested-table th { color: #9ad5bd; font-weight: 700; }
+    .btn-xs { padding: 6px 8px; font-size: .85rem; }
   </style>
 </head>
 <body>
@@ -125,11 +131,11 @@
             <th>E-mail</th>
             <th>Telefone</th>
             <th>Propostas</th>
-            <th>Ações</th>
+            <th style="width:60px;" title="Mostrar propostas do cliente">+</th>
           </tr>
         </thead>
         <tbody id="clientesTabela">
-          <tr><td colspan="7" class="muted">Carregando clientes…</td></tr>
+          <tr><td colspan="8" class="muted">Carregando clientes…</td></tr>
         </tbody>
       </table>
     </section>
@@ -140,6 +146,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=4"></script>
+  <script src="auth-guard.js"></script>
   <script src="validacao-cpf-cnpj.js?v=2"></script>
   <script src="clientes.js?v=2"></script>
 </body>

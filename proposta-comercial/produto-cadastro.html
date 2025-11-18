@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Produto</title>
+  <link rel="stylesheet" href="proposta-styles.css" />
+  <script src="menu-lateral.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #0f0f0f; --card: #151515; --text: #eee; --muted: #aaa; --accent: #00E388; --accent2: #1E5942; --border: #2a2a2a;
+    }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 1.8rem; margin: 8px 0 20px; color: var(--accent); }
+    .section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+    .grid { display: grid; gap: 12px; }
+    .grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+    label { font-size: 0.9rem; color: var(--muted); display: block; margin-bottom: 6px; }
+    input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: #111; color: var(--text); }
+    .inline { display: flex; align-items: center; gap: 14px; }
+    .radio-group { display: inline-flex; gap: 10px; align-items: center; }
+    .plan-card { border: 1px dashed var(--border); border-radius: 12px; padding: 14px; margin-top: 10px; background: #121212; }
+    .plan-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .plan-title { font-weight: 700; color: #cfcfcf; }
+    .btn { background: var(--accent2); color: var(--text); border: none; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+    .btn.secondary { background: #2a2a2a; }
+    .btn.icon { display: inline-flex; align-items: center; gap: 6px; }
+    .sessao { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-top: 12px; background: #101010; }
+    .sessao .sessao-header { display: block; margin-bottom: 10px; }
+    .sessao-header-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .items { margin-top: 8px; margin-left: 16px; }
+    .item-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 8px; }
+    .item-row .btn { white-space: nowrap; }
+    .item-row input { min-height: 36px; }
+    .btn:hover { filter: brightness(1.1); }
+    .item-icon { color: var(--accent); font-size: 1rem; line-height: 1; }
+    .item-label { color: var(--muted); }
+    .hint { font-size: 0.8rem; color: var(--muted); }
+    .confirm-label { display:none; align-items:center; gap:8px; background:#1a1a1a; border:1px solid var(--border); border-radius:8px; padding:6px 8px; }
+    .confirm-label.show { display:inline-flex; }
+    .btn.small { padding:4px 8px; font-size:0.85rem; }
+    .preview { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; font-size: 0.9rem; white-space: pre-wrap; }
+    .plan-card .grid.cols-2 > div { min-width: 0; }
+    .plan-card input, .plan-card textarea, .plan-card select { max-width: 100%; }
+    /* Recolher/Expandir plano */
+    .plan-card.collapsed .plan-body { display: none; }
+    /* Layout refinements */
+    .section .grid { gap: 20px; }
+    .grid.cols-3 > div { align-self: stretch; }
+    .field { display: block; }
+    .field label { margin-bottom: 8px; font-weight: 600; color: #cfcfcf; }
+    /* Segmented controls */
+    .segmented { display: inline-flex; gap: 6px; background: #111; border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+    .segmented label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text); }
+    .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+    .segmented label span { font-size: 0.9rem; }
+    .segmented input:checked + span { background: var(--accent2); color: var(--text); padding: 4px 8px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--border); }
+    /* Option cards */
+    .option-card { background: #131313; border: 1px solid var(--border); border-radius: 12px; padding: 12px; height: 100%; display: flex; flex-direction: column; justify-content: flex-start; }
+    .option-card .hint { margin-top: 6px; }
+    .option-card.disabled { background:#101010; border-color:#252525; color:#8a8a8a; }
+    .option-card.disabled .segmented { opacity:0.6; pointer-events:none; }
+    /* Toast de feedback */
+    .toast { position: fixed; right: 20px; bottom: 20px; background: #161616; color: #e5e5e5; border: 1px solid #333; border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: none; z-index: 10000; }
+    /* Status Supabase */
+    .supabase-status { position: fixed; right: 20px; top: 20px; background: #161616; color: #e5e5e5; border: 1px solid #333; border-radius: 10px; padding: 8px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 10000; }
+    /* Alinhamento dos títulos dos cards: mesma altura para labels de topo */
+    .option-card > label { min-height: 40px; line-height: 1.2; display: block; }
+    /* Add-on cards */
+    .addon-card { background:#131313; border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:10px; }
+    .addon-section { margin-top:8px; }
+    .addon-section-title { font-weight:600; color:#eaeaea; display:flex; align-items:center; gap:8px; }
+    .addon-name-row { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; }
+    .addon-name-row .inline-actions { display:flex; align-items:center; gap:8px; }
+    .addon-name-input { width:100%; }
+    .addon-desc-wrap { margin-top:6px; }
+    .addon-pricing { margin-top:6px; }
+    .addon-pricing .pricing-type { display:flex; gap:8px; align-items:center; }
+    .addon-pricing .grid > div { min-width:0; }
+    .addon-behavior { margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cadastro de Produto</h1>
+
+    <!-- Linha 1 -->
+    <section class="section">
+      <div class="grid cols-3">
+        <div class="option-card">
+          <label>Nome</label>
+          <input type="text" id="prodNome" placeholder="Ex.: Social Mídia" />
+        </div>
+        <div class="option-card" id="planosQtdeField">
+          <label>Quantos planos possui</label>
+          <select id="prodPlanosQtde">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </div>
+        <div class="option-card">
+          <label>Tipo de Produto</label>
+          <div class="radio-group segmented" id="prodTipo">
+            <label><input type="radio" name="tipo" value="fixo" checked /><span>Planos fixos</span></label>
+            <label><input type="radio" name="tipo" value="composicao" /><span>Composição (base + add-ons)</span></label>
+          </div>
+          <p class="hint">Use "composição" para produtos personalizáveis como Sites e Branding.</p>
+        </div>
+      </div>
+      <div class="grid cols-4" style="margin-top:10px;">
+        <div class="option-card">
+          <label>Recorrência</label>
+          <div class="radio-group segmented" id="prodRecorrencia">
+            <label><input type="radio" name="rec" value="sim" checked /><span>Sim</span></label>
+            <label><input type="radio" name="rec" value="nao" /><span>Não</span></label>
+          </div>
+        </div>
+        <div class="option-card">
+          <label>Desconto de recorrência</label>
+          <div class="radio-group segmented" id="prodDescRec">
+            <label><input type="radio" name="descRec" value="sim" /><span>Sim</span></label>
+            <label><input type="radio" name="descRec" value="nao" checked /><span>Não</span></label>
+          </div>
+          <p class="hint">Aplicável somente se Recorrência for "Sim".</p>
+        </div>
+        <div class="option-card">
+          <label>Desconto por forma de pagamento</label>
+          <div class="radio-group segmented" id="prodDescPagamento">
+            <label><input type="radio" name="descPag" value="sim" /><span>Sim</span></label>
+            <label><input type="radio" name="descPag" value="nao" checked /><span>Não</span></label>
+          </div>
+        </div>
+        <div class="option-card">
+          <label>Desconto condicional</label>
+          <div class="radio-group segmented" id="prodDescCondicional">
+            <label><input type="radio" name="descCond" value="sim" /><span>Sim</span></label>
+            <label><input type="radio" name="descCond" value="nao" checked /><span>Não</span></label>
+          </div>
+          <p class="hint">Pesquisa + pagamento em dia</p>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:8px;">Defina o nome base do produto e se é recorrente. Em seguida, informe a quantidade de planos (ex.: START, SCALE, HEAT). O valor agora é configurado em cada plano.</p>
+    </section>
+
+    <!-- Planos e entregáveis -->
+    <section class="section">
+      <h2 id="planosHeader" style="font-size:1.2rem; margin-bottom:10px;">Planos e Entregáveis</h2>
+      <div id="planosContainer"></div>
+    </section>
+
+    <!-- Add-ons (apenas para composição) -->
+    <section class="section" id="addonsSection" style="display:none;">
+      <h2 style="font-size:1.2rem; margin-bottom:10px;">Add-ons (opcionais)</h2>
+      <p class="hint">Adicione módulos extras como Blog, Landing Page, páginas adicionais ou integrações. Eles serão exibidos como opções de personalização na proposta.</p>
+      <div id="addonsContainer" class="stack" style="gap:8px;"></div>
+      <div class="inline" style="margin-top:8px;">
+        <button type="button" class="btn" id="btnAddAddon">+ Adicionar add-on</button>
+      </div>
+    </section>
+
+    <!-- Ações (somente UI por enquanto) -->
+    <section class="section">
+      <div class="inline">
+        <button class="btn icon" id="btnPreview">
+          <span>👀</span>
+          <span>Prever estrutura</span>
+        </button>
+        <button class="btn" id="btnSalvar">Salvar</button>
+        <button class="btn secondary" id="btnReset">Limpar</button>
+        <span class="confirm-label" id="resetConfirm" aria-live="polite">
+          Tem certeza?
+          <button class="btn small" id="btnConfirmReset">Sim</button>
+          <button class="btn secondary small" id="btnCancelReset">Cancelar</button>
+        </span>
+      </div>
+      <div class="preview" id="previewOut" style="display:none;"></div>
+      <p class="hint">Os dados deste cadastro são salvos diretamente no Supabase. O salvamento local foi removido.</p>
+    </section>
+  </div>
+
+  <style>
+    /* Preview visual de comparação */
+    .compare-preview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .plan-card-preview { background:#111; border:1px solid var(--border); border-radius:16px; padding:16px; position:relative; }
+    .plan-card-preview.highlight { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,227,136,0.2); }
+    .plan-card-preview .badge { position:absolute; top:-12px; left:50%; transform:translateX(-50%); background:var(--accent2); color:#fff; padding:4px 10px; border-radius:999px; font-size:0.75rem; border:2px solid var(--accent); }
+    .plan-card-preview .title { font-weight:700; text-align:center; margin-top:8px; margin-bottom:8px; }
+    .plan-card-preview .value { background:#0c1d17; color:#a9f5d7; border:1px solid var(--accent); border-radius:10px; padding:6px 10px; text-align:center; font-size:0.85rem; margin-bottom:12px; }
+    .plan-card-preview .section-title { color:var(--accent); font-weight:600; margin:12px 0 6px; border-bottom:1px solid #1f1f1f; padding-bottom:4px; }
+    .plan-card-preview ul { list-style:none; padding:0; margin:0; }
+    .plan-card-preview li { display:flex; align-items:flex-start; gap:8px; padding:4px 0; }
+    .plan-card-preview li .check { color:var(--accent); }
+    /* Carousel */
+    .carousel { position:relative; }
+    .carousel .track { display:flex; gap:16px; overflow-x:auto; scroll-snap-type: x mandatory; padding:4px 2px; }
+    .carousel .track::-webkit-scrollbar { height:6px; }
+    .carousel .track::-webkit-scrollbar-thumb { background:#2a2a2a; border-radius:999px; }
+    .carousel .plan-card-preview { flex:0 0 calc(33.333% - 12px); scroll-snap-align:start; }
+    .carousel .btn-nav { position:absolute; top:50%; transform:translateY(-50%); background:#1f1f1f; border:1px solid var(--border); color:#fff; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    .carousel .btn-prev { left:-10px; }
+    .carousel .btn-next { right:-10px; }
+    /* Header do preview com dados do produto */
+    .preview-header { font-size:0.9rem; color:#cfcfcf; margin-bottom:8px; }
+    @media (max-width: 900px) {
+      .compare-preview { grid-template-columns: repeat(2, 1fr); }
+      .carousel .plan-card-preview { flex:0 0 calc(50% - 12px); }
+    }
+    @media (max-width: 640px) {
+      .compare-preview { grid-template-columns: 1fr; }
+      .carousel .plan-card-preview { flex:0 0 calc(100% - 12px); }
+    }
+  </style>
+  <!-- Supabase JS client + Config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth-guard.js"></script>
+  <script src="produto-cadastro.js"></script>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="supabaseStatus" class="supabase-status" aria-live="polite">Verificando Supabase…</div>
+</body>
+</html>

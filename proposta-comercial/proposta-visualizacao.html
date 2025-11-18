@@ -9,6 +9,40 @@
     <script>
         // Captura detalhada de erros e rejeições não tratadas
         (function () {
+            // Utilitário de logs com formatação padronizada
+            function normalizeError(err) {
+                const out = {
+                    name: err?.name,
+                    message: err?.message || String(err),
+                    stack: err?.stack,
+                };
+                ['code','status','hint','details'].forEach(k => { if (err && err[k] !== undefined) out[k] = err[k]; });
+                return out;
+            }
+            window.reportError = function(title, err, ctx) {
+                const info = normalizeError(err);
+                console.group(`%c[Erro] ${title}`,'color:#fff;background:#c0392b;padding:2px 6px;border-radius:4px;');
+                if (ctx) console.info('Contexto:', ctx);
+                console.error(info);
+                if (info.stack) console.log(info.stack);
+                console.groupEnd();
+            };
+            window.reportWarn = function(title, warn, ctx) {
+                const info = normalizeError(warn);
+                console.group(`%c[Alerta] ${title}`,'color:#000;background:#f1c40f;padding:2px 6px;border-radius:4px;');
+                if (ctx) console.info('Contexto:', ctx);
+                console.warn(info);
+                console.groupEnd();
+            };
+            window.reportInfo = function(title, data) {
+                console.group(`%c[Info] ${title}`,'color:#fff;background:#2c3e50;padding:2px 6px;border-radius:4px;');
+                if (Array.isArray(data)) {
+                    console.table(data);
+                } else {
+                    console.info(data);
+                }
+                console.groupEnd();
+            };
             function serializeError(err) {
                 try {
                     if (!err) return { message: 'Erro indefinido' };
@@ -36,9 +70,7 @@
                     coluna: event.colno,
                     erro: serializeError(event.error)
                 };
-                console.group('%c[Diagnóstico] Erro JS capturado', 'color:#fff;background:#c0392b;padding:2px 6px;border-radius:4px;');
-                console.error(info);
-                console.groupEnd();
+                window.reportError('JS capturado', info);
             });
 
             window.addEventListener('unhandledrejection', function (event) {
@@ -47,22 +79,20 @@
                     tipo: 'unhandledrejection',
                     motivo: typeof reason === 'object' ? serializeError(reason) : String(reason)
                 };
-                console.group('%c[Diagnóstico] Promessa rejeitada sem tratamento', 'color:#fff;background:#8e44ad;padding:2px 6px;border-radius:4px;');
-                console.error(info);
-                console.groupEnd();
+                window.reportError('Promessa rejeitada sem tratamento', info);
             });
 
             // Diagnósticos de ambiente e parâmetros
             (function diag() {
                 const params = new URLSearchParams(window.location.search);
                 const id = params.get('id');
-                console.group('%c[Diagnóstico] Ambiente de visualização', 'color:#fff;background:#2c3e50;padding:2px 6px;border-radius:4px;');
-                console.info('URL:', window.location.href);
-                console.info('ID (query):', id);
-                console.info('supabase-js carregado?', !!window.supabase);
-                console.info('supabase-config presente?', !!window.supabaseConfig);
-                console.info('jsPDF presente?', !!(window.jspdf && window.jspdf.jsPDF));
-                console.groupEnd();
+                window.reportInfo('Ambiente de visualização', {
+                    url: window.location.href,
+                    id,
+                    supabaseJsCarregado: !!window.supabase,
+                    supabaseConfigPresente: !!window.supabaseConfig,
+                    jsPDFPresente: !!(window.jspdf && window.jspdf.jsPDF)
+                });
             })();
         })();
     </script>
@@ -150,6 +180,7 @@
             max-width: 600px;
             width: auto;
             min-width: 400px;
+            pointer-events: none; /* não bloquear cliques na UI abaixo */
         }
         
         .timer-validade.expirada {
@@ -442,6 +473,105 @@
             white-space: nowrap;
         }
 
+        /* Incluídos e Add-ons */
+        .incluidos-card {
+            border: 1px solid #1E5942;
+            background: rgba(30,89,66,0.08);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+        .incluidos-card h4 {
+            color: #1E5942;
+            margin-bottom: 12px;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .grid-entregaveis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        @media (max-width: 900px) {
+            .grid-entregaveis { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 520px) {
+            .grid-entregaveis { grid-template-columns: 1fr; }
+        }
+        .grid-entregaveis .col {
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #161616;
+        }
+        .grid-entregaveis .col h5 {
+            color: #A8E0C8;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .grid-entregaveis .col ul { list-style: none; margin: 0; padding: 0; }
+        .grid-entregaveis .col li { border-bottom: 1px solid #2a2a2a; padding: 6px 0; font-size: 0.95rem; }
+        .grid-entregaveis .col li:last-child { border-bottom: none; }
+        .addons-card { border: 1px solid #333; background: rgba(255,255,255,0.02); border-radius: 12px; padding: 18px; }
+        .addons-card h4 { font-size: 1.05rem; margin-bottom: 6px; }
+        .addons-card .microcopy { color: #CFCFCF; font-size: 0.9rem; margin-bottom: 10px; }
+        .badge-unitario { background: #222; color: #A8E0C8; border: 1px solid #1E5942; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; margin-left: 6px; }
+        .addon-desc { color:#CFCFCF; font-size:0.95rem; margin-top:8px; line-height:1.45; }
+
+        /* Carrossel de Add-ons */
+        .addons-card { position: relative; }
+        .addon-carousel { overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+        /* Ocultar barra de rolagem do carrossel apenas no desktop */
+        @media (min-width: 900px) {
+            .addon-carousel { scrollbar-width: none; -ms-overflow-style: none; }
+            .addon-carousel::-webkit-scrollbar { display: none; height: 0; width: 0; }
+        }
+        .addon-track { display: flex; gap: 12px; }
+        .addon-card { flex: 0 0 calc(33.333% - 8px); background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); padding: 24px; scroll-snap-align: start; cursor: pointer; transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, opacity .2s ease; display:flex; flex-direction: column; }
+        .addon-card:hover { border-color: #1E5942; }
+        .addon-card.selected { border-color: #00E388; box-shadow: 0 0 0 2px rgba(0,227,136,0.25), 0 10px 20px rgba(0,0,0,0.25); background: rgba(0,0,0,0.45); opacity: 1; }
+        .addon-card:not(.selected) { opacity: 0.92; }
+        .addon-header { display:flex; align-items:center; gap:10px; margin-bottom: 8px; }
+        .addon-card .icon { font-size: 1.4rem; }
+        .addon-card h3 { font-size: 1rem; margin: 0; display:flex; align-items:center; gap:6px; }
+        .addon-desc { position: relative; }
+        .addon-desc.fade {
+            /* Clamp padrão e fallback WebKit */
+            line-clamp: 3;
+            -webkit-line-clamp: 3;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Linhas de detalhe com trilha de pontos e valores alinhados */
+        .detail-row { display: flex; align-items: baseline; gap: 8px; }
+        .detail-row .label { color: #CFCFCF; }
+        .detail-row .leader { flex: 1 1 auto; border-bottom: 1px dotted rgba(255,255,255,0.15); transform: translateY(-2px); }
+        .detail-row .value { color: #A8E0C8; font-weight: 700; min-width: 160px; text-align: right; font-variant-numeric: tabular-nums; }
+        .detail-row.total .label { font-weight: 600; color: #E9F5EF; }
+        .detail-row.total .value { color: #00FF9C; }
+        .addon-desc.fade::after { content:""; position:absolute; bottom:0; left:0; right:0; height: 24px; background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.45)); border-radius: 0 0 12px 12px; }
+        .addon-footer { display:flex; align-items:center; justify-content: space-between; gap: 12px; border-top: 1px solid rgba(255,255,255,.05); padding-top: 12px; margin-top: auto; }
+        .addon-card .price { color: #eaeaea; font-weight: 700; font-size: 1rem; }
+        .addon-card .select-btn { background: #1E5942; color: #fff; border: 1px solid #1E5942; border-radius: 16px; padding: 10px 14px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+        .addon-card.selected .select-btn { background: #00E388; border-color: #00E388; color: #111; }
+        .addon-card:hover { animation: glowPulse 2s ease-in-out infinite; }
+        @keyframes glowPulse { 0% { box-shadow: 0 4px 10px rgba(0,0,0,0.15); } 50% { box-shadow: 0 0 0 2px rgba(0,227,136,0.20), 0 12px 24px rgba(0,0,0,0.30);} 100% { box-shadow: 0 4px 10px rgba(0,0,0,0.15);} }
+        .addon-nav { position: absolute; top: 50%; transform: translateY(-50%); background: #111; border: 1px solid #333; color: #eaeaea; border-radius: 50%; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; cursor: pointer; opacity: 0.9; }
+        .addon-nav.prev { left: -8px; }
+        .addon-nav.next { right: -8px; }
+        @media (min-width: 900px) { .addons-card:hover .addon-nav { display: flex; } }
+        @media (max-width: 900px) { .addon-card { flex: 0 0 calc(50% - 8px); } }
+        @media (max-width: 520px) { .addon-card { flex: 0 0 100%; } }
+        .qty-controls { display:flex; align-items:center; gap:10px; margin-top:8px; }
+        .qty-controls button { width:28px; height:28px; border-radius:8px; border:1px solid #2a2a2a; background:#121212; color:#eaeaea; cursor:pointer; }
+        .qty-controls .qty-value { min-width:20px; text-align:center; font-weight:600; color:#eaeaea; }
+        .addon-checkbox { display:none; }
+        .addon-qty { display:none; }
+
         /* Seleção de Pagamento */
         .selecao-pagamento {
             background: #111;
@@ -565,16 +695,28 @@
         }
 
         .valor-row .valor {
-            font-weight: 700;
-            color: #00E388;
+            font-weight: 600;
+            color: #9fd2bd; /* discreto para não competir com o total */
             white-space: nowrap;
             text-align: right;
             min-width: fit-content;
         }
 
         .valor-row.total .valor {
-            font-size: 1.5rem;
+            font-size: 1.7rem; /* destaque maior apenas no Total Final */
             color: #1E5942;
+        }
+
+        /* Ajuste mobile: sem comportamento sticky para o resumo financeiro */
+        @media (max-width: 900px) {
+            .resumo-financeiro {
+                position: static;
+                bottom: auto;
+                z-index: auto;
+                backdrop-filter: none;
+                border-width: 1px;
+                padding: 20px;
+            }
         }
 
         .valor-row > span:first-child {
@@ -1083,7 +1225,7 @@
     <!-- Timer Fixo -->
     <div class="timer-validade" id="timerValidade" style="display: none;">
         <div class="timer-texto">
-            <span>⏳</span> <span id="textoTimer">Tempo restante para aprovação</span>
+            <span>⏳</span> <span id="textoTimer">Oferta válida por tempo limitado — garanta seus valores promocionais antes que expire</span>
         </div>
         <div class="timer-contador" id="timerContador">
             <div class="timer-unidade" id="diasContainer" style="display: none;">
@@ -1144,7 +1286,8 @@
     <!-- Serviços Contratados -->
     <section class="section servicos">
         <div class="container">
-            <h2 class="section-title">SERVIÇOS CONTRATADOS</h2>
+            <h2 class="section-title">📦 Seu Pacote de Serviços</h2>
+            <p class="section-subtitle" style="margin-top: -10px; margin-bottom: 25px; color: #A8A8A8;">Veja tudo que está incluso + personalize como preferir</p>
             <div id="servicosContainer"></div>
         </div>
     </section>
@@ -1162,22 +1305,26 @@
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="1">
                         <div class="title">1 mês</div>
-                        <div class="discount">0% desconto</div>
+                        <div class="discount" style="display:none">0% desconto</div>
+                        <div class="economia" data-meses="1" style="display:none">Economia: R$ 0,00</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="3">
                         <div class="title">3 meses</div>
-                        <div class="discount">5% desconto</div>
+                        <div class="discount" style="display:none">5% desconto</div>
+                        <div class="economia" data-meses="3" style="display:none">Economia: R$ 0,00</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="6" checked>
                         <div class="title">6 meses</div>
-                        <div class="discount">10% desconto</div>
+                        <div class="discount" style="display:none">10% desconto</div>
+                        <div class="economia" data-meses="6" style="display:none">Economia: R$ 0,00</div>
                     </label>
                     <label class="option-card">
                         <input type="radio" name="recorrencia" value="12">
                         <div class="title">12 meses</div>
-                        <div class="discount">15% desconto</div>
+                        <div class="discount" style="display:none">15% desconto</div>
+                        <div class="economia" data-meses="12" style="display:none">Economia: R$ 0,00</div>
                         <div class="badge-recomendado" style="background: #FFD700;">RECOMENDADO</div>
                         <div class="bonus" style="margin-top: 4px; font-size: 0.8rem; color: #7FDDB8; font-weight: 500;">🎁 Bônus: Você ganha 1 site (LP de alta conversão)</div>
                     </label>
@@ -1191,55 +1338,99 @@
                     <label class="option-card" id="opcao-avista">
                         <input type="radio" name="pagamento" value="avista">
                         <div class="title">À Vista (Pix ou Boleto)</div>
-                        <div class="discount" id="desconto-avista">10% desconto adicional</div>
+                        <div class="discount" id="desconto-avista" style="display:none">10% desconto adicional</div>
+                        <div class="economia" id="economia-avista" style="display:none">Economia: R$ 0,00</div>
                         <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Pagamento imediato via Pix ou Boleto</div>
                     </label>
                     <label class="option-card" id="opcao-parcelado">
                         <input type="radio" name="pagamento" value="parcelado">
                         <div class="title">50% agora + 50% em 30 dias (Pix/Boleto)</div>
-                        <div class="discount" id="desconto-parcelado">5% desconto adicional</div>
+                        <div class="discount" id="desconto-parcelado" style="display:none">5% desconto adicional</div>
+                        <div class="economia" id="economia-parcelado" style="display:none">Economia: R$ 0,00</div>
                         <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Primeira parcela no início; segunda em até 30 dias</div>
                     </label>
                     <label class="option-card" id="opcao-mensal">
                         <input type="radio" name="pagamento" value="mensal">
                         <div class="title">Mensal (Pix ou Boleto)</div>
-                        <div class="discount" id="desconto-mensal">Sem desconto adicional</div>
+                        <div class="discount" id="desconto-mensal" style="display:none">0% desconto adicional</div>
+                        <div class="economia" id="economia-mensal" style="display:none">Economia: R$ 0,00</div>
                         <div class="hint" style="font-size: 0.8rem; color: #ccc; margin-top: 4px;">Pagamento recorrente mensal via Pix ou Boleto</div>
                     </label>
                 </div>
             </div>
 
             <!-- Resumo Financeiro -->
-            <div class="resumo-financeiro">
+            <div class="resumo-financeiro" id="resumoFinanceiro">
                 <h3>💰 Resumo Financeiro</h3>
-                <div class="valor-row">
-                    <span>Valor Base dos Planos Contratados:</span>
-                    <span class="valor" id="valorBase">R$ 0,00</span>
-                </div>
-                <div class="valor-row" id="descontoRecorrenciaRow" style="display:none;">
-                    <span>Desconto por Recorrência:</span>
-                    <span class="valor" id="descontoRecorrencia">- R$ 0,00</span>
-                </div>
-                <div class="valor-row">
-                    <div>
-                        <span>Desconto Condicional (5% OFF):</span>
-                        <div style="font-size: 0.75rem; color: #A8A8A8; margin-top: 2px;">*Condicionado ao pagamento em dia e resposta à pesquisa mensal</div>
+                <!-- Linha 1: Valor Base -->
+                <div class="rf-row" id="rf-base-row">
+                    <div class="rf-left">
+                        <button class="rf-toggle" id="rf-base-toggle" aria-expanded="false" style="display:none">+</button>
+                        <span class="rf-label">Valor Base</span>
                     </div>
-                    <span class="valor" id="descontoCondicional">- R$ 0,00</span>
+                    <div class="rf-right">
+                        <span class="rf-value" id="valorBaseProduto">R$ 0,00</span>
+                    </div>
                 </div>
-                <div class="valor-row" id="descontoPagamentoRow" style="display:none;">
-                    <span>Desconto por Forma de Pagamento:</span>
-                    <span class="valor" id="descontoPagamento">- R$ 0,00</span>
+                <div class="rf-details" id="rf-base-details" style="display:none"></div>
+
+                <!-- Linha 2: Add-ons (condicional) -->
+                <div class="rf-row" id="rf-addons-row" style="display:none">
+                    <div class="rf-left">
+                        <button class="rf-toggle" id="rf-addons-toggle" aria-expanded="false" style="display:none">+</button>
+                        <span class="rf-label">Add-ons selecionados</span>
+                    </div>
+                    <div class="rf-right">
+                        <span class="rf-value" id="valorAddons">R$ 0,00</span>
+                    </div>
                 </div>
-                <div class="valor-row total">
-                    <span>💰 Valor Final Mensal:</span>
-                    <span class="valor" id="valorFinalMensal" style="color: #00FF9C; text-shadow: 0 2px 8px rgba(0, 255, 156, 0.3);">R$ 0,00</span>
+                <div class="rf-details" id="rf-addons-details" style="display:none"></div>
+
+                <!-- Linha 3: Subtotal (condicional) -->
+                <div class="rf-row" id="rf-subtotal-row" style="display:none">
+                    <div class="rf-left"><span class="rf-label">Subtotal</span></div>
+                    <div class="rf-right"><span class="rf-value" id="subtotalGeral">R$ 0,00</span></div>
                 </div>
-                <div class="valor-row total">
-                    <span>Valor Total do Contrato:</span>
-                    <span class="valor" id="valorTotalPeriodo">R$ 0,00</span>
+
+                <!-- Linha 4: Desconto aplicado (condicional) -->
+                <div class="rf-row" id="descontosAplicaveisRow" style="display:none">
+                    <div class="rf-left">
+                        <button class="rf-toggle" id="rf-desconto-toggle" aria-expanded="false" style="display:none">+</button>
+                        <span class="rf-label">Desconto aplicado</span>
+                    </div>
+                    <div class="rf-right"><span class="rf-value" id="descontosAplicaveis">- R$ 0,00</span></div>
                 </div>
+                <div class="rf-details" id="rf-desconto-details" style="display:none"></div>
+
+                <!-- Linha 5: Total (destacado) -->
+                <div class="rf-row rf-total">
+                    <div class="rf-left"><span class="rf-label rf-total-label">TOTAL FINAL</span></div>
+                    <div class="rf-right"><span class="rf-value rf-total-value" id="totalFinalContrato">R$ 0,00</span></div>
+                </div>
+
+                <!-- Linha 6: Mensal/Parcelado (condicional) -->
+                <div class="rf-row" id="rf-mensal-parcelado-row" style="display:none">
+                    <div class="rf-left"><span class="rf-label" id="rf-mp-label">Mensalidade</span></div>
+                    <div class="rf-right"><span class="rf-value" id="rf-mp-value">R$ 0,00</span></div>
+                </div>
+
+                <!-- Compat: valores brutos não exibidos -->
+                <span id="valorFinalMensal" style="display:none">R$ 0,00</span>
+                <span id="valorTotalPeriodo" style="display:none">R$ 0,00</span>
             </div>
+            <style>
+              .resumo-financeiro { padding: 24px; border: 1px solid rgba(0,255,156,0.2); border-radius: 12px; background: rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 12px; }
+              .rf-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+              .rf-left { display: inline-flex; align-items: center; gap: 8px; }
+              .rf-right { display: inline-flex; align-items: center; }
+              .rf-label { font-weight: 600; }
+              .rf-value { font-weight: 700; }
+              .rf-total { border: 1px dashed rgba(0,255,156,0.35); padding: 20px; border-radius: 12px; background: rgba(0,255,156,0.08); }
+              .rf-total-value { color:#00FF9C; text-shadow: 0 2px 8px rgba(0,255,156,0.3); font-size:1.3rem; font-weight:800; }
+              .rf-toggle { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #3a3a3a; background: rgba(255,255,255,0.04); color: #e7e7e7; cursor: pointer; }
+              .rf-details { border-top: 1px solid rgba(255,255,255,0.08); margin-top: -6px; padding: 8px 8px 8px 36px; color: #CFCFCF; font-size: 0.93rem; }
+              @media (max-width: 640px) { .rf-row { flex-direction: column; align-items: flex-start; } .rf-right { width: 100%; justify-content: flex-start; } }
+            </style>
         </div>
     </section>
 
@@ -1604,6 +1795,7 @@
             await carregarDados();
             configurarEventListeners();
             calcularValores();
+            try { atualizarEconomiaRecorrencia(); } catch (e) {}
             configurarComparacao();
             verificarSelecoes();
             // Corrigir seleção visual inicial
@@ -1644,16 +1836,61 @@
             return null;
         }
 
-        // Seleciona radio por nome e valor e aplica o destaque visual do card
+        // Helper: obter metadata.catalogo com parsing robusto (objeto ou string)
+        function obterMetadataCatalogo() {
+            try {
+                const metaRaw = (window.propostaCarregada && window.propostaCarregada.metadata) ? window.propostaCarregada.metadata : null;
+                let meta = null;
+                if (!metaRaw) return {};
+                if (typeof metaRaw === 'string') {
+                    try { meta = JSON.parse(metaRaw); } catch(_) { meta = {}; }
+                } else if (typeof metaRaw === 'object') {
+                    meta = metaRaw;
+                } else {
+                    meta = {};
+                }
+                let cat = meta.catalogo || {};
+                // Alguns ambientes podem salvar catalogo como string JSON
+                if (typeof cat === 'string') {
+                    try { cat = JSON.parse(cat); } catch(_) { cat = {}; }
+                }
+                // Normalizar valor
+                const valorNum = parseFloat(String(cat.valor || '0').replace(',', '.')) || 0;
+                cat.valor = valorNum;
+                // Garantir estruturas
+                if (cat.sessoes && typeof cat.sessoes === 'string') {
+                    try { cat.sessoes = JSON.parse(cat.sessoes); } catch(_) {}
+                }
+                if (!Array.isArray(cat.sessoes) && typeof cat.sessoes !== 'object') {
+                    cat.sessoes = [];
+                }
+                if (cat.addons && typeof cat.addons === 'string') {
+                    try { cat.addons = JSON.parse(cat.addons); } catch(_) {}
+                }
+                if (!Array.isArray(cat.addons)) {
+                    cat.addons = [];
+                }
+                return cat || {};
+            } catch(_) {
+                return {};
+            }
+        }
+
+        // Seleciona radio por nome/valor e aplica destaque; se "mensal" não permitido, cai para "parcelado"
         function selecionarRadioPorValor(nome, valor) {
-            const input = document.querySelector(`input[name="${nome}"][value="${valor}"]`);
+            const grupo = nome === 'recorrencia' ? 'recorrencia-options' : 'pagamento-options';
+            let input = document.querySelector(`input[name="${nome}"][value="${valor}"]`);
+            if (nome === 'pagamento' && valor === 'mensal') {
+                const invalido = !input || input.disabled || (input.closest('.option-card')?.style.display === 'none');
+                if (invalido) {
+                    input = document.querySelector('input[name="pagamento"][value="parcelado"]');
+                }
+            }
             if (input) {
                 input.checked = true;
+                document.querySelectorAll(`.${grupo} .option-card`).forEach(c => c.classList.remove('selected'));
                 const card = input.closest('.option-card');
-                if (card) {
-                    document.querySelectorAll(`.${nome === 'recorrencia' ? 'recorrencia-options' : 'pagamento-options'} .option-card`).forEach(c => c.classList.remove('selected'));
-                    card.classList.add('selected');
-                }
+                if (card) card.classList.add('selected');
             }
         }
 
@@ -1675,13 +1912,19 @@
                     .eq('id', id)
                     .maybeSingle();
                     
-                console.log('Resposta Supabase:', { data, error });
-                
-                if (error) throw error;
+                if (error) {
+                    window.reportError('Erro ao buscar proposta (propostas_criadas)', error, { uuid: id });
+                    throw error;
+                }
+                window.reportInfo('Resposta Supabase (propostas_criadas)', data);
                 if (!data) throw new Error('Proposta não encontrada');
 
                 window.propostaCarregada = data; // Disponível globalmente
                 console.log('Proposta carregada:', data);
+
+                // Após carregar a proposta, sincronizar flags do produto do catálogo (se houver produto_id)
+                try { await sincronizarFlagsComProdutoCatalogo(); } catch(_) {}
+                try { reportarDiagnosticoFinanceiro(); } catch(_) {}
 
                 // Bloquear ações de aceite se já estiver aceita
                 try {
@@ -1693,7 +1936,7 @@
                         if (btnFlutuante) { btnFlutuante.disabled = true; btnFlutuante.innerHTML = '<span class="btn-icon">✅</span><span class="btn-text">Assinada</span>'; }
                         if (avisoSelecao) { avisoSelecao.style.display = 'block'; avisoSelecao.textContent = '⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.'; }
                     }
-                } catch (e) { console.warn('Falha ao aplicar bloqueio de UI:', e); }
+                } catch (e) { window.reportWarn('Falha ao aplicar bloqueio de UI', e); }
 
                 // Cabeçalho
                 // Exibe o nome do cliente/empresa no cabeçalho
@@ -1745,6 +1988,119 @@
                     });
                 }
 
+                // Itens do Catálogo vinculados à proposta (public.proposta_itens)
+                try {
+                    const { data: itensCat, error: itensErr } = await client
+                        .from('proposta_itens')
+                        .select('nome_servico, descricao, quantidade, total')
+                        .eq('proposta_criada_id', id);
+                    if (itensErr) {
+                        window.reportError('Erro ao buscar itens do catálogo (proposta_itens)', itensErr, { uuid: id });
+                    }
+                    if (!itensErr && Array.isArray(itensCat)) {
+                        window.reportInfo('Itens do catálogo carregados', itensCat);
+                    }
+                    if (!itensErr && Array.isArray(itensCat) && itensCat.length) {
+                        itensCat.forEach(item => {
+                            const valorItem = Number(item.total) || 0;
+                            valorBase += valorItem;
+                            const serv = {
+                                tipo: 'Catálogo',
+                                plano: item.nome_servico || 'Item do Catálogo',
+                                valor: valorItem
+                            };
+                            const desc = (item.descricao || '').toString().trim();
+                            serv.entregaveis = desc ? [desc] : [];
+                            servicosContratados.push(serv);
+                        });
+                    }
+                } catch (e) {
+                    window.reportError('Falha ao carregar itens de catálogo da proposta', e, { uuid: id });
+                }
+
+                // Adicionar serviço do Catálogo vindo por parâmetros (mesmo com UUID)
+                try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const metaCat = obterMetadataCatalogo();
+                const catNome = urlParams.get('catalogoProdutoNome') || metaCat.produto_nome || '';
+                const catPlano = urlParams.get('catalogoPlanoNome') || metaCat.plano_nome || '';
+                const catValorNum = parseFloat(urlParams.get('catalogoValor') || String(metaCat.valor || '0')) || 0;
+                const sessoesStr = urlParams.get('catalogoSessoes') || (Array.isArray(metaCat.sessoes) || typeof metaCat.sessoes === 'object' ? JSON.stringify(metaCat.sessoes) : '');
+                const addonsStr = urlParams.get('catalogoAddons') || (Array.isArray(metaCat.addons) ? JSON.stringify(metaCat.addons) : '');
+                    let sessoesObj = null;
+                    let addonsArr = null;
+                    try { if (sessoesStr) sessoesObj = JSON.parse(sessoesStr); } catch(_) {}
+                    try { if (addonsStr) addonsArr = JSON.parse(addonsStr); } catch(_) {}
+                    // Fallback (via metadata): se add-ons vierem vazios e houver produto_id, buscar planos do produto e selecionar o que tiver add-ons
+                    if ((!Array.isArray(addonsArr) || !addonsArr.length) && metaCat && metaCat.produto_id) {
+                        try {
+                            console.info('[Add-ons] Fallback(meta): consultando produto_planos para produto_id', metaCat.produto_id);
+                            const { data: planosResp, error: planosErr } = await window.supabase
+                                .from('produto_planos')
+                                .select('id, nome, valor, addons')
+                                .eq('produto_id', metaCat.produto_id)
+                                .order('created_at', { ascending: true });
+                            if (planosErr) {
+                                console.warn('[Add-ons] Fallback(meta) erro ao buscar produto_planos:', planosErr);
+                            }
+                            if (Array.isArray(planosResp) && planosResp.length) {
+                                const comAddons = planosResp.find(p => Array.isArray(p.addons) && p.addons.length);
+                                if (comAddons) {
+                                    addonsArr = comAddons.addons;
+                                    console.info('[Add-ons] Fallback(meta): add-ons carregados do plano', comAddons.id, comAddons.addons);
+                                } else {
+                                    console.info('[Add-ons] Fallback(meta): nenhum plano com add-ons encontrado para produto', metaCat.produto_id);
+                                }
+                            } else {
+                                console.info('[Add-ons] Fallback(meta): nenhum plano retornado para produto', metaCat.produto_id);
+                            }
+                        } catch (e) {
+                            console.warn('[Add-ons] Fallback(meta) exceção ao buscar planos:', e);
+                        }
+                    }
+                    if (catNome || catPlano || catValorNum > 0) {
+                        valorBase += (catValorNum > 0 ? catValorNum : 0);
+                        const serv = {
+                            tipo: 'Catálogo',
+                            plano: catPlano || 'Plano',
+                            valor: catValorNum
+                        };
+                        if (sessoesObj && !Array.isArray(sessoesObj) && typeof sessoesObj === 'object') {
+                            // Mapa de seções { titulo: [itens] }
+                            serv.secoes = sessoesObj;
+                        } else if (Array.isArray(sessoesObj)) {
+                            // Array pode ser [strings] ou [{ titulo, itens }]
+                            const pareceArrayDeObjetos = !!sessoesObj[0] && typeof sessoesObj[0] === 'object';
+                            if (pareceArrayDeObjetos) {
+                                serv.secoes = sessoesObj; // renderização aceita array de objetos
+                            } else {
+                                serv.entregaveis = sessoesObj; // lista simples de strings
+                            }
+                        } else {
+                            serv.entregaveis = [];
+                        }
+                        // Se houver add-ons, marcar como composição, disponibilizar para UI e incluir selecionados na seção
+                        if (Array.isArray(addonsArr) && addonsArr.length) {
+                            serv.addonsDisponiveis = addonsArr;
+                            serv.tipoProduto = 'composicao';
+                            const selecionados = addonsArr.filter(a => a && a.selecionado);
+                            if (selecionados.length) {
+                                const itens = selecionados.map(a => {
+                                    const label = (a.nome || '').toString();
+                                    const desc = (a.descricao || '').toString();
+                                    return desc ? `${label} — ${desc}` : label;
+                                });
+                                serv.secoes = serv.secoes || {};
+                                serv.secoes['Add-ons'] = itens;
+                            }
+                        } else {
+                            // Sem add-ons: manter simples; se houver produto_id, tipo será 'simples'
+                            serv.tipoProduto = (metaCat && metaCat.produto_id) ? serv.tipoProduto || 'simples' : 'simples';
+                        }
+                        servicosContratados.push(serv);
+                    }
+                } catch (_) { /* ignore */ }
+
                 // Dados auxiliares usados em outras partes
                 window.dadosProposta = {
                     nomeCliente: data.nome_cliente || '',
@@ -1756,13 +2112,105 @@
                 };
 
                 renderizarServicos();
-                try { calcularValores(); } catch(e) { console.warn('Falha ao calcular valores iniciais com campos assinados:', e); }
+                try { calcularValores(); } catch(e) { window.reportError('Falha ao calcular valores iniciais com campos assinados', e); }
                 atualizarResumo();
+                // Ajustar seleção inicial de pagamento quando somente itens de catálogo
+                try {
+                    const somenteCatalogo = servicosContratados.length && servicosContratados.every(s => s.tipo === 'Catálogo');
+                    const formaAssinada = normalizarFormaPagamento(data.forma_pagamento_assinada ?? data.forma_pagamento);
+                    if (somenteCatalogo && !formaAssinada) {
+                        selecionarRadioPorValor('pagamento', 'parcelado');
+                    }
+                } catch (_) {}
                 // Se o nome da empresa não veio do banco, tentar preencher via CNPJ
-                try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { console.warn('Fallback CNPJ falhou:', e); }
+                try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { window.reportWarn('Fallback CNPJ falhou', e); }
             } catch (e) {
                 console.error('Erro ao carregar proposta por UUID:', e);
-                alert('Não foi possível carregar a proposta. Verifique o link e tente novamente.');
+                console.warn('Ativando fallback de visualização via parâmetros da URL.');
+
+                // Desativar ações de aceite (sem registro carregado)
+                try {
+                    const btnPrincipal = document.getElementById('btnAceitarPrincipal');
+                    const btnFlutuante = document.getElementById('btnAceitarFlutuante');
+                    const avisoSelecao = document.getElementById('avisoSelecao');
+                    if (btnPrincipal) { btnPrincipal.disabled = true; btnPrincipal.textContent = '⚠️ Visualização offline'; }
+                    if (btnFlutuante) { btnFlutuante.disabled = true; btnFlutuante.innerHTML = '<span class="btn-icon">⚠️</span><span class="btn-text">Offline</span>'; }
+                    if (avisoSelecao) { avisoSelecao.style.display = 'block'; avisoSelecao.textContent = '⚠️ Visualização sem cadastro do UUID. Use os parâmetros para revisar.'; }
+                } catch (_) {}
+
+                // Fallback: montar página usando apenas parâmetros do link
+                const params = new URLSearchParams(window.location.search);
+                const empresaHeader = params.get('nomeCliente') || params.get('empresaCliente') || 'Cliente';
+                const dataCriacao = new Date();
+                document.getElementById('empresaCliente').textContent = empresaHeader;
+                document.getElementById('dataProposta').textContent = dataCriacao.toLocaleDateString('pt-BR');
+
+                const diasValidade = parseInt(params.get('diasValidade') || '7');
+                try { iniciarTimer(dataCriacao.toISOString(), diasValidade); } catch(_) {}
+
+                // Dados auxiliares
+                window.dadosProposta = {
+                    nomeCliente: empresaHeader,
+                    empresaCliente: params.get('empresaCliente') || '',
+                    emailCliente: params.get('emailCliente') || '',
+                    timestampCriacao: dataCriacao.toLocaleDateString('pt-BR') + ' ' + dataCriacao.toLocaleTimeString('pt-BR'),
+                    responsavelProposta: params.get('responsavelProposta') || '',
+                    diasValidade: String(diasValidade)
+                };
+
+                // Montar serviços contratados a partir dos parâmetros do Catálogo
+                try {
+                    valorBase = 0;
+                    servicosContratados = [];
+                const metaCat2 = obterMetadataCatalogo();
+                const catNome = params.get('catalogoProdutoNome') || metaCat2.produto_nome || '';
+                const catPlano = params.get('catalogoPlanoNome') || metaCat2.plano_nome || '';
+                const catValorNum = parseFloat(params.get('catalogoValor') || String(metaCat2.valor || '0')) || 0;
+                const sessoesStr = params.get('catalogoSessoes') || (Array.isArray(metaCat2.sessoes) || typeof metaCat2.sessoes === 'object' ? JSON.stringify(metaCat2.sessoes) : '');
+                const addonsStr = params.get('catalogoAddons') || (Array.isArray(metaCat2.addons) ? JSON.stringify(metaCat2.addons) : '');
+                    let sessoesObj = null;
+                    let addonsArr = null;
+                    try { if (sessoesStr) sessoesObj = JSON.parse(sessoesStr); } catch(_) {}
+                    try { if (addonsStr) addonsArr = JSON.parse(addonsStr); } catch(_) {}
+                    if (catNome || catPlano || catValorNum > 0) {
+                        valorBase += (catValorNum > 0 ? catValorNum : 0);
+                        const serv = { tipo: 'Catálogo', plano: catPlano || 'Plano', valor: catValorNum };
+                        if (sessoesObj && !Array.isArray(sessoesObj) && typeof sessoesObj === 'object') {
+                            serv.secoes = sessoesObj;
+                        } else if (Array.isArray(sessoesObj)) {
+                            const pareceArrayDeObjetos = !!sessoesObj[0] && typeof sessoesObj[0] === 'object';
+                            serv[pareceArrayDeObjetos ? 'secoes' : 'entregaveis'] = sessoesObj;
+                        } else {
+                            serv.entregaveis = [];
+                        }
+                        if (Array.isArray(addonsArr) && addonsArr.length) {
+                            const selecionados = addonsArr.filter(a => a && a.selecionado);
+                            if (selecionados.length) {
+                                const itens = selecionados.map(a => {
+                                    const label = (a.nome || '').toString();
+                                    const desc = (a.descricao || '').toString();
+                                    return desc ? `${label} — ${desc}` : label;
+                                });
+                                serv.secoes = serv.secoes || {};
+                                serv.secoes['Add-ons'] = itens;
+                            }
+                        }
+                        servicosContratados.push(serv);
+                    }
+                } catch(_) {}
+
+                try {
+                    const somenteCatalogo = servicosContratados.length && servicosContratados.every(s => s.tipo === 'Catálogo');
+                    const recInicial = somenteCatalogo ? 6 : 6;
+                    const formaInicial = somenteCatalogo ? 'parcelado' : 'mensal';
+                    selecionarRadioPorValor('recorrencia', String(recInicial));
+                    selecionarRadioPorValor('pagamento', String(formaInicial));
+                } catch(_) {}
+
+                renderizarServicos();
+                try { calcularValores(); } catch(_) {}
+                atualizarResumo();
+                try { await tentarPopularEmpresaPorCNPJ(); } catch(_) {}
             }
         }
 
@@ -1805,6 +2253,24 @@
                 await carregarDadosPorUUID(id);
                 return;
             }
+
+            // Inicializar flags financeiras a partir dos parâmetros quando não há UUID
+            try {
+                window.propostaCarregada = window.propostaCarregada || {};
+                const recParam = params.get('recorrenciaAtiva');
+                const descPagParam = (params.get('descontosPagamentoAtivo') || '').toString();
+                const descAtivosParam = (params.get('descontosAtivos') || '').toString();
+                const descCondParam = params.get('descontoCondicionalAtivo');
+                if (typeof window.propostaCarregada.recorrencia_ativa !== 'boolean') {
+                    window.propostaCarregada.recorrencia_ativa = (recParam === 'true');
+                }
+                if (typeof window.propostaCarregada.descontos_pagamento_ativo !== 'boolean') {
+                    window.propostaCarregada.descontos_pagamento_ativo = (descPagParam === 'true') || (descAtivosParam === 'true');
+                }
+                if (typeof window.propostaCarregada.desconto_condicional_ativo !== 'boolean') {
+                    window.propostaCarregada.desconto_condicional_ativo = (descCondParam === 'true');
+                }
+            } catch(_) { /* safe init */ }
             
             // Dados do cliente
             document.getElementById('empresaCliente').textContent = params.get('nomeCliente') || params.get('empresaCliente') || 'Cliente';
@@ -1834,23 +2300,12 @@
             // Carregar serviços
             const socialMidia = params.get('servicoSocialMidia');
             let trafegoPago = params.get('servicoTrafegoPago');
+            // Parâmetros do Catálogo
+            const catalogoProdutoNome = params.get('catalogoProdutoNome') || '';
+            const catalogoPlanoNome = params.get('catalogoPlanoNome') || '';
+            const catalogoValorNum = parseFloat(params.get('catalogoValor') || '0') || 0;
 
-            // Fallback: quando nenhum serviço é passado via URL, exibir Tráfego Pago FOCO por padrão
-            if ((!socialMidia || socialMidia === 'nao-se-aplica') && (!trafegoPago || trafegoPago === 'nao-se-aplica')) {
-                trafegoPago = 'foco';
-                // Garantir exibição do modelo de cobrança conforme esperado: Híbrido 10%
-                if (!params.get('modeloCobranca')) params.set('modeloCobranca', 'hibrido');
-                if (!params.get('percentualComissao')) params.set('percentualComissao', '10');
-                if (!params.get('valorFixoTrafego')) params.set('valorFixoTrafego', String(planos.trafegoPago.foco.valor));
-
-                // Persistir valores padrão para uso em outras partes da página
-                window.propostaCarregada = window.propostaCarregada || {};
-                window.propostaCarregada.tem_comissao_vendas = true;
-                window.propostaCarregada.tipo_comissao_hibrido = 'percentual';
-                window.propostaCarregada.percentual_comissao = 10;
-                window.propostaCarregada.valor_fixo_trafego = planos.trafegoPago.foco.valor;
-                window.propostaCarregada.servico_trafego_pago_key = 'foco';
-            }
+            // Removido fallback de Tráfego Pago FOCO: fluxo Catálogo-only
             
             valorBase = 0;
             servicosContratados = [];
@@ -1885,8 +2340,88 @@
                     secoes: plano.secoes
                 });
             }
+
+            // Serviço do Catálogo (quando presente via parâmetros)
+            if (catalogoValorNum > 0 || (catalogoProdutoNome && catalogoPlanoNome)) {
+                valorBase += (catalogoValorNum > 0 ? catalogoValorNum : 0);
+                let sessoesObj = null;
+                let addonsArr = null;
+                let metaCat3 = {};
+                try {
+                    metaCat3 = obterMetadataCatalogo();
+                    const s = params.get('catalogoSessoes') || (Array.isArray(metaCat3.sessoes) || typeof metaCat3.sessoes === 'object' ? JSON.stringify(metaCat3.sessoes) : '');
+                    if (s) sessoesObj = JSON.parse(s);
+                } catch (_) { /* ignore */ }
+                try {
+                    const a = params.get('catalogoAddons') || (Array.isArray(metaCat3.addons) ? JSON.stringify(metaCat3.addons) : '');
+                    if (a) addonsArr = JSON.parse(a);
+                } catch (_) { /* ignore */ }
+                // Fallback: se add-ons não vierem de metadata/URL e houver produto_id, buscar planos e pegar o que tiver add-ons
+                if ((!Array.isArray(addonsArr) || !addonsArr.length) && metaCat3 && metaCat3.produto_id) {
+                    try {
+                        console.info('[Add-ons] Fallback: consultando produto_planos para produto_id', metaCat3.produto_id);
+                        const { data: planosResp, error: planosErr } = await window.supabase
+                            .from('produto_planos')
+                            .select('id, nome, valor, addons')
+                            .eq('produto_id', metaCat3.produto_id)
+                            .order('created_at', { ascending: true });
+                        if (planosErr) {
+                            console.warn('[Add-ons] Fallback erro ao buscar produto_planos:', planosErr);
+                        }
+                        if (Array.isArray(planosResp) && planosResp.length) {
+                            const comAddons = planosResp.find(p => Array.isArray(p.addons) && p.addons.length);
+                            if (comAddons) {
+                                addonsArr = comAddons.addons;
+                                console.info('[Add-ons] Fallback: add-ons carregados do plano', comAddons.id, comAddons.addons);
+                            } else {
+                                console.info('[Add-ons] Fallback: nenhum plano com add-ons encontrado para produto', metaCat3.produto_id);
+                            }
+                        } else {
+                            console.info('[Add-ons] Fallback: nenhum plano retornado para produto', metaCat3.produto_id);
+                        }
+                    } catch (e) {
+                        console.warn('[Add-ons] Fallback exceção ao buscar planos:', e);
+                    }
+                }
+                const serv = {
+                    tipo: 'Catálogo',
+                    plano: catalogoPlanoNome || 'Plano',
+                    valor: catalogoValorNum
+                };
+                if (sessoesObj && !Array.isArray(sessoesObj) && typeof sessoesObj === 'object') {
+                    serv.secoes = sessoesObj;
+                } else if (Array.isArray(sessoesObj)) {
+                    const pareceArrayDeObjetos = !!sessoesObj[0] && typeof sessoesObj[0] === 'object';
+                    if (pareceArrayDeObjetos) {
+                        serv.secoes = sessoesObj;
+                    } else {
+                        serv.entregaveis = sessoesObj;
+                    }
+                } else {
+                    serv.entregaveis = [];
+                }
+                // Guardar add-ons disponíveis quando existirem (produto composição)
+                if (Array.isArray(addonsArr) && addonsArr.length) {
+                    serv.addonsDisponiveis = addonsArr;
+                    serv.tipoProduto = 'composicao';
+                } else {
+                    // Se não houver add-ons, manter simples; se o produto for de composição pelo schema, marcar como composição
+                    serv.tipoProduto = (metaCat3 && metaCat3.produto_id) ? serv.tipoProduto || 'simples' : 'simples';
+                }
+                servicosContratados.push(serv);
+            }
             
+            // Ajustes de seleção inicial quando vem via parâmetros (preview Catálogo)
+            try {
+                const somenteCatalogo = servicosContratados.length && servicosContratados.every(s => s.tipo === 'Catálogo');
+                const recInicial = somenteCatalogo ? 6 : 6; // 6 meses como default visual
+                const formaInicial = somenteCatalogo ? 'parcelado' : 'mensal';
+                selecionarRadioPorValor('recorrencia', String(recInicial));
+                selecionarRadioPorValor('pagamento', String(formaInicial));
+            } catch (_) {}
+
             renderizarServicos();
+            try { calcularValores(); } catch(e) { console.warn('Falha ao calcular valores iniciais (params):', e); }
             atualizarResumo();
             // Se vier via parâmetros e empresa estiver ausente, tentar preencher pelo CNPJ
             try { await tentarPopularEmpresaPorCNPJ(); } catch (e) { console.warn('Fallback CNPJ (params) falhou:', e); }
@@ -1898,29 +2433,58 @@
             
             const temTrafegoPago = servicosContratados.some(s => s.tipo === 'Tráfego Pago');
             
-            servicosContratados.forEach(servico => {
+            servicosContratados.forEach((servico, idx) => {
                 const card = document.createElement('div');
                 card.className = 'servico-card';
+                card.setAttribute('data-servico-index', String(idx));
                 
+                // Helper para converter itens de entregáveis em texto
+                const textoItem = (item) => {
+                    let base = '';
+                    if (typeof item === 'string') {
+                        base = item;
+                    } else if (item && typeof item === 'object') {
+                        base = item.nome || item.titulo || item.label || item.descricao || item.texto || item.item || '';
+                        if (!base) {
+                            try { base = JSON.stringify(item); } catch(_) { base = String(item); }
+                        }
+                    } else {
+                        base = String(item ?? '');
+                    }
+                    const isLP = /(?:LP|Landing Page) de alta conversão/i.test(base);
+                    return isLP ? `${base} (exclusivo para plano de 12 meses de recorrência)` : base;
+                };
+
                 let entregaveisHtml = '';
                 if (servico.secoes) {
-                    // Formato com seções — manter LP visível sempre, com observação
-                    Object.keys(servico.secoes).forEach(secaoNome => {
-                        entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${secaoNome}:</h5><ul style="margin-left: 15px;">`;
-                        servico.secoes[secaoNome].forEach(item => {
-                            const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
-                            const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
-                            entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
+                    // Formato com seções — aceitar objeto de arrays OU array de objetos { titulo, itens }
+                    if (Array.isArray(servico.secoes)) {
+                        servico.secoes.forEach(sec => {
+                            const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${titulo}:</h5><ul style="margin-left: 15px;">`;
+                            itens.forEach(item => {
+                                const itemTexto = textoItem(item);
+                                entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
+                            });
+                            entregaveisHtml += '</ul></div>';
                         });
-                        entregaveisHtml += '</ul></div>';
-                    });
+                    } else if (typeof servico.secoes === 'object') {
+                        Object.keys(servico.secoes).forEach(secaoNome => {
+                            const lista = servico.secoes[secaoNome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            entregaveisHtml += `<div style="margin-bottom: 15px;"><h5 style="color: #1E5942; margin-bottom: 8px; font-size: 1rem;">${secaoNome}:</h5><ul style="margin-left: 15px;">`;
+                            itens.forEach(item => {
+                                const itemTexto = textoItem(item);
+                                entregaveisHtml += `<li style="margin-bottom: 4px;">${itemTexto}</li>`;
+                            });
+                            entregaveisHtml += '</ul></div>';
+                        });
+                    }
                 } else {
                     // Formato antigo (lista simples) — manter LP visível sempre, com observação
-                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => {
-                        const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
-                        const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
-                        return `<li>${itemTexto}</li>`;
-                    }).join('')}</ul>`;
+                    const lista = Array.isArray(servico.entregaveis) ? servico.entregaveis : [];
+                    entregaveisHtml = `<ul>${lista.map(item => `<li>${textoItem(item)}</li>`).join('')}</ul>`;
                 }
                 
                 // Informações de cobrança específicas para Tráfego Pago
@@ -1953,15 +2517,77 @@
                 card.innerHTML = `
                     <div class="servico-header">
                         <h3>${servico.tipo}</h3>
-                        <div class="servico-badge">${servico.plano}</div>
+                        <div class="servico-badge">Plano Base incluído</div>
                     </div>
-                    <div class="entregaveis">
-                        <h4>Entregáveis:</h4>
-                        ${entregaveisHtml}
+                    <div class="incluidos-card">
+                        <h4>🔒 Entregáveis incluídos no plano base</h4>
+                        <div class="grid-entregaveis">
+                            ${entregaveisHtml}
+                        </div>
                     </div>
                     ${cobrancaHtml}
                 `;
                 container.appendChild(card);
+
+                // Add-ons opcionais: renderizar apenas para produto composição (carrossel com cards)
+                if (servico.tipoProduto === 'composicao' && Array.isArray(servico.addonsDisponiveis) && servico.addonsDisponiveis.length) {
+                    const addonsWrap = document.createElement('div');
+                    addonsWrap.className = 'addons-container addons-card';
+                    addonsWrap.setAttribute('data-servico-index', String(idx));
+                    const addonsCards = servico.addonsDisponiveis.map((a, idx) => {
+                        const nome = a.nome || a.titulo || 'Add-on';
+                        let desc = a.descricaoCurta || a.descricao || '';
+                        try { desc = desc.replace(/(Google|convers[ãa]o)/gi, '<strong>$1</strong>'); } catch(_) {}
+                        const icon = a.icone || '🧩';
+                        const isUnit = (a.tipoPreco === 'unitario') || (!!a.unitario);
+                        const valorFix = isUnit ? null : (typeof a.valor === 'number' ? a.valor : (parseFloat(a.valor || '0') || 0));
+                        const valorUnit = isUnit ? (typeof a.valorUnitario === 'number' ? a.valorUnitario : (parseFloat(a.valorUnitario || a.valor_unitario || '0') || 0)) : 0;
+                        const unitLabel = a.textoUnitario || a.texto_unidade || '';
+                        const preSel = !!(a.preSelecionado || a.selecionado);
+                        const qtdInicial = typeof a.qtdSelecionada === 'number' ? Math.max(1,a.qtdSelecionada) : 1;
+                        const precoTexto = isUnit
+                          ? `R$ ${valorUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          : `R$ ${valorFix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                        return `
+                        <div class="addon-card addon-row${preSel ? ' selected' : ''}" data-addon-index="${idx}">
+                            <div class="addon-header">
+                                <span class="icon">${icon}</span>
+                                <h3>${nome} ${isUnit ? '<span class="badge-unitario">Unitário</span>' : ''}</h3>
+                            </div>
+                            ${desc ? `<p class="addon-desc">${desc}</p>` : ''}
+                            ${isUnit ? `
+                            <div class="qty-controls">
+                                <button type="button" class="qty-minus" aria-label="Diminuir">−</button>
+                                <span class="qty-value">${qtdInicial}</span>
+                                <button type="button" class="qty-plus" aria-label="Aumentar">+</button>
+                            </div>
+                            <div class="addon-qty-wrap" style="margin-top:6px; display:${preSel ? 'block' : 'none'};">
+                                <input type="number" min="1" value="${qtdInicial}" class="addon-qty" />
+                            </div>
+                            ` : ''}
+                            <div class="addon-footer">
+                                ${precoTexto ? `<div class="addon-price" style="color:#A8E0C8; font-weight:700;">${precoTexto}</div>` : ''}
+                                ${isUnit ? `<div class="addon-unit-note" style="font-size:0.75rem; color:#CFCFCF; margin-top:2px;">${unitLabel || 'por unidade'}</div>` : ''}
+                                <button type="button" class="select-btn">${preSel ? 'Selecionado' : 'Selecionar'}</button>
+                            </div>
+                            <input type="checkbox" class="addon-checkbox" ${preSel ? 'checked' : ''} />
+                            <input type="hidden" class="addon-meta" value='${JSON.stringify({ id: a.id || null, nome, tipoPreco: isUnit ? 'unitario' : 'fixo', valor: isUnit ? 0 : valorFix, valorUnitario: valorUnit, textoUnitario: unitLabel })}' />
+                        </div>`;
+                    }).join('');
+                    addonsWrap.innerHTML = `
+                        <div style="margin-top:12px;">
+                            <h4 style="display:flex; align-items:center; gap:8px; font-size:1rem;">🧩 Adicione módulos opcionais <span style="font-weight:400; color:#CFCFCF;">— Monte o serviço perfeito para você</span></h4>
+                            <p class="microcopy">Você só paga pelo que selecionar. O valor muda automaticamente.</p>
+                            <div class="addon-carousel">
+                                <div class="addon-track">${addonsCards}</div>
+                            </div>
+                            <button type="button" class="addon-nav prev" aria-label="Anterior">‹</button>
+                            <button type="button" class="addon-nav next" aria-label="Próximo">›</button>
+                            
+                        </div>
+                    `;
+                    card.appendChild(addonsWrap);
+                }
             });
             
             // Adicionar aviso se houver tráfego pago
@@ -1983,6 +2609,22 @@
                 });
                 const card = input.closest(cardSelector);
                 if (card) card.classList.add('selected');
+            }
+
+            // Helper: limpar forma de pagamento quando módulos mudarem
+            function limparSelecaoPagamento() {
+                try {
+                    // Desmarcar todos os rádios de pagamento
+                    document.querySelectorAll('input[name="pagamento"]').forEach(r => { r.checked = false; });
+                    // Remover seleção visual
+                    document.querySelectorAll('.pagamento-options .option-card').forEach(c => c.classList.remove('selected'));
+                    // Atualizar resumo textual
+                    const resumoFormaPagamento = document.getElementById('resumoFormaPagamento');
+                    if (resumoFormaPagamento) resumoFormaPagamento.textContent = '—';
+                    // Ocultar linha de mensal/parcelado até nova seleção
+                    const rfMensalParceladoRow = document.getElementById('rf-mensal-parcelado-row');
+                    if (rfMensalParceladoRow) rfMensalParceladoRow.style.display = 'none';
+                } catch (_) { /* silencioso */ }
             }
             // Recorrência
             document.querySelectorAll('input[name="recorrencia"]').forEach(radio => {
@@ -2013,6 +2655,20 @@
                 const card = radio.closest('.option-card');
                 if (card) {
                     card.addEventListener('click', () => {
+                        // Se clicar em mensal desabilitado/oculto, cair para 50/50 e destacar
+                        const isMensal = radio.value === 'mensal';
+                        const isOculto = card.style.display === 'none';
+                        const isDesabilitado = radio.disabled === true;
+                        if (isMensal && (isOculto || isDesabilitado)) {
+                            const fallback = document.querySelector('input[name="pagamento"][value="parcelado"]');
+                            if (fallback) {
+                                selecionarRadioPorValor('pagamento', 'parcelado');
+                                fallback.dispatchEvent(new Event('change'));
+                            }
+                            return;
+                        }
+                        // Respeitar desabilitado para demais casos
+                        if (radio.disabled) return;
                         if (!radio.checked) {
                             radio.checked = true;
                             radio.dispatchEvent(new Event('change'));
@@ -2026,38 +2682,248 @@
             if (recSel) aplicarSelecao('.recorrencia-options', '.option-card', recSel);
             const pagSel = document.querySelector('input[name="pagamento"]:checked');
             if (pagSel) aplicarSelecao('.pagamento-options', '.option-card', pagSel);
+
+            // Listeners para add-ons com delegação no contêiner estável de serviços
+            const servicosContainer = document.getElementById('servicosContainer');
+            if (servicosContainer) {
+                servicosContainer.addEventListener('change', (e) => {
+                    const t = e.target;
+                    if (t instanceof Element && t.classList.contains('addon-checkbox')) {
+                        const row = t.closest('.addon-row');
+                        const qtyWrap = row ? row.querySelector('.addon-qty-wrap') : null;
+                        if (qtyWrap) qtyWrap.style.display = t.checked ? 'block' : 'none';
+                        // Limpa a forma de pagamento para forçar nova escolha e evitar valores antigos
+                        limparSelecaoPagamento();
+                        calcularValores();
+                    }
+                    if (t instanceof Element && t.classList.contains('addon-qty')) {
+                        // Limpa a forma de pagamento para forçar nova escolha e evitar valores antigos
+                        limparSelecaoPagamento();
+                        calcularValores();
+                    }
+                });
+
+                servicosContainer.addEventListener('click', (e) => {
+                    const target = e.target instanceof Element ? e.target : null;
+                    if (!target) return;
+                    // Navegação carrossel
+                    const nav = target.closest('.addon-nav');
+                    if (nav) {
+                        const container = nav.closest('.addons-container');
+                        const dir = nav.classList.contains('next') ? 1 : -1;
+                        const carousel = container?.querySelector('.addon-carousel');
+                        const firstCard = container?.querySelector('.addon-card');
+                        if (carousel && firstCard) {
+                            const cardWidth = firstCard.getBoundingClientRect().width + 12; // gap
+                            const w = carousel.clientWidth;
+                            const visible = w >= 1024 ? 3 : (w >= 720 ? 2 : 1);
+                            carousel.scrollBy({ left: dir * cardWidth * visible, behavior: 'smooth' });
+                        }
+                        return;
+                    }
+
+                    // Botão selecionar
+                    const selectBtn = target.closest('.select-btn');
+                    if (selectBtn) {
+                        const card = selectBtn.closest('.addon-card');
+                        const check = card?.querySelector('.addon-checkbox');
+                        if (check) {
+                            check.checked = !check.checked;
+                            card?.classList.toggle('selected', check.checked);
+                            selectBtn.textContent = check.checked ? 'Selecionado' : 'Selecionar';
+                            const qtyWrap = card?.querySelector('.addon-qty-wrap');
+                            if (qtyWrap) qtyWrap.style.display = check.checked ? 'block' : 'none';
+                            // Limpa a forma de pagamento para forçar nova escolha
+                            limparSelecaoPagamento();
+                            check.dispatchEvent(new Event('change'));
+                        }
+                        return;
+                    }
+
+                    // Controles de quantidade
+                    const minus = target.closest('.qty-minus');
+                    const plus = target.closest('.qty-plus');
+                    if (minus || plus) {
+                        const card = target.closest('.addon-card');
+                        const qtySpan = card?.querySelector('.qty-value');
+                        const qtyInput = card?.querySelector('.addon-qty');
+                        let v = Math.max(1, parseInt(qtyInput?.value || qtySpan?.textContent || '1', 10) || 1);
+                        v = minus ? Math.max(1, v - 1) : v + 1;
+                        if (qtySpan) qtySpan.textContent = String(v);
+                        if (qtyInput) {
+                            qtyInput.value = String(v);
+                            // Limpa a forma de pagamento para forçar nova escolha
+                            limparSelecaoPagamento();
+                            qtyInput.dispatchEvent(new Event('change'));
+                        }
+                        e.stopPropagation();
+                        return;
+                    }
+
+                    // Clique no card alterna seleção
+                    const card = target.closest('.addon-card');
+                    if (card && !target.closest('.qty-controls')) {
+                        const check = card.querySelector('.addon-checkbox');
+                        const btn = card.querySelector('.select-btn');
+                        const qtyWrap = card.querySelector('.addon-qty-wrap');
+                        if (check) {
+                            check.checked = !check.checked;
+                            card.classList.toggle('selected', check.checked);
+                            if (btn) btn.textContent = check.checked ? 'Selecionado' : 'Selecionar';
+                            if (qtyWrap) qtyWrap.style.display = check.checked ? 'block' : 'none';
+                            // Limpa a forma de pagamento para forçar nova escolha
+                            limparSelecaoPagamento();
+                            check.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+            }
+        }
+
+        // Flags financeiros de produto/serviço (recorrência e descontos) — agregadas por produto
+        function obterFlagsFinanceiras() {
+            const params = new URLSearchParams(window.location.search);
+            // Derivar por produto (servicosContratados) e permitir override por URL/DB
+            const anyRecorrenciaProduto = Array.isArray(servicosContratados) && servicosContratados.some(s => {
+                const tip = (s?.tipo || '').toLowerCase();
+                const m = s?.metadata || {};
+                return m.tem_recorrencia === true || tip.includes('tráfego') || tip.includes('social');
+            });
+            const anyDescRecorrenciaProduto = Array.isArray(servicosContratados) && servicosContratados.some(s => {
+                const m = s?.metadata || {};
+                return m.tem_desconto_recorrencia === true;
+            });
+            const somenteCatalogo = Array.isArray(servicosContratados) && servicosContratados.length > 0 && servicosContratados.every(s => (s?.tipo || '').toLowerCase() === 'catálogo');
+            const anyDescPagamentoProduto = Array.isArray(servicosContratados) && servicosContratados.some(s => {
+                const m = s?.metadata || {};
+                return m.tem_desconto_forma_pagamento === true;
+            });
+            const anyDescCondicionalProduto = Array.isArray(servicosContratados) && servicosContratados.some(s => {
+                const m = s?.metadata || {};
+                return m.tem_desconto_condicional === true;
+            });
+
+            const recorrenciaAtivaRaw = window.propostaCarregada?.recorrencia_ativa;
+            const descontosPagamentoAtivoRaw = window.propostaCarregada?.descontos_pagamento_ativo ?? window.propostaCarregada?.descontos_ativos;
+            const descontoCondicionalAtivoRaw = window.propostaCarregada?.desconto_condicional_ativo;
+            const descontoRecorrenciaAtivoRaw = window.propostaCarregada?.desconto_recorrencia_ativo;
+
+            const paramDescontosAtivosTrue = (params.get('descontosPagamentoAtivo') === 'true' || params.get('descontosAtivos') === 'true');
+            const paramDescontosAtivosFalse = (params.get('descontosPagamentoAtivo') === 'false' || params.get('descontosAtivos') === 'false');
+
+            const flags = {
+                recorrenciaAtiva: typeof recorrenciaAtivaRaw === 'boolean' ? recorrenciaAtivaRaw : (params.get('recorrenciaAtiva') === 'true' ? true : anyRecorrenciaProduto),
+                // Precedência: DB > produto > URL explicitamente false > URL true > default false
+                descontosPagamentoAtivo: (typeof descontosPagamentoAtivoRaw === 'boolean')
+                    ? descontosPagamentoAtivoRaw
+                    : (anyDescPagamentoProduto
+                        ? true
+                        : (paramDescontosAtivosFalse
+                            ? false
+                            : (paramDescontosAtivosTrue
+                                ? (!somenteCatalogo) // em catálogo puro, manter false a menos que produto permita
+                                : false))),
+                descontoCondicionalAtivo: typeof descontoCondicionalAtivoRaw === 'boolean' ? descontoCondicionalAtivoRaw : (params.get('descontoCondicionalAtivo') === 'true' ? true : anyDescCondicionalProduto),
+                descontoRecorrenciaAtivo: typeof descontoRecorrenciaAtivoRaw === 'boolean' ? descontoRecorrenciaAtivoRaw : (params.get('descontoRecorrenciaAtivo') === 'true' ? true : anyDescRecorrenciaProduto)
+            };
+            return flags;
         }
 
         function calcularValores() {
-            const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
+            let recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
             const pagamento = document.querySelector('input[name="pagamento"]:checked')?.value;
+            const flagsFin = obterFlagsFinanceiras();
+            const somenteCatalogo = servicosContratados.length && servicosContratados.every(s => s.tipo === 'Catálogo');
+
+            // Calcular totais de add-ons selecionados
+            const { totalAddonsAll, subtotaisPorServico } = coletarTotaisAddonsSelecionados();
             
-            // Descontos por recorrência
-            const descontosRecorrencia = { 1: 0, 3: 0.05, 6: 0.10, 12: 0.15 };
-            const descontoRecorrencia = valorBase * (descontosRecorrencia[recorrencia] || 0);
+            // Se recorrência estiver desativada pelo produto, forçar 1 mês e esconder UI
+            const containerRec = document.querySelector('.recorrencia-options');
+            const headerRec = containerRec ? containerRec.previousElementSibling : null; // h3 "Período de Contrato"
+            if (!flagsFin.recorrenciaAtiva) {
+                recorrencia = 1;
+                if (containerRec) containerRec.style.display = 'none';
+                if (headerRec && headerRec.tagName === 'H3') headerRec.style.display = 'none';
+                selecionarRadioPorValor('recorrencia', '1');
+            } else {
+                if (containerRec) containerRec.style.display = '';
+                if (headerRec && headerRec.tagName === 'H3') headerRec.style.display = '';
+            }
+
+            // Descontos por recorrência (apenas se um produto permitir)
+            const baseComAddons = valorBase + totalAddonsAll;
+            const descontosRecorrencia = flagsFin.descontoRecorrenciaAtivo ? { 1: 0, 3: 0.05, 6: 0.10, 12: 0.15 } : { 1: 0, 3: 0, 6: 0, 12: 0 };
+            const descontoRecorrencia = baseComAddons * (descontosRecorrencia[recorrencia] || 0);
             
-            // Desconto condicional sempre aplicado
-            const descontoCondicional = valorBase * 0.05;
+            // Desconto condicional
+            const descontoCondicional = flagsFin.descontoCondicionalAtivo ? (baseComAddons * 0.05) : 0;
+            const descontoCondRow = document.getElementById('descontoCondicionalRow');
+            if (descontoCondRow) descontoCondRow.style.display = flagsFin.descontoCondicionalAtivo ? '' : 'none';
             
-            // Descontos por pagamento (não aplicável para recorrência mensal)
+            // Descontos por pagamento (aplicável para produtos sem recorrência e para recorrências > 1)
             let descontoPagamento = 0;
-            if (recorrencia > 1) {
+            const anyDescPagamentoProduto = Array.isArray(servicosContratados) && servicosContratados.some(m => m.tem_desconto_forma_pagamento === true);
+            const pagamentoDescontoPermite = !!(flagsFin.descontosPagamentoAtivo || anyDescPagamentoProduto);
+            const podeAplicarDescontoPagamento = pagamentoDescontoPermite && (
+                (flagsFin.recorrenciaAtiva && recorrencia > 1) || (!flagsFin.recorrenciaAtiva)
+            );
+            if (podeAplicarDescontoPagamento) {
                 const descontosPagamento = { avista: 0.10, parcelado: 0.05, mensal: 0 };
-                descontoPagamento = valorBase * (descontosPagamento[pagamento] || 0);
+                descontoPagamento = baseComAddons * (descontosPagamento[pagamento] || 0);
             }
             
-            const valorFinal = valorBase - descontoRecorrencia - descontoCondicional - descontoPagamento;
+            const valorFinal = baseComAddons - descontoRecorrencia - descontoCondicional - descontoPagamento;
             const valorTotal = valorFinal * recorrencia;
             
             const opcaoAvista = document.getElementById('opcao-avista');
             const opcaoParcelado = document.getElementById('opcao-parcelado');
             const opcaoMensal = document.getElementById('opcao-mensal');
+
+            // Resetar visibilidade padrão dos cards de pagamento para evitar estados "travados"
+            try {
+                if (opcaoAvista) opcaoAvista.style.display = 'block';
+                if (opcaoParcelado) opcaoParcelado.style.display = 'block';
+                if (opcaoMensal) opcaoMensal.style.display = 'block';
+            } catch (_) {}
+
+            // Regra: Mensal só existe quando há recorrência ativa
+            const mensalPermitido = !!flagsFin.recorrenciaAtiva;
+            if (!mensalPermitido && opcaoMensal) {
+                opcaoMensal.style.display = 'none';
+            }
             
-            if (recorrencia === 1) {
+            // Produtos de Catálogo: manter Mensal visível somente se recorrência ativa; desabilitado
+            if (somenteCatalogo) {
+                if (opcaoMensal) {
+                    opcaoMensal.style.display = mensalPermitido ? 'block' : 'none';
+                    const mensalInput = opcaoMensal.querySelector('input[name="pagamento"]');
+                    // Mensal habilitado quando há recorrência ativa; caso contrário, desabilitado
+                    if (mensalInput) mensalInput.disabled = !mensalPermitido;
+                }
+                // Atualiza rótulos de desconto conforme permissão do produto
+                if (flagsFin.descontosPagamentoAtivo || anyDescPagamentoProduto) {
+                    const av = document.getElementById('desconto-avista');
+                    const par = document.getElementById('desconto-parcelado');
+                    const men = document.getElementById('desconto-mensal');
+                    if (av) { av.textContent = '10% desconto adicional'; av.style.display = ''; }
+                    if (par) { par.textContent = '5% desconto adicional'; par.style.display = ''; }
+                    if (men) { men.textContent = '0% desconto adicional'; men.style.display = ''; }
+                } else {
+                    const av = document.getElementById('desconto-avista');
+                    const par = document.getElementById('desconto-parcelado');
+                    const men = document.getElementById('desconto-mensal');
+                    if (av) { av.textContent = 'Sem desconto adicional'; av.style.display = 'none'; }
+                    if (par) { par.textContent = 'Sem desconto adicional'; par.style.display = 'none'; }
+                    if (men) { men.textContent = '0% desconto adicional'; men.style.display = ''; }
+                }
+            } else if (recorrencia === 1 && flagsFin.recorrenciaAtiva) {
                 // Recorrência mensal - apenas pagamento mensal
                 opcaoAvista.style.display = 'none';
                 opcaoParcelado.style.display = 'none';
                 opcaoMensal.style.display = 'block';
+                const mensalInput = opcaoMensal.querySelector('input[name="pagamento"]');
+                if (mensalInput) mensalInput.disabled = false;
                 
                 // Auto-selecionar mensal
                 document.querySelector('input[name="pagamento"][value="mensal"]').checked = true;
@@ -2066,12 +2932,84 @@
                 // Outras recorrências - todas as opções
                 opcaoAvista.style.display = 'block';
                 opcaoParcelado.style.display = 'block';
-                opcaoMensal.style.display = 'block';
-                
-                document.getElementById('desconto-avista').textContent = '10% desconto adicional';
-                document.getElementById('desconto-parcelado').textContent = '5% desconto adicional';
-                document.getElementById('desconto-mensal').textContent = 'Sem desconto adicional';
+                opcaoMensal.style.display = mensalPermitido ? 'block' : 'none';
+                const mensalInput = opcaoMensal.querySelector('input[name="pagamento"]');
+                if (mensalInput) mensalInput.disabled = false;
+                if (flagsFin.descontosPagamentoAtivo || anyDescPagamentoProduto) {
+                    const av = document.getElementById('desconto-avista');
+                    const par = document.getElementById('desconto-parcelado');
+                    const men = document.getElementById('desconto-mensal');
+                    if (av) { av.textContent = '10% desconto adicional'; av.style.display = ''; }
+                    if (par) { par.textContent = '5% desconto adicional'; par.style.display = ''; }
+                    if (men) { men.textContent = '0% desconto adicional'; men.style.display = ''; }
+                } else {
+                    const av = document.getElementById('desconto-avista');
+                    const par = document.getElementById('desconto-parcelado');
+                    const men = document.getElementById('desconto-mensal');
+                    if (av) { av.textContent = 'Sem desconto adicional'; av.style.display = 'none'; }
+                    if (par) { par.textContent = 'Sem desconto adicional'; par.style.display = 'none'; }
+                    if (men) { men.textContent = '0% desconto adicional'; men.style.display = ''; }
+                }
             }
+
+            // Log de diagnóstico de visibilidade da forma de pagamento
+            try {
+                const vis = {
+                    recorrenciaSelecionada: recorrencia,
+                    somenteCatalogo,
+                    flags: {
+                        recorrenciaAtiva: !!flagsFin.recorrenciaAtiva,
+                        descontoRecorrenciaAtivo: !!flagsFin.descontoRecorrenciaAtivo,
+                        descontosPagamentoAtivo: !!flagsFin.descontosPagamentoAtivo,
+                        descontoCondicionalAtivo: !!flagsFin.descontoCondicionalAtivo
+                    },
+                    pagamentoCards: {
+                        avista: opcaoAvista ? (opcaoAvista.style.display || '(vazio)') : 'null',
+                        parcelado: opcaoParcelado ? (opcaoParcelado.style.display || '(vazio)') : 'null',
+                        mensal: opcaoMensal ? (opcaoMensal.style.display || '(vazio)') : 'null'
+                    }
+                };
+                console.log('[Pagamento] Visibilidade após calcularValores:', vis);
+            } catch (_) {}
+
+            // Atualizar badges de desconto com percentuais e valores, independentemente da seleção
+            try {
+                const elAv = document.getElementById('desconto-avista');
+                const elPar = document.getElementById('desconto-parcelado');
+                const elMen = document.getElementById('desconto-mensal');
+                const descontosPagamento = { avista: 0.10, parcelado: 0.05, mensal: 0 };
+                const valorDescAv = podeAplicarDescontoPagamento ? (baseComAddons * descontosPagamento.avista) : 0;
+                const valorDescPar = podeAplicarDescontoPagamento ? (baseComAddons * descontosPagamento.parcelado) : 0;
+
+                // Exibe badges para opções válidas
+                if (elAv) {
+                    elAv.style.display = '';
+                    elAv.textContent = pagamentoDescontoPermite ? '10% desconto adicional' : 'Sem desconto adicional';
+                }
+                if (elPar) {
+                    elPar.style.display = '';
+                    elPar.textContent = pagamentoDescontoPermite ? '5% desconto adicional' : 'Sem desconto adicional';
+                }
+                if (elMen) {
+                    // Mensal nunca possui desconto adicional
+                    elMen.style.display = '';
+                    elMen.textContent = '0% desconto adicional';
+                }
+            } catch(_) {}
+
+            // Atualizar "Economia: R$" nas formas de pagamento
+            try {
+                const elEcoAv = document.getElementById('economia-avista');
+                const elEcoPar = document.getElementById('economia-parcelado');
+                const elEcoMen = document.getElementById('economia-mensal');
+                const descontosPagamento = { avista: 0.10, parcelado: 0.05, mensal: 0 };
+                // Mostrar economia total do período (não apenas mensal)
+                const valorDescAv = pagamentoDescontoPermite ? (baseComAddons * descontosPagamento.avista * recorrencia) : 0;
+                const valorDescPar = pagamentoDescontoPermite ? (baseComAddons * descontosPagamento.parcelado * recorrencia) : 0;
+                if (elEcoAv) { elEcoAv.style.display = ''; elEcoAv.textContent = `Economia: R$ ${valorDescAv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; }
+                if (elEcoPar) { elEcoPar.style.display = ''; elEcoPar.textContent = `Economia: R$ ${valorDescPar.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; }
+                if (elEcoMen) { elEcoMen.style.display = ''; elEcoMen.textContent = `Economia: R$ ${(0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`; }
+            } catch(_) {}
             
             // Criar detalhamento dos serviços para o valor base
             let detalhamentoServicos = '';
@@ -2106,43 +3044,409 @@
             });
             
             // Atualizar display
-            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
-            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            // Atualizar subtotais visuais por serviço (mantidos discretos; podem não existir)
+            try {
+                const cards = Array.from(document.querySelectorAll('.addons-container'));
+                cards.forEach((wrap) => {
+                    const idxServico = parseInt((wrap.getAttribute('data-servico-index') || wrap.closest('.servico-card')?.getAttribute('data-servico-index') || '-1'), 10);
+                    if (idxServico < 0) return;
+                    const subEl = wrap.querySelector('.servico-subtotal .subtotal-valor');
+                    const subtotalServ = ((servicosContratados[idxServico]?.valor || 0) + (subtotaisPorServico[idxServico] || 0));
+                    if (subEl) subEl.textContent = `R$ ${subtotalServ.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    const cardTopEl = wrap.closest('.servico-card')?.querySelector('.servico-subtotal-top .subtotal-valor-top');
+                    if (cardTopEl) cardTopEl.textContent = `R$ ${subtotalServ.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                });
+            } catch(_) {}
+            // Novo Resumo Financeiro consolidado
+            const elValorBaseProduto = document.getElementById('valorBaseProduto');
+            const elValorAddons = document.getElementById('valorAddons');
+            const elSubtotalGeral = document.getElementById('subtotalGeral');
+            const elDescontosRow = document.getElementById('descontosAplicaveisRow');
+            const elDescontos = document.getElementById('descontosAplicaveis');
+            const elTotalFinalContrato = document.getElementById('totalFinalContrato');
+            const rfBaseRow = document.getElementById('rf-base-row');
+            const rfBaseToggle = document.getElementById('rf-base-toggle');
+            const rfBaseDetails = document.getElementById('rf-base-details');
+            const rfAddonsRow = document.getElementById('rf-addons-row');
+            const rfAddonsToggle = document.getElementById('rf-addons-toggle');
+            const rfAddonsDetails = document.getElementById('rf-addons-details');
+            const rfSubtotalRow = document.getElementById('rf-subtotal-row');
+            const rfDescontoToggle = document.getElementById('rf-desconto-toggle');
+            const rfDescontoDetails = document.getElementById('rf-desconto-details');
+            const rfMensalParceladoRow = document.getElementById('rf-mensal-parcelado-row');
+            const rfMPLabel = document.getElementById('rf-mp-label');
+            const rfMPValue = document.getElementById('rf-mp-value');
+
+            const totalDescontos = (descontoRecorrencia + descontoCondicional + descontoPagamento);
+            // Exibir valores do período inteiro (recorrência aplicada)
+            const valorBasePeriodo = valorBase * recorrencia;
+            const valorAddonsPeriodo = totalAddonsAll * recorrencia;
+            const subtotalPeriodo = baseComAddons * recorrencia;
+            const descontosPeriodo = totalDescontos * recorrencia;
+
+            if (elValorBaseProduto) elValorBaseProduto.textContent = `R$ ${valorBasePeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            if (elValorAddons) elValorAddons.textContent = `R$ ${valorAddonsPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            if (elSubtotalGeral) elSubtotalGeral.textContent = `R$ ${subtotalPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            if (elDescontosRow) elDescontosRow.style.display = totalDescontos > 0 ? 'flex' : 'none';
+            if (elDescontos) elDescontos.textContent = `- R$ ${descontosPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            if (elTotalFinalContrato) elTotalFinalContrato.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            // Condições de renderização por linha
+            // Add-ons e Subtotal: exibem apenas com add-ons selecionados
+            if (rfAddonsRow) rfAddonsRow.style.display = totalAddonsAll > 0 ? 'flex' : 'none';
+            if (rfSubtotalRow) rfSubtotalRow.style.display = totalAddonsAll > 0 ? 'flex' : 'none';
+            // Desconto aplicado: exibe apenas quando há qualquer desconto
+            if (elDescontosRow) elDescontosRow.style.display = totalDescontos > 0 ? 'flex' : 'none';
+
+            // Montar detalhes (accordions)
+            // 1) Valor Base - mostrar '+' se mais de um item compõe o valor
+            try {
+                const baseItems = Array.isArray(servicosContratados) ? servicosContratados.map(s => ({
+                    nome: `${s.tipo}${s.plano ? ' — ' + s.plano : ''}`,
+                    valor: typeof s.valor === 'number' ? s.valor : parseFloat(String(s.valor || '0').replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.')) || 0
+                })) : [];
+                const multiBase = baseItems.filter(i => i.valor > 0).length > 1;
+                if (rfBaseToggle) rfBaseToggle.style.display = multiBase ? '' : 'none';
+                if (multiBase && rfBaseDetails) {
+                    rfBaseDetails.innerHTML = baseItems
+                        .filter(i => i.valor > 0)
+                        .map(i => `
+                            <div class="detail-row">
+                                <span class="label">${i.nome}</span>
+                                <span class="leader"></span>
+                                <span class="value">R$ ${i.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                        `)
+                        .join('');
+                } else if (rfBaseDetails) {
+                    rfBaseDetails.style.display = 'none';
+                }
+            } catch(_) {}
+
+            // 2) Add-ons selecionados — mostrar '+' se existir pelo menos 1
+            try {
+                const addonsDetalhe = [];
+                (Array.isArray(servicosContratados) ? servicosContratados : []).forEach(s => {
+                    const addons = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                    addons.forEach(a => {
+                        const isUnit = a.tipoPreco === 'unitario';
+                        const qtd = Math.max(1, a.qtdSelecionada || 1);
+                        const precoUnit = isUnit ? (a.valorUnitario || 0) : (a.valor || 0);
+                        const total = precoUnit * (isUnit ? qtd : 1);
+                        const unitTxt = isUnit ? `${qtd}x R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} = ` : '';
+                        addonsDetalhe.push(`${a.nome} — ${unitTxt}R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+                    });
+                });
+                const temAddons = addonsDetalhe.length > 0;
+                if (rfAddonsToggle) rfAddonsToggle.style.display = temAddons ? '' : 'none';
+                if (temAddons && rfAddonsDetails) {
+                    const linhas = addonsDetalhe.map(item => {
+                        const m = item.match(/^(.*) — (.*)$/);
+                        const label = m ? m[1] : item;
+                        const valor = m ? m[2] : '';
+                        return `
+                            <div class="detail-row">
+                                <span class="label">${label}</span>
+                                <span class="leader"></span>
+                                <span class="value">${valor}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    const totalLinha = `
+                        <div class="detail-row total">
+                            <span class="label">Total de add-ons</span>
+                            <span class="leader"></span>
+                            <span class="value">R$ ${(totalAddonsAll * recorrencia).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    `;
+                    rfAddonsDetails.innerHTML = linhas + totalLinha;
+                } else if (rfAddonsDetails) {
+                    rfAddonsDetails.style.display = 'none';
+                }
+            } catch(_) {}
+
+            // 3) Descontos aplicados — mostrar '+' somente se houver múltiplos descontos (>1 tipo)
+            try {
+                const descontosList = [];
+                const descontoPagamentoPeriodo = descontoPagamento * recorrencia;
+                const descontoRecorrenciaPeriodo = descontoRecorrencia * recorrencia;
+                const descontoCondicionalPeriodo = descontoCondicional * recorrencia;
+                if (descontoPagamento > 0) descontosList.push(`Desconto por forma de pagamento — R$ ${descontoPagamentoPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+                if (descontoRecorrencia > 0) descontosList.push(`Desconto por recorrência — R$ ${descontoRecorrenciaPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+                if (descontoCondicional > 0) descontosList.push(`Desconto condicional — R$ ${descontoCondicionalPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+                const multiDesc = descontosList.length > 1;
+                if (rfDescontoToggle) rfDescontoToggle.style.display = multiDesc ? '' : 'none';
+                if (multiDesc && rfDescontoDetails) {
+                    const linhas = descontosList.map(item => {
+                        const m = item.match(/^(.*) — (.*)$/);
+                        const label = m ? m[1] : item;
+                        const valor = m ? m[2] : '';
+                        return `
+                            <div class="detail-row">
+                                <span class="label">${label}</span>
+                                <span class="leader"></span>
+                                <span class="value">${valor}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    const totalLinha = `
+                        <div class="detail-row total">
+                            <span class="label">Total de desconto</span>
+                            <span class="leader"></span>
+                            <span class="value">- R$ ${(totalDescontos * recorrencia).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    `;
+                    rfDescontoDetails.innerHTML = linhas + totalLinha;
+                } else if (rfDescontoDetails) {
+                    rfDescontoDetails.style.display = 'none';
+                }
+            } catch(_) {}
             
-            if (descontoRecorrencia > 0) {
-                document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
-                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else {
-                document.getElementById('descontoRecorrenciaRow').style.display = 'none';
-            }
-            
-            if (descontoPagamento > 0) {
-                document.getElementById('descontoPagamentoRow').style.display = 'flex';
-                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else {
-                document.getElementById('descontoPagamentoRow').style.display = 'none';
-            }
-            
-            const rowFinalMensal = document.getElementById('valorFinalMensal')?.parentElement;
-            const labelFinalMensal = rowFinalMensal?.querySelector('span:first-child');
-            if (pagamento === 'mensal') {
-                if (rowFinalMensal) rowFinalMensal.style.display = 'flex';
-                if (labelFinalMensal) labelFinalMensal.textContent = '💰 Valor Final Mensal:';
-                document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else if (pagamento === 'parcelado') {
-                if (rowFinalMensal) rowFinalMensal.style.display = 'flex';
-                if (labelFinalMensal) labelFinalMensal.textContent = '💰 Parcelas (50% + 50%):';
-                const parcela = valorTotal / 2;
-                document.getElementById('valorFinalMensal').textContent = `2x de R$ ${parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else if (pagamento === 'avista') {
-                // À vista: não exibe linha de mensal, mantém apenas total do contrato
-                if (rowFinalMensal) rowFinalMensal.style.display = 'none';
+            // Linha 6: Mensalidade ou Parcelado (condicional)
+            if (rfMensalParceladoRow && rfMPLabel && rfMPValue) {
+                if (pagamento === 'mensal') {
+                    rfMensalParceladoRow.style.display = 'flex';
+                    rfMPLabel.textContent = 'Mensalidade';
+                    rfMPValue.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
+                } else if (pagamento === 'parcelado') {
+                    rfMensalParceladoRow.style.display = 'flex';
+                    rfMPLabel.textContent = 'Pagamento parcelado';
+                    const parcela = valorTotal / 2;
+                    rfMPValue.textContent = `2x de R$ ${parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                } else {
+                    rfMensalParceladoRow.style.display = 'none';
+                }
             }
             document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
             
+            // Atualizar economia por período em cada card (como no gerador)
+            try {
+                atualizarEconomiaRecorrencia();
+            } catch (e) { console.warn('Falha ao atualizar economia por período:', e); }
+
             atualizarResumo();
             verificarSelecoes();
+
+            // Bind de toggles (accordion) — apenas um aberto por vez
+            try {
+                const toggles = [rfBaseToggle, rfAddonsToggle, rfDescontoToggle].filter(Boolean);
+                const mapDetails = new Map([
+                    [rfBaseToggle, rfBaseDetails],
+                    [rfAddonsToggle, rfAddonsDetails],
+                    [rfDescontoToggle, rfDescontoDetails]
+                ]);
+                toggles.forEach(btn => {
+                    btn.onclick = () => {
+                        const expanded = btn.getAttribute('aria-expanded') === 'true';
+                        // Fechar todos
+                        toggles.forEach(b => { b.setAttribute('aria-expanded', 'false'); const d = mapDetails.get(b); if (d) d.style.display = 'none'; b.textContent = '+'; });
+                        // Abrir se estava fechado
+                        if (!expanded) {
+                            btn.setAttribute('aria-expanded', 'true');
+                            const det = mapDetails.get(btn);
+                            if (det) det.style.display = '';
+                            btn.textContent = '–';
+                        }
+                    };
+                });
+            } catch(_) {}
+            try { reportarDiagnosticoFinanceiro(); } catch(_) {}
         } // FIM calcularValores
+
+        // Diagnóstico de flags financeiras e consistência da UI
+        function coletarDiagnosticoFinanceiro() {
+            const params = new URLSearchParams(window.location.search);
+            const produtoId = params.get('catalogoProdutoId') || params.get('produtoId') || params.get('catalogoProduto') || (window.propostaCarregada?.metadata?.catalogo?.produto_id || '');
+            const tipoProdutoParam = (params.get('tipoProduto') || '').toLowerCase();
+            const tipoProdutoDb = (window.produtoTipoDb || window.propostaCarregada?.metadata?.catalogo?.tipo || '').toLowerCase();
+            const tipoProdutoInferido = tipoProdutoParam
+                || (tipoProdutoDb ? (tipoProdutoDb === 'composicao' ? 'composicao' : 'planos_fixos')
+                : ((Array.isArray(servicosContratados) && servicosContratados.some(s => Array.isArray(s.addOns))) ? 'composicao' : 'planos_fixos'));
+            const raw = {
+                recorrenciaAtivaRaw: window.propostaCarregada?.recorrencia_ativa,
+                descontosPagamentoAtivoRaw: window.propostaCarregada?.descontos_pagamento_ativo ?? window.propostaCarregada?.descontos_ativos,
+                descontoCondicionalAtivoRaw: window.propostaCarregada?.desconto_condicional_ativo,
+                descontoRecorrenciaAtivoRaw: window.propostaCarregada?.desconto_recorrencia_ativo
+            };
+            const metaProdutos = (Array.isArray(servicosContratados) ? servicosContratados : []).map(s => ({
+                tipo: s?.tipo || '',
+                tem_recorrencia: !!(s?.metadata?.tem_recorrencia),
+                tem_desconto_recorrencia: !!(s?.metadata?.tem_desconto_recorrencia),
+                tem_desconto_pagamento: !!(s?.metadata?.tem_desconto_forma_pagamento),
+                tem_desconto_condicional: !!(s?.metadata?.tem_desconto_condicional)
+            }));
+            const flags = obterFlagsFinanceiras();
+            return { produtoId, tipoProdutoInferido, temSupabase: !!window.supabase, raw, params: Object.fromEntries(params.entries()), metaProdutos, flags };
+        }
+
+        function reportarDiagnosticoFinanceiro() {
+            const ctx = coletarDiagnosticoFinanceiro();
+            const originFor = (flagName) => {
+                const params = new URLSearchParams(window.location.search);
+                if (typeof ctx.raw[flagName + 'Raw'] === 'boolean') return 'DB';
+                if (flagName === 'descontosPagamentoAtivo') {
+                    if (params.has('descontosPagamentoAtivo') || params.has('descontosAtivos')) return 'URL';
+                } else if (params.has(flagName)) {
+                    return 'URL';
+                }
+                const anyMeta = ctx.metaProdutos.some(mp => {
+                    if (flagName === 'recorrenciaAtiva') return mp.tem_recorrencia;
+                    if (flagName === 'descontoRecorrenciaAtivo') return mp.tem_desconto_recorrencia;
+                    if (flagName === 'descontosPagamentoAtivo') return mp.tem_desconto_pagamento;
+                    if (flagName === 'descontoCondicionalAtivo') return mp.tem_desconto_condicional;
+                    return false;
+                });
+                return anyMeta ? 'Produto' : 'Heurística';
+            };
+            const f = ctx.flags;
+            console.groupCollapsed('🔎 Diagnóstico Financeiro da Proposta');
+            console.log('Produto ID:', ctx.produtoId || '(não informado)');
+            console.log('Tipo de Produto (inferido):', ctx.tipoProdutoInferido);
+            console.log('Supabase disponível:', ctx.temSupabase);
+            console.log('Recorrência:', f.recorrenciaAtiva ? 'ATIVO' : 'INATIVO', '— origem:', originFor('recorrenciaAtiva'));
+            console.log('Desconto de recorrência:', f.descontoRecorrenciaAtivo ? 'ATIVO' : 'INATIVO', '— origem:', originFor('descontoRecorrenciaAtivo'));
+            console.log('Desconto por forma de pagamento:', f.descontosPagamentoAtivo ? 'ATIVO' : 'INATIVO', '— origem:', originFor('descontosPagamentoAtivo'));
+            console.log('Desconto condicional:', f.descontoCondicionalAtivo ? 'ATIVO' : 'INATIVO', '— origem:', originFor('descontoCondicionalAtivo'));
+            const containerRec = document.querySelector('.recorrencia-options');
+            if (f.recorrenciaAtiva && containerRec && containerRec.style.display === 'none') {
+                console.error('Inconsistência: recorrência ativa mas a UI está oculta.');
+            }
+            const hasDiscountBadge = Array.from(document.querySelectorAll('.recorrencia-options .discount')).some(el => el.style.display !== 'none');
+            const hasEconomiaBadge = Array.from(document.querySelectorAll('.recorrencia-options .economia')).some(el => el.style.display !== 'none');
+            if (f.descontoRecorrenciaAtivo && (!hasDiscountBadge || !hasEconomiaBadge)) {
+                console.warn('Aviso: desconto de recorrência ativo mas badges/"Economia" podem não estar visíveis.');
+            }
+            const descontoCondRow = document.getElementById('descontoCondicionalRow');
+            if (f.descontoCondicionalAtivo && descontoCondRow && descontoCondRow.style.display === 'none') {
+                console.warn('Aviso: desconto condicional ativo mas a linha correspondente está oculta.');
+            }
+            console.groupEnd();
+        }
+
+        // Helper: coletar add-ons selecionados e calcular totais
+        function coletarTotaisAddonsSelecionados() {
+            const wraps = Array.from(document.querySelectorAll('.addons-container'));
+            const subtotaisPorServico = [];
+            let totalAddonsAll = 0;
+            wraps.forEach((wrap) => {
+                const idxServico = parseInt((wrap.getAttribute('data-servico-index') || wrap.closest('.servico-card')?.getAttribute('data-servico-index') || '-1'), 10);
+                const rows = Array.from(wrap.querySelectorAll('.addon-row'));
+                let subtotalAddons = 0;
+                const selecionados = [];
+                rows.forEach(row => {
+                    const check = row.querySelector('.addon-checkbox');
+                    const metaInput = row.querySelector('.addon-meta');
+                    if (!metaInput) return;
+                    let meta = {};
+                    try { meta = JSON.parse(metaInput.value || '{}'); } catch(_) {}
+                    if (check && check.checked) {
+                        if (meta.tipoPreco === 'unitario') {
+                            const qtyEl = row.querySelector('.addon-qty');
+                            const qtd = Math.max(1, parseInt(qtyEl?.value || '1', 10) || 1);
+                            const total = (meta.valorUnitario || 0) * qtd;
+                            subtotalAddons += total;
+                            selecionados.push({ id: meta.id || null, nome: meta.nome, tipoPreco: 'unitario', valorUnitario: meta.valorUnitario || 0, qtdSelecionada: qtd });
+                        } else {
+                            const total = meta.valor || 0;
+                            subtotalAddons += total;
+                            selecionados.push({ id: meta.id || null, nome: meta.nome, tipoPreco: 'fixo', valor: meta.valor || 0, qtdSelecionada: 1 });
+                        }
+                    }
+                });
+                totalAddonsAll += subtotalAddons;
+                if (idxServico >= 0) {
+                    subtotaisPorServico[idxServico] = subtotalAddons;
+                    if (servicosContratados[idxServico]) {
+                        servicosContratados[idxServico].addOnsContratados = selecionados;
+                    }
+                }
+            });
+            return { totalAddonsAll, subtotaisPorServico };
+        }
+
+            // Exibe "Economia: R$ ..." em cada card de recorrência
+        function atualizarEconomiaRecorrencia() {
+            const flagsFin = obterFlagsFinanceiras();
+            const descontosRecorrencia = flagsFin.descontoRecorrenciaAtivo ? { 1: 0, 3: 0.05, 6: 0.10, 12: 0.15 } : { 1: 0, 3: 0, 6: 0, 12: 0 };
+            [1,3,6,12].forEach(meses => {
+                const el = document.querySelector(`.recorrencia-options .economia[data-meses="${meses}"]`);
+                if (!el) return;
+                const economia = (valorBase * (descontosRecorrencia[meses] || 0)) * meses;
+                el.textContent = `Economia: R$ ${economia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                // Mostrar/ocultar economia conforme ativação de desconto por recorrência
+                el.style.display = flagsFin.descontoRecorrenciaAtivo ? '' : 'none';
+            });
+            // Percentual de desconto visível nos cards, quando aplicável
+            try {
+                const discountEls = document.querySelectorAll('.recorrencia-options .discount');
+                discountEls.forEach(el => {
+                    el.style.display = flagsFin.descontoRecorrenciaAtivo ? '' : 'none';
+                });
+            } catch(_) {}
+            // Esconder bloco de recorrência ao desativar
+            const containerRec = document.querySelector('.recorrencia-options');
+            const headerRec = containerRec ? containerRec.previousElementSibling : null;
+            if (containerRec) containerRec.style.display = flagsFin.recorrenciaAtiva ? '' : 'none';
+            if (headerRec && headerRec.tagName === 'H3') headerRec.style.display = flagsFin.recorrenciaAtiva ? '' : 'none';
+        }
+
+        // Ler flags do produto do catálogo (quando presente na URL) e sincronizar UI
+        async function sincronizarFlagsComProdutoCatalogo() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const produtoId = params.get('catalogoProdutoId') || params.get('produtoId') || params.get('catalogoProduto') || (window.propostaCarregada?.metadata?.catalogo?.produto_id || '');
+                if (!produtoId || !window.supabase) {
+                    console.info('[Catálogo] Sync pulado: produtoId ou supabase indisponíveis.', { produtoId, supabase: !!window.supabase });
+                    return;
+                }
+                const { data, error } = await window.supabase
+                    .from('produtos')
+                    .select('id, tipo, recorrencia, desconto_pagamento, desconto_condicional, desconto_recorrencia')
+                    .eq('id', produtoId)
+                    .maybeSingle();
+                if (error) {
+                    console.warn('[Catálogo] Erro ao consultar produto em Supabase:', error);
+                    return;
+                }
+                if (!data) {
+                    console.warn('[Catálogo] Produto não encontrado em Supabase para id:', produtoId);
+                    return;
+                }
+                window.propostaCarregada = window.propostaCarregada || {};
+                window.propostaCarregada.recorrencia_ativa = !!data.recorrencia;
+                window.propostaCarregada.descontos_pagamento_ativo = !!data.desconto_pagamento;
+                window.propostaCarregada.desconto_condicional_ativo = !!data.desconto_condicional;
+                window.propostaCarregada.desconto_recorrencia_ativo = !!data.desconto_recorrencia;
+                try {
+                    window.produtoTipoDb = (data.tipo || '').toLowerCase();
+                    window.propostaCarregada.metadata = window.propostaCarregada.metadata || {};
+                    window.propostaCarregada.metadata.catalogo = window.propostaCarregada.metadata.catalogo || {};
+                    window.propostaCarregada.metadata.catalogo.tipo = window.produtoTipoDb;
+                    console.info('[Catálogo] Produto sincronizado do DB:', { id: data.id, tipo: window.produtoTipoDb, flags: { recorrencia: !!data.recorrencia, desconto_pagamento: !!data.desconto_pagamento, desconto_condicional: !!data.desconto_condicional, desconto_recorrencia: !!data.desconto_recorrencia } });
+                } catch(_) {}
+                calcularValores();
+                atualizarResumo();
+                atualizarEconomiaRecorrencia();
+                try { reportarDiagnosticoFinanceiro(); } catch(_) {}
+            } catch (e) {
+                console.warn('[Catálogo] Exceção ao sincronizar produto:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ocultar recorrência imediatamente se vier desativada via parâmetros
+            try {
+                const flags = obterFlagsFinanceiras();
+                const containerRec = document.querySelector('.recorrencia-options');
+                const headerRec = containerRec ? containerRec.previousElementSibling : null;
+                if (!flags.recorrenciaAtiva) {
+                    if (containerRec) containerRec.style.display = 'none';
+                    if (headerRec && headerRec.tagName === 'H3') headerRec.style.display = 'none';
+                    selecionarRadioPorValor('recorrencia', '1');
+                }
+            } catch (_) {}
+            try { reportarDiagnosticoFinanceiro(); } catch(_) {}
+            sincronizarFlagsComProdutoCatalogo();
+        });
 
         function atualizarResumo() {
             const recorrencia = parseInt(document.querySelector('input[name="recorrencia"]:checked')?.value || 6);
@@ -2181,6 +3485,17 @@
             if (elResumoValorTotal) {
                 elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             }
+
+            // Itemizar subtotais por serviço no bloco de Resumo Financeiro
+            try {
+                const { subtotaisPorServico } = coletarTotaisAddonsSelecionados();
+                const lista = servicosContratados.map((servico, idx) => {
+                    const subtotalServ = ((servico?.valor || 0) + (subtotaisPorServico[idx] || 0));
+                    return `<div class=\"valor-row\"><span>${servico.tipo} (${servico.plano})</span><span class=\"valor\">R$ ${subtotalServ.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></div>`;
+                }).join('');
+                const cont = document.getElementById('resumoServicosItemizados');
+                if (cont) cont.innerHTML = lista;
+            } catch(_) {}
             
             // Atualizar recorrência e forma de pagamento
             const recorrenciaSelecionada = document.querySelector('input[name="recorrencia"]:checked');
@@ -2218,24 +3533,46 @@
                 : '';
 
             resumoServicos.innerHTML = bonusResumo + servicosContratados.map(servico => {
+                // Helper para converter itens de entregáveis em texto no resumo
+                const textoItemResumo = (item) => {
+                    let base = '';
+                    if (typeof item === 'string') { base = item; }
+                    else if (item && typeof item === 'object') {
+                        base = item.nome || item.titulo || item.label || item.descricao || item.texto || item.item || '';
+                        if (!base) { try { base = JSON.stringify(item); } catch(_) { base = String(item); } }
+                    } else { base = String(item ?? ''); }
+                    const isLP = /(?:LP|Landing Page) de alta conversão/i.test(base);
+                    return isLP ? `${base} (exclusivo para plano de 12 meses de recorrência)` : base;
+                };
                 let entregaveisHtml = '';
                 if (servico.secoes) {
-                    Object.keys(servico.secoes).forEach(secaoNome => {
-                        entregaveisHtml += `<div style="margin-bottom: 10px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong><ul style="margin-left: 15px;">`;
-                        servico.secoes[secaoNome].forEach(item => {
-                            const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
-                            const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
-                            entregaveisHtml += `<li style="margin-bottom: 2px;">${itemTexto}</li>`;
+                    if (Array.isArray(servico.secoes)) {
+                        servico.secoes.forEach(sec => {
+                            const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            entregaveisHtml += `<div style="margin-bottom: 10px;"><strong style="color: #1E5942; font-size: 0.9rem;">${titulo}:</strong><ul style="margin-left: 15px;">`;
+                            itens.forEach(item => {
+                                const itemTexto = textoItemResumo(item);
+                                entregaveisHtml += `<li style="margin-bottom: 2px;">${itemTexto}</li>`;
+                            });
+                            entregaveisHtml += '</ul></div>';
                         });
-                        entregaveisHtml += '</ul></div>';
-                    });
+                    } else if (typeof servico.secoes === 'object') {
+                        Object.keys(servico.secoes).forEach(secaoNome => {
+                            const lista = servico.secoes[secaoNome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            entregaveisHtml += `<div style="margin-bottom: 10px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong><ul style="margin-left: 15px;">`;
+                            itens.forEach(item => {
+                                const itemTexto = textoItemResumo(item);
+                                entregaveisHtml += `<li style="margin-bottom: 2px;">${itemTexto}</li>`;
+                            });
+                            entregaveisHtml += '</ul></div>';
+                        });
+                    }
                 } else {
                     // Formato antigo — manter LP com observação de exclusividade
-                    entregaveisHtml = `<ul>${servico.entregaveis.map(item => {
-                        const isLP = /(?:LP|Landing Page) de alta conversão/i.test(item);
-                        const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
-                        return `<li>${itemTexto}</li>`;
-                    }).join('')}</ul>`;
+                    const lista = Array.isArray(servico.entregaveis) ? servico.entregaveis : [];
+                    entregaveisHtml = `<ul>${lista.map(item => `<li>${textoItemResumo(item)}</li>`).join('')}</ul>`;
                 }
                 
                 // Linha com modelo de cobrança no resumo
@@ -2461,26 +3798,64 @@
                 doc.setFont('helvetica', 'normal');
                 
                 if (servico.secoes) {
-                    // Tráfego Pago - formato com seções
-                    Object.keys(servico.secoes).forEach(secaoNome => {
-                        doc.setFont('helvetica', 'bold');
-                        doc.text(`${secaoNome}:`, 30, yPos);
-                        yPos += 5;
-                        
-                        doc.setFont('helvetica', 'normal');
-                        servico.secoes[secaoNome].forEach(item => {
-                            const lines = doc.splitTextToSize(`• ${item}`, 150);
-                            lines.forEach(line => {
-                                doc.text(line, 35, yPos);
-                                yPos += 4;
+                    // Formato com seções — aceitar objeto de arrays OU array de objetos { titulo, itens }
+                    if (Array.isArray(servico.secoes)) {
+                        servico.secoes.forEach(sec => {
+                            const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(`${titulo}:`, 30, yPos);
+                            yPos += 5;
+                            doc.setFont('helvetica', 'normal');
+                            itens.forEach(item => {
+                                let base = '';
+                                if (typeof item === 'string') { base = item; }
+                                else if (item && typeof item === 'object') {
+                                    base = item.nome || item.titulo || item.label || item.descricao || item.texto || item.item || '';
+                                    if (!base) { try { base = JSON.stringify(item); } catch(_) { base = String(item); } }
+                                } else { base = String(item ?? ''); }
+                                const lines = doc.splitTextToSize(`• ${base}`, 150);
+                                lines.forEach(line => {
+                                    doc.text(line, 35, yPos);
+                                    yPos += 4;
+                                });
                             });
+                            yPos += 3;
                         });
-                        yPos += 3;
-                    });
+                    } else if (typeof servico.secoes === 'object') {
+                        Object.keys(servico.secoes).forEach(secaoNome => {
+                            const lista = servico.secoes[secaoNome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            doc.setFont('helvetica', 'bold');
+                            doc.text(`${secaoNome}:`, 30, yPos);
+                            yPos += 5;
+                            doc.setFont('helvetica', 'normal');
+                            itens.forEach(item => {
+                                let base = '';
+                                if (typeof item === 'string') { base = item; }
+                                else if (item && typeof item === 'object') {
+                                    base = item.nome || item.titulo || item.label || item.descricao || item.texto || item.item || '';
+                                    if (!base) { try { base = JSON.stringify(item); } catch(_) { base = String(item); } }
+                                } else { base = String(item ?? ''); }
+                                const lines = doc.splitTextToSize(`• ${base}`, 150);
+                                lines.forEach(line => {
+                                    doc.text(line, 35, yPos);
+                                    yPos += 4;
+                                });
+                            });
+                            yPos += 3;
+                        });
+                    }
                 } else {
                     // Social Media - formato simples
                     servico.entregaveis.forEach(item => {
-                        const lines = doc.splitTextToSize(`• ${item}`, 160);
+                        let base = '';
+                        if (typeof item === 'string') { base = item; }
+                        else if (item && typeof item === 'object') {
+                            base = item.nome || item.titulo || item.label || item.descricao || item.texto || item.item || '';
+                            if (!base) { try { base = JSON.stringify(item); } catch(_) { base = String(item); } }
+                        } else { base = String(item ?? ''); }
+                        const lines = doc.splitTextToSize(`• ${base}`, 160);
                         lines.forEach(line => {
                             doc.text(line, 30, yPos);
                             yPos += 5;
@@ -2852,6 +4227,21 @@
                   : window.supabase;
                 // 0. Persistir itens selecionados pelo cliente em proposta_itens
                 try {
+                    // Remover quaisquer itens pré-gerados para evitar duplicidade
+                    try {
+                        const { error: delErr } = await client
+                          .from('proposta_itens')
+                          .delete()
+                          .eq('proposta_criada_id', propostaId)
+                          .contains('metadata', { origem: 'pre_geracao' });
+                        if (delErr) {
+                            console.warn('Falha ao limpar itens pre_geracao antes do aceite:', delErr);
+                        } else {
+                            console.log('Itens pre_geracao removidos para a proposta', propostaId);
+                        }
+                    } catch (e) {
+                        console.warn('Erro ao tentar remover itens pre_geracao:', e);
+                    }
                     const descontoPorForma = (forma) => {
                         const f = (forma || '').toLowerCase();
                         if (f.includes('vista')) return 10; // À Vista
@@ -2860,7 +4250,7 @@
                     };
 
                     const descontoPct = descontoPorForma(dadosAceite.formaPagamento || '');
-                    const itensDetalhados = (Array.isArray(window.servicosContratados) ? window.servicosContratados : [])
+                    const itensDetalhadosBase = (Array.isArray(window.servicosContratados) ? window.servicosContratados : [])
                       .map((s) => {
                         const preco = typeof s.valor === 'number' ? s.valor : parseFloat(String(s.valor).replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
                         const total = +(preco * (1 - (descontoPct/100))).toFixed(2);
@@ -2881,6 +4271,34 @@
                         };
                       });
 
+                    // Add-ons selecionados: persistir como itens individuais
+                    const itensAddons = [];
+                    (Array.isArray(window.servicosContratados) ? window.servicosContratados : []).forEach((s, sIdx) => {
+                        const addons = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                        addons.forEach(a => {
+                            const preco = (a.tipoPreco === 'unitario') ? (a.valorUnitario || 0) : (a.valor || 0);
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const total = +((preco * qtd) * (1 - (descontoPct/100))).toFixed(2);
+                            itensAddons.push({
+                                proposta_criada_id: propostaId,
+                                nome_servico: `Add-on: ${a.nome}`,
+                                descricao: s?.tipo || null,
+                                quantidade: qtd,
+                                preco_unitario: preco,
+                                desconto_percentual: descontoPct,
+                                total: total,
+                                metadata: {
+                                    tipo: 'addon',
+                                    servico_index: sIdx,
+                                    servico_nome: s?.tipo || null,
+                                    recorrencia: dadosAceite.recorrencia || null,
+                                    origem: 'cliente'
+                                }
+                            });
+                        });
+                    });
+
+                    const itensDetalhados = [...itensDetalhadosBase, ...itensAddons];
                     if (itensDetalhados.length > 0) {
                         const { error: itensError } = await client
                           .from('proposta_itens')
@@ -3054,10 +4472,20 @@
         }
 
         
-        function iniciarTimer(timestampCriacao, diasValidade) {
-            const timerElement = document.getElementById('timerValidade');
-            const textoElement = document.getElementById('textoTimer');
-            const contadorElement = document.getElementById('timerContador');
+function iniciarTimer(timestampCriacao, diasValidade) {
+    const timerElement = document.getElementById('timerValidade');
+    // Ocultar completamente o timer em fluxo Catálogo-only
+    try {
+        const sc = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+        const somenteCatalogo = sc.length > 0 && sc.every(s => (s?.tipo || '').toLowerCase() === 'catálogo');
+        if (somenteCatalogo) {
+            if (timerElement) timerElement.style.display = 'none';
+            document.body.classList.remove('timer-ativo');
+            return; // não renderiza countdown
+        }
+    } catch(_) {}
+    const textoElement = document.getElementById('textoTimer');
+    const contadorElement = document.getElementById('timerContador');
             
             // Elementos do contador
             const diasEl = document.getElementById('dias');
@@ -3441,8 +4869,8 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="validacao-cpf-cnpj.js?v=6"></script>
-    <script src="supabase-config.js?v=6"></script>
+    <script src="validacao-cpf-cnpj.js"></script>
+    <script src="supabase-config.js"></script>
     
     <script>
         // AceitarProposta e preencherResumoAceite já estão definidos anteriormente.
@@ -3484,6 +4912,18 @@
             if (Array.isArray(window.servicosContratados)) {
                 window.servicosContratados.forEach(servico => {
                     resumoServicos += `<p>• ${servico.tipo} (${servico.plano})</p>`;
+                    const addons = Array.isArray(servico.addOnsContratados) ? servico.addOnsContratados : [];
+                    if (addons.length) {
+                        const linhasAddons = addons.map(a => {
+                            const unit = (a.tipoPreco === 'unitario');
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const precoUnit = unit ? (a.valorUnitario || 0) : (a.valor || 0);
+                            const precoFmt = Number(precoUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            const detalhe = unit ? `${qtd}× R$ ${precoFmt}` : `R$ ${precoFmt}`;
+                            return `<p style="margin-left:16px; color:#CFCFCF">◦ Add-on: ${a.nome} — ${detalhe}</p>`;
+                        }).join('');
+                        resumoServicos += linhasAddons;
+                    }
                 });
             }
 
@@ -3526,6 +4966,18 @@
             if (Array.isArray(window.servicosContratados)) {
                 window.servicosContratados.forEach(servico => {
                     resumoServicos += `<p>• ${servico.tipo} (${servico.plano})</p>`;
+                    const addons = Array.isArray(servico.addOnsContratados) ? servico.addOnsContratados : [];
+                    if (addons.length) {
+                        const linhasAddons = addons.map(a => {
+                            const unit = (a.tipoPreco === 'unitario');
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const precoUnit = unit ? (a.valorUnitario || 0) : (a.valor || 0);
+                            const precoFmt = Number(precoUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            const detalhe = unit ? `${qtd}× R$ ${precoFmt}` : `R$ ${precoFmt}`;
+                            return `<p style="margin-left:16px; color:#CFCFCF">◦ Add-on: ${a.nome} — ${detalhe}</p>`;
+                        }).join('');
+                        resumoServicos += linhasAddons;
+                    }
                 });
             }
 

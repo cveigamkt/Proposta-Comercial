@@ -17,7 +17,11 @@ function initSupabase() {
             path.endsWith('/admin') || path.endsWith('/admin.html') ||
             path.endsWith('/login') || path.endsWith('/login.html') ||
             path.endsWith('/proposta-gerador') || path.endsWith('/proposta-gerador.html') ||
-            path.endsWith('/clientes') || path.endsWith('/clientes.html')
+            path.endsWith('/clientes') || path.endsWith('/clientes.html') ||
+            path.endsWith('/produtos') || path.endsWith('/produtos.html') ||
+            path.endsWith('/produto-cadastro') || path.endsWith('/produto-cadastro.html') ||
+            path.endsWith('/proposta-rapida') || path.endsWith('/proposta-rapida.html') ||
+            path.endsWith('/index') || path.endsWith('/index.html')
         );
         const authOptions = isAuthPage
             ? { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
@@ -30,6 +34,9 @@ function initSupabase() {
     }
     return supabase;
 }
+// Expor namespace para outros módulos (ex.: auth-guard)
+window.supabaseConfig = window.supabaseConfig || {};
+window.supabaseConfig.initSupabase = initSupabase;
 // Função para salvar proposta aceita no Supabase
 async function salvarPropostaAceita(dadosProposta) {
     try {
@@ -519,6 +526,30 @@ Suporte:
                     paragrafo(t);
                 }
             });
+            // Seção de Add-ons selecionados (quando existirem)
+            try {
+                const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+                const addonsSel = [];
+                servicosPDF.forEach(s => {
+                    const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                    arr.forEach(a => {
+                        const qtd = Math.max(1, a.qtdSelecionada || 1);
+                        const unit = a.tipoPreco === 'unitario';
+                        const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                        const total = unit ? (precoUnit * qtd) : precoUnit;
+                        addonsSel.push({ nome: a.nome, qtd, precoUnit, total });
+                    });
+                });
+                if (addonsSel.length) {
+                    doc.setFontSize(12); doc.setFont('helvetica','bold');
+                    if (y > 250) { doc.addPage(); y = 20; }
+                    doc.text('ANEXO — ADD-ONS SELECIONADOS', margemEsq, y); y += 8;
+                    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                    addonsSel.forEach(a => {
+                        paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
+                    });
+                }
+            } catch (_) { /* silencioso */ }
             usouTemplate = true;
         }
     } catch (e) {
@@ -605,6 +636,30 @@ Suporte:
         if (dadosContrato.servicoTrafegoPago && dadosContrato.servicoTrafegoPago !== 'nao-se-aplica') paragrafo(`• Tráfego Pago — Plano ${dadosContrato.servicoTrafegoPago.toUpperCase()}`);
         paragrafo(`Recorrência: ${dadosContrato.recorrencia} | Pagamento: ${dadosContrato.formaPagamento}`);
         paragrafo(`Valores: Mensal ${parseFloat(dadosContrato.valorMensal).toLocaleString('pt-BR', {minimumFractionDigits: 2})} | Total ${parseFloat(dadosContrato.valorTotal).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`);
+        // Listar Add-ons selecionados
+        try {
+            const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+            const addonsSel = [];
+            servicosPDF.forEach(s => {
+                const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                arr.forEach(a => {
+                    const qtd = Math.max(1, a.qtdSelecionada || 1);
+                    const unit = a.tipoPreco === 'unitario';
+                    const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                    const total = unit ? (precoUnit * qtd) : precoUnit;
+                    addonsSel.push({ nome: a.nome, qtd, precoUnit, total });
+                });
+            });
+            if (addonsSel.length) {
+                doc.setFont('helvetica','bold'); doc.setFontSize(12);
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.text('ADD-ONS SELECIONADOS:', margemEsq, y); y += 7;
+                doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                addonsSel.forEach(a => {
+                    paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
+                });
+            }
+        } catch (_) { /* silencioso */ }
     }
     return doc.output('blob');
 }

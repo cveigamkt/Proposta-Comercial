@@ -5,6 +5,12 @@
 -- É idempotente: só adiciona colunas que faltarem
 -- ============================================
 
+-- 0) Metadados flexíveis da proposta
+ALTER TABLE public.propostas_criadas 
+ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN public.propostas_criadas.metadata IS 'Metadados flexíveis (ex.: catalogo, flags de desconto).';
+
 -- 1) Campos de valores separados
 ALTER TABLE public.propostas_criadas 
 ADD COLUMN IF NOT EXISTS valor_social_midia DECIMAL(10,2) DEFAULT 0,
@@ -37,56 +43,178 @@ COMMENT ON COLUMN public.propostas_criadas.representante_cliente IS 'Nome do rep
 
 -- 4) Recriar a view resumo_propostas para refletir TODOS os campos
 DROP VIEW IF EXISTS public.resumo_propostas;
-CREATE VIEW public.resumo_propostas AS
-SELECT 
-  pc.id,
-  pc.nome_cliente,
-  pc.empresa_cliente,
-  pc.email_cliente,
-  pc.telefone_cliente,
-  pc.cpf_cnpj,
-  pc.endereco_cliente,
-  pc.representante_cliente,
-  pc.servico_social_midia,
-  pc.servico_trafego_pago,
-  pc.valor_social_midia,
-  pc.valor_trafego_pago,
-  pc.tem_comissao_vendas,
-  pc.percentual_comissao,
-  pc.valor_fixo_trafego,
-  pc.tipo_comissao_hibrido,
-  pc.valor_comissao_fixa,
-  pc.investimento_midia,
-  pc.valor_mensal,
-  pc.valor_total,
-  pc.desconto_aplicado,
-  pc.recorrencia,
-  pc.forma_pagamento,
-  pc.status,
-  pc.responsavel_proposta,
-  pc.dias_validade,
-  pc.observacoes,
-  pc.criada_em,
-  pc.expira_em,
-  pc.aceita_em,
-  p.id AS proposta_aceita_id,
-  p.recorrencia AS recorrencia_assinada,
-  p.forma_pagamento AS forma_pagamento_assinada,
-  c.pdf_url AS contrato_pdf_url,
-  CASE 
-    WHEN pc.status = 'aceita' THEN 'Aceita'
-    WHEN pc.status = 'recusada' THEN 'Recusada'
-    WHEN pc.expira_em < NOW() THEN 'Expirada'
-    ELSE 'Pendente'
-  END AS status_display,
-  CASE 
-    WHEN pc.expira_em < NOW() AND pc.status = 'pendente' THEN true 
-    ELSE false 
-  END AS expirada
-FROM public.propostas_criadas pc
-LEFT JOIN public.propostas p ON pc.id = p.proposta_criada_id
-LEFT JOIN public.contratos c ON p.id = c.proposta_id
-ORDER BY pc.criada_em DESC;
+DO $$
+DECLARE
+  p_exists BOOLEAN;
+  c_exists BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'propostas'
+  ) INTO p_exists;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'contratos'
+  ) INTO c_exists;
+
+  IF p_exists AND c_exists THEN
+    EXECUTE $$
+      CREATE VIEW public.resumo_propostas AS
+      SELECT 
+        pc.id,
+        pc.nome_cliente,
+        pc.empresa_cliente,
+        pc.email_cliente,
+        pc.telefone_cliente,
+        pc.cpf_cnpj,
+        pc.endereco_cliente,
+        pc.representante_cliente,
+        pc.servico_social_midia,
+        pc.servico_trafego_pago,
+        pc.valor_social_midia,
+        pc.valor_trafego_pago,
+        pc.tem_comissao_vendas,
+        pc.percentual_comissao,
+        pc.valor_fixo_trafego,
+        pc.tipo_comissao_hibrido,
+        pc.valor_comissao_fixa,
+        pc.investimento_midia,
+        pc.valor_mensal,
+        pc.valor_total,
+        pc.desconto_aplicado,
+        pc.recorrencia,
+        pc.forma_pagamento,
+        pc.status,
+        pc.responsavel_proposta,
+        pc.dias_validade,
+        pc.observacoes,
+        pc.criada_em,
+        pc.expira_em,
+        pc.aceita_em,
+        p.id AS proposta_aceita_id,
+        p.recorrencia AS recorrencia_assinada,
+        p.forma_pagamento AS forma_pagamento_assinada,
+        c.pdf_url AS contrato_pdf_url,
+        CASE 
+          WHEN pc.status = 'aceita' THEN 'Aceita'
+          WHEN pc.status = 'recusada' THEN 'Recusada'
+          WHEN pc.expira_em < NOW() THEN 'Expirada'
+          ELSE 'Pendente'
+        END AS status_display,
+        CASE 
+          WHEN pc.expira_em < NOW() AND pc.status = 'pendente' THEN true 
+          ELSE false 
+        END AS expirada
+      FROM public.propostas_criadas pc
+      LEFT JOIN public.propostas p ON pc.id = p.proposta_criada_id
+      LEFT JOIN public.contratos c ON p.id = c.proposta_id
+      ORDER BY pc.criada_em DESC;
+    $$;
+  ELSIF p_exists THEN
+    EXECUTE $$
+      CREATE VIEW public.resumo_propostas AS
+      SELECT 
+        pc.id,
+        pc.nome_cliente,
+        pc.empresa_cliente,
+        pc.email_cliente,
+        pc.telefone_cliente,
+        pc.cpf_cnpj,
+        pc.endereco_cliente,
+        pc.representante_cliente,
+        pc.servico_social_midia,
+        pc.servico_trafego_pago,
+        pc.valor_social_midia,
+        pc.valor_trafego_pago,
+        pc.tem_comissao_vendas,
+        pc.percentual_comissao,
+        pc.valor_fixo_trafego,
+        pc.tipo_comissao_hibrido,
+        pc.valor_comissao_fixa,
+        pc.investimento_midia,
+        pc.valor_mensal,
+        pc.valor_total,
+        pc.desconto_aplicado,
+        pc.recorrencia,
+        pc.forma_pagamento,
+        pc.status,
+        pc.responsavel_proposta,
+        pc.dias_validade,
+        pc.observacoes,
+        pc.criada_em,
+        pc.expira_em,
+        pc.aceita_em,
+        p.id AS proposta_aceita_id,
+        p.recorrencia AS recorrencia_assinada,
+        p.forma_pagamento AS forma_pagamento_assinada,
+        NULL::text AS contrato_pdf_url,
+        CASE 
+          WHEN pc.status = 'aceita' THEN 'Aceita'
+          WHEN pc.status = 'recusada' THEN 'Recusada'
+          WHEN pc.expira_em < NOW() THEN 'Expirada'
+          ELSE 'Pendente'
+        END AS status_display,
+        CASE 
+          WHEN pc.expira_em < NOW() AND pc.status = 'pendente' THEN true 
+          ELSE false 
+        END AS expirada
+      FROM public.propostas_criadas pc
+      LEFT JOIN public.propostas p ON pc.id = p.proposta_criada_id
+      ORDER BY pc.criada_em DESC;
+    $$;
+  ELSE
+    EXECUTE $$
+      CREATE VIEW public.resumo_propostas AS
+      SELECT 
+        pc.id,
+        pc.nome_cliente,
+        pc.empresa_cliente,
+        pc.email_cliente,
+        pc.telefone_cliente,
+        pc.cpf_cnpj,
+        pc.endereco_cliente,
+        pc.representante_cliente,
+        pc.servico_social_midia,
+        pc.servico_trafego_pago,
+        pc.valor_social_midia,
+        pc.valor_trafego_pago,
+        pc.tem_comissao_vendas,
+        pc.percentual_comissao,
+        pc.valor_fixo_trafego,
+        pc.tipo_comissao_hibrido,
+        pc.valor_comissao_fixa,
+        pc.investimento_midia,
+        pc.valor_mensal,
+        pc.valor_total,
+        pc.desconto_aplicado,
+        pc.recorrencia,
+        pc.forma_pagamento,
+        pc.status,
+        pc.responsavel_proposta,
+        pc.dias_validade,
+        pc.observacoes,
+        pc.criada_em,
+        pc.expira_em,
+        pc.aceita_em,
+        NULL::uuid AS proposta_aceita_id,
+        NULL::text AS recorrencia_assinada,
+        NULL::text AS forma_pagamento_assinada,
+        NULL::text AS contrato_pdf_url,
+        CASE 
+          WHEN pc.status = 'aceita' THEN 'Aceita'
+          WHEN pc.status = 'recusada' THEN 'Recusada'
+          WHEN pc.expira_em < NOW() THEN 'Expirada'
+          ELSE 'Pendente'
+        END AS status_display,
+        CASE 
+          WHEN pc.expira_em < NOW() AND pc.status = 'pendente' THEN true 
+          ELSE false 
+        END AS expirada
+      FROM public.propostas_criadas pc
+      ORDER BY pc.criada_em DESC;
+    $$;
+  END IF;
+END $$;
 
 -- ============================================
 -- FIM DO SCRIPT DE VERIFICAÇÃO

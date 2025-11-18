@@ -146,26 +146,13 @@ function obterDescontoRecorrencia(meses) {
 function calcularValores() {
     let total = 0;
     
-    const socialMedia = document.getElementById('servicoSocialMidia').value;
-    const trafegoPago = document.getElementById('servicoTrafegoPago').value;
-    
-    if (socialMedia !== 'nao-se-aplica') {
-        total += planosSocialMedia[socialMedia].valor;
-    }
-    
-    if (trafegoPago !== 'nao-se-aplica') {
-        const modeloCobranca = document.getElementById('modeloCobranca').value;
-        
-        if (modeloCobranca === 'fixo') {
-            // Valor fixo do plano
-            total += planosTrafegoPago[trafegoPago].valor;
-        } else if (modeloCobranca === 'comissao') {
-            // Apenas comissão - não adiciona valor fixo (será explicado na proposta)
-            // total += 0;
-        } else if (modeloCobranca === 'hibrido') {
-            // Fixo customizado
-            const valorFixo = parseFloat(document.getElementById('valorFixoTrafego').value) || 0;
-            total += valorFixo;
+    // Somar apenas o plano selecionado do Catálogo
+    const planoSelect = document.getElementById('catalogoPlanoSelect');
+    const optPlano = planoSelect?.selectedOptions?.[0] || null;
+    if (optPlano) {
+        const valor = parseFloat(optPlano.dataset?.valor || '0');
+        if (!Number.isNaN(valor) && valor > 0) {
+            total += valor;
         }
     }
     
@@ -397,13 +384,13 @@ async function popularClientesDropdown() {
 // Aguardar DOM carregar antes de adicionar event listeners
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOM carregado - Inicializando event listeners');
-    // Exigir papel admin/editor antes de permitir acesso
-    const client = await ensureEditorOrAdmin();
-    if (!client) return; // será redirecionado para login
+    // Permitir que qualquer usuário logado carregue os serviços (catálogo)
+    const client = await ensureLoggedIn();
+    if (!client) return; // redirecionado para login
+    const papel = await getUserRole(client);
     // Atualizar UI de sessão e habilitar Sair
     try {
         const { data: { session } } = await client.auth.getSession();
-        const papel = window.usuarioPapel || 'viewer';
         const authEl = document.getElementById('authStatusGerador');
         const btnLogout = document.getElementById('btnLogoutGerador');
         if (authEl) authEl.textContent = `${(session?.user?.email) || 'Usuário'} · ${papel}`;
@@ -424,10 +411,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
         }
     } catch (_) { /* ignore */ }
-    // Popular dropdown de responsáveis (admin/editor)
-    await popularResponsavelDropdown();
-    // Popular dropdown de clientes cadastrados
-    await popularClientesDropdown();
+    // Popular dropdown de responsáveis e clientes somente para admin/editor
+    if (papel === 'admin' || papel === 'editor') {
+        await popularResponsavelDropdown();
+        await popularClientesDropdown();
+    } else {
+        // Em viewers, esconder/neutralizar campos sensíveis
+        const respEl = document.getElementById('responsavelProposta');
+        if (respEl) { respEl.innerHTML = '<option value="">—</option>'; respEl.disabled = true; }
+        const clienteEl = document.getElementById('clienteSelecionado');
+        if (clienteEl) { clienteEl.innerHTML = '<option value="">Disponível para admin/editor</option>'; clienteEl.disabled = true; }
+    }
+
+    // Popular serviços cadastrados a partir do Supabase
+    try { await popularServicosCadastrados(); } catch (e) { console.warn('Falha ao carregar serviços do banco:', e); }
+    try { inicializarCatalogoServicos(); } catch (e) { console.warn('Falha ao inicializar catálogo de serviços:', e); }
 
     // Modal: cadastro rápido de cliente
     try {
@@ -560,6 +558,268 @@ if (servicoTrafegoPago) {
     atualizarBadgeComissao();
 });
 
+}
+
+// ==================== CARREGAR SERVIÇOS (PRODUTOS/PLANOS) DO SUPABASE ====================
+function normalizarTexto(s) {
+    return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function mapPlanoKeyFromNome(produtoNome, planoNome) {
+    const p = normalizarTexto(produtoNome);
+    const n = normalizarTexto(planoNome);
+    if (p.includes('trafego') && p.includes('pago')) {
+        if (n.startsWith('foco')) return 'foco';
+        if (n.startsWith('aceleracao')) return 'aceleracao';
+        if (n.startsWith('destaque') || n.startsWith('heat')) return 'heat';
+    }
+    if (p.includes('social') && p.includes('media')) {
+        if (n.startsWith('start')) return 'start';
+        if (n.startsWith('scale')) return 'scale';
+        if (n.startsWith('heat') || n.startsWith('destaque')) return 'heat';
+    }
+    return null;
+}
+
+async function popularServicosCadastrados() {
+    if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+    const client = await window.supabaseConfig.initSupabase();
+
+    const selSocial = document.getElementById('servicoSocialMidia');
+    const selTrafego = document.getElementById('servicoTrafegoPago');
+    if (selSocial) { selSocial.disabled = true; }
+    if (selTrafego) { selTrafego.disabled = true; }
+
+    try {
+        const { data, error } = await client
+            .from('produtos')
+            .select('id, nome, tipo, produto_planos(id, nome, valor, info, sessoes, addons)')
+            .order('nome', { ascending: true });
+        if (error) throw error;
+        const produtos = data || [];
+        // Disponibilizar no escopo global para o card de catálogo
+        window.produtosCatalogo = produtos;
+
+        const getByNome = (alvo) => produtos.find(p => normalizarTexto(p.nome) === normalizarTexto(alvo));
+        const produtoSocial = produtos.find(p => normalizarTexto(p.nome).includes('social') && normalizarTexto(p.nome).includes('media')) || getByNome('Social Media');
+        const produtoTrafego = produtos.find(p => normalizarTexto(p.nome).includes('trafego') && normalizarTexto(p.nome).includes('pago')) || getByNome('Tráfego Pago');
+
+        function fillOptions(selectEl, produto, fallbackOpts) {
+            if (!selectEl) return;
+            const preserveFirst = selectEl.querySelector('option[value="nao-se-aplica"]');
+            selectEl.innerHTML = '';
+            const baseOpt = document.createElement('option');
+            baseOpt.value = 'nao-se-aplica';
+            baseOpt.textContent = 'Não se aplica';
+            selectEl.appendChild(baseOpt);
+            const planos = produto?.produto_planos || [];
+            if (planos.length) {
+                planos.forEach(pl => {
+                    const key = mapPlanoKeyFromNome(produto.nome, pl.nome);
+                    if (!key) return;
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = `${(pl.nome || '').toUpperCase()} - ${formatarMoeda(parseFloat(pl.valor) || 0)}`;
+                    selectEl.appendChild(opt);
+                });
+            } else {
+                (fallbackOpts || []).forEach(o => {
+                    const opt = document.createElement('option');
+                    opt.value = o.value;
+                    opt.textContent = `${o.label} - ${formatarMoeda(o.valor)}`;
+                    selectEl.appendChild(opt);
+                });
+            }
+        }
+
+        // Sincronizar valores nos objetos locais (para cálculos e exibição de entregáveis)
+        if (produtoTrafego && Array.isArray(produtoTrafego.produto_planos)) {
+            produtoTrafego.produto_planos.forEach(pl => {
+                const key = mapPlanoKeyFromNome(produtoTrafego.nome, pl.nome);
+                if (key && planosTrafegoPago[key]) {
+                    const v = parseFloat(pl.valor);
+                    if (!Number.isNaN(v)) planosTrafegoPago[key].valor = v;
+                }
+            });
+        }
+        if (produtoSocial && Array.isArray(produtoSocial.produto_planos)) {
+            produtoSocial.produto_planos.forEach(pl => {
+                const key = mapPlanoKeyFromNome(produtoSocial.nome, pl.nome);
+                if (key && planosSocialMedia[key]) {
+                    const v = parseFloat(pl.valor);
+                    if (!Number.isNaN(v)) planosSocialMedia[key].valor = v;
+                }
+            });
+        }
+
+        // Popular selects com dados do banco ou fallback
+        fillOptions(selTrafego, produtoTrafego, [
+            { value: 'foco', label: 'FOCO', valor: planosTrafegoPago['foco'].valor },
+            { value: 'aceleracao', label: 'ACELERAÇÃO', valor: planosTrafegoPago['aceleracao'].valor },
+            { value: 'heat', label: 'DESTAQUE', valor: planosTrafegoPago['heat'].valor }
+        ]);
+        fillOptions(selSocial, produtoSocial, [
+            { value: 'start', label: 'START', valor: planosSocialMedia['start'].valor },
+            { value: 'scale', label: 'SCALE', valor: planosSocialMedia['scale'].valor },
+            { value: 'heat', label: 'HEAT', valor: planosSocialMedia['heat'].valor }
+        ]);
+
+    } catch (e) {
+        console.warn('Supabase: erro ao carregar produtos/planos para o gerador.', e);
+        // Fallback mínimo caso falhe totalmente
+        if (selTrafego && selTrafego.options.length <= 1) {
+            ['foco','aceleracao','heat'].forEach(k => {
+                const opt = document.createElement('option');
+                const label = planosTrafegoPago[k].nome;
+                opt.value = k;
+                opt.textContent = `${label} - ${formatarMoeda(planosTrafegoPago[k].valor)}`;
+                selTrafego.appendChild(opt);
+            });
+        }
+        if (selSocial && selSocial.options.length <= 1) {
+            ['start','scale','heat'].forEach(k => {
+                const opt = document.createElement('option');
+                const label = planosSocialMedia[k].nome;
+                opt.value = k;
+                opt.textContent = `${label} - ${formatarMoeda(planosSocialMedia[k].valor)}`;
+                selSocial.appendChild(opt);
+            });
+        }
+    } finally {
+        if (selSocial) { selSocial.disabled = false; }
+        if (selTrafego) { selTrafego.disabled = false; }
+    }
+}
+
+// Catálogo genérico de serviços: produtos e planos
+function inicializarCatalogoServicos() {
+    const produtoSelect = document.getElementById('catalogoProdutoSelect');
+    const planoWrapper = document.getElementById('catalogoPlanoWrapper');
+    const planoSelect = document.getElementById('catalogoPlanoSelect');
+    const toggleBtn = document.getElementById('toggleCatalogo');
+    const infoContainer = document.getElementById('infoCatalogo');
+    const entregaveisContainer = document.getElementById('entregaveisCatalogo');
+
+    if (!produtoSelect) return; // Card não existe
+
+    const produtos = Array.isArray(window.produtosCatalogo) ? window.produtosCatalogo : [];
+
+    // Popular lista de produtos
+    produtoSelect.innerHTML = '';
+    const optBase = document.createElement('option');
+    optBase.value = '';
+    optBase.textContent = produtos.length ? 'Selecione um serviço' : 'Nenhum serviço cadastrado';
+    produtoSelect.appendChild(optBase);
+    produtos.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        produtoSelect.appendChild(opt);
+    });
+
+    // Reset UI auxiliar
+    planoWrapper.style.display = 'none';
+    toggleBtn.style.display = 'none';
+    entregaveisContainer.style.display = 'none';
+    infoContainer.innerHTML = '';
+
+    produtoSelect.onchange = function() {
+        const produtoId = this.value;
+        infoContainer.innerHTML = '';
+        entregaveisContainer.style.display = 'none';
+        toggleBtn.style.display = 'none';
+
+        planoSelect.innerHTML = '';
+        const optPlano = document.createElement('option');
+        optPlano.value = '';
+        optPlano.textContent = 'Selecione um plano';
+        planoSelect.appendChild(optPlano);
+        planoWrapper.style.display = 'none';
+
+        if (!produtoId) return;
+        const produto = produtos.find(p => p.id === produtoId);
+        const planos = produto?.produto_planos || [];
+
+        if (Array.isArray(planos) && planos.length) {
+            planoWrapper.style.display = '';
+            planos.forEach(pl => {
+                const opt = document.createElement('option');
+                opt.value = pl.id;
+                const vNum = pl.valor != null ? parseFloat(pl.valor) : NaN;
+                const vTxt = Number.isFinite(vNum) ? formatarMoeda(vNum) : '—';
+                opt.textContent = `${(pl.nome || '').toString()} - ${vTxt}`;
+                opt.dataset.valor = Number.isFinite(vNum) ? vNum : '';
+                opt.dataset.info = pl.info || '';
+                try { opt.dataset.sessoes = pl.sessoes ? JSON.stringify(pl.sessoes) : ''; } catch(_) { opt.dataset.sessoes = ''; }
+                try { opt.dataset.addons = pl.addons ? JSON.stringify(pl.addons) : ''; } catch(_) { opt.dataset.addons = ''; }
+                planoSelect.appendChild(opt);
+            });
+            toggleBtn.style.display = '';
+        } else {
+            // Sem planos: exibir apenas entregáveis/descrição se houver
+            planoWrapper.style.display = 'none';
+            const html = renderInfoSessoes(produto?.info, produto?.sessoes, null);
+            if (html) {
+                infoContainer.innerHTML = html;
+                entregaveisContainer.style.display = 'block';
+                toggleBtn.style.display = '';
+            }
+        }
+    };
+
+    planoSelect.onchange = function() {
+        const opt = this.selectedOptions?.[0];
+        if (!opt) { infoContainer.innerHTML = ''; entregaveisContainer.style.display = 'none'; return; }
+        const valor = opt.dataset.valor;
+        const info = opt.dataset.info || '';
+        let sessoes = null;
+        try { sessoes = opt.dataset.sessoes ? JSON.parse(opt.dataset.sessoes) : null; } catch(_) { sessoes = null; }
+        let addons = null;
+        try { addons = opt.dataset.addons ? JSON.parse(opt.dataset.addons) : null; } catch(_) { addons = null; }
+        infoContainer.innerHTML = renderInfoSessoes(info, sessoes, valor, addons);
+        entregaveisContainer.style.display = 'block';
+        toggleBtn.style.display = '';
+        try { calcularValores(); } catch(_) {}
+    };
+}
+
+function renderInfoSessoes(info, sessoes, valorNum, addons) {
+    let html = '';
+    if (valorNum !== undefined && valorNum !== null && valorNum !== '' && !Number.isNaN(Number(valorNum))) {
+        try { html += `<p><strong>Preço do plano:</strong> ${formatarMoeda(Number(valorNum))}</p>`; } catch(_) { /* ignore */ }
+    }
+    if (info) html += `<p>${info}</p>`;
+    if (sessoes && typeof sessoes === 'object') {
+        try {
+            Object.entries(sessoes).forEach(([sec, itens]) => {
+                const lista = Array.isArray(itens) ? itens : [];
+                const toText = (i) => {
+                    if (typeof i === 'string') return i;
+                    if (i && typeof i === 'object') {
+                        const base = i.nome || i.titulo || i.label || i.descricao || i.texto || i.item || '';
+                        return base || (() => { try { return JSON.stringify(i); } catch(_) { return String(i); } })();
+                    }
+                    return String(i ?? '');
+                };
+                html += `<div class="entregaveis-section"><strong>${sec}</strong><ul>${lista.map(i => `<li>${toText(i)}</li>`).join('')}</ul></div>`;
+            });
+        } catch(_) { /* ignore */ }
+    }
+    // Se houver add-ons selecionados no produto (fluxo composição), listar
+    if (Array.isArray(addons) && addons.length) {
+        const selecionados = addons.filter(a => a && a.selecionado);
+        if (selecionados.length) {
+            const itens = selecionados.map(a => {
+                const label = (a.nome || '').toString();
+                const desc = (a.descricao || '').toString();
+                return desc ? `${label} — ${desc}` : label;
+            });
+            html += `<div class="entregaveis-section"><strong>Add-ons</strong><ul>${itens.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+        }
+    }
+    return html || '<p>Nenhuma informação de entregáveis disponível.</p>';
+}
+
 // Inserir novo cliente via modal e selecionar no dropdown
 async function salvarNovoCliente() {
     try {
@@ -623,7 +883,6 @@ async function salvarNovoCliente() {
         console.error('Falha no cadastro de cliente:', e);
         alert('Erro inesperado ao cadastrar cliente.');
     }
-}
 }
 
     // Event listener para modelo de cobrança
@@ -781,43 +1040,15 @@ window.gerarLinkProposta = async function() {
         const dadosVisualizacao = coletarDadosFormulario();
         if (!dadosVisualizacao) return;
         
-        // Calcular valores
-        let valorMensal = 0;
-        const socialMedia = dadosVisualizacao.servicoSocialMidia;
-        const trafegoPago = dadosVisualizacao.servicoTrafegoPago;
-        
-        if (socialMedia !== 'nao-se-aplica') valorMensal += planosSocialMedia[socialMedia].valor;
-        
-        // Calcular valores separados e considerar modelo de cobrança
+        // Calcular valores usando somente o Catálogo
+        const catalogoValorNum = parseFloat(dadosVisualizacao.catalogoValor || '0') || 0;
+        let valorMensal = catalogoValorNum;
+        // Zerar campos legados
         let valorSocialMidia = 0;
         let valorTrafegoPago = 0;
         let temComissaoVendas = false;
         let percentualComissao = 0;
         let valorFixoTrafego = 0;
-        
-        if (socialMedia !== 'nao-se-aplica' && planosSocialMedia[socialMedia]) {
-            valorSocialMidia = planosSocialMedia[socialMedia].valor;
-        }
-        
-        if (trafegoPago !== 'nao-se-aplica') {
-            const modeloCobranca = dadosVisualizacao.modeloCobranca || 'fixo';
-            
-            if (modeloCobranca === 'fixo') {
-                valorTrafegoPago = planosTrafegoPago[trafegoPago].valor;
-                valorMensal += valorTrafegoPago;
-            } else if (modeloCobranca === 'comissao') {
-                temComissaoVendas = true;
-                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
-                valorTrafegoPago = 0;
-                // Não adiciona ao valor mensal fixo
-            } else if (modeloCobranca === 'hibrido') {
-                temComissaoVendas = true;
-                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
-                valorFixoTrafego = parseFloat(dadosVisualizacao.valorFixoTrafego) || 0;
-                valorTrafegoPago = valorFixoTrafego;
-                valorMensal += valorFixoTrafego;
-            }
-        }
         
         // Aplicar desconto customizado se houver
         const descontoDescricao = document.getElementById('descontoDescricao').value.trim();
@@ -853,6 +1084,9 @@ window.gerarLinkProposta = async function() {
         dataExpiracao.setDate(dataExpiracao.getDate() + parseInt(dadosVisualizacao.diasValidade));
         
         // Preparar dados para inserção/atualização
+        const socialKey = dadosVisualizacao.servicoSocialMidia || 'nao-se-aplica';
+        const trafegoKey = dadosVisualizacao.servicoTrafegoPago || 'nao-se-aplica';
+
         const dadosInsercao = {
             cliente_id: dadosVisualizacao.clienteId || null,
             nome_cliente: dadosVisualizacao.nomeCliente,
@@ -860,8 +1094,9 @@ window.gerarLinkProposta = async function() {
             email_cliente: dadosVisualizacao.emailCliente || 'sem-email@proposta.com',
             telefone_cliente: dadosVisualizacao.telefoneCliente || 'Não informado',
             cpf_cnpj: dadosVisualizacao.cpfCnpj || null,
-            servico_social_midia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : null,
-            servico_trafego_pago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : null,
+            // Mapear nomes de plano com segurança usando as chaves do formulário
+            servico_social_midia: (socialKey && socialKey !== 'nao-se-aplica' && planosSocialMedia[socialKey]) ? (planosSocialMedia[socialKey].nome || socialKey) : null,
+            servico_trafego_pago: (trafegoKey && trafegoKey !== 'nao-se-aplica' && planosTrafegoPago[trafegoKey]) ? (planosTrafegoPago[trafegoKey].nome || trafegoKey) : null,
             valor_social_midia: valorSocialMidia,
             valor_trafego_pago: valorTrafegoPago,
             tem_comissao_vendas: temComissaoVendas,
@@ -882,7 +1117,27 @@ window.gerarLinkProposta = async function() {
             dias_validade: parseInt(dadosVisualizacao.diasValidade),
             expira_em: dataExpiracao.toISOString(),
             observacoes: descontoDescricao || null,
-            status: 'pendente'
+            status: 'pendente',
+            // Persistir dados do Catálogo diretamente na proposta (metadata jsonb)
+            metadata: (() => {
+                const safeParse = (str) => {
+                    try { return str ? JSON.parse(str) : null; } catch(_) { return null; }
+                };
+                const sessoes = safeParse(dadosVisualizacao.catalogoSessoes || '') || [];
+                const addons = safeParse(dadosVisualizacao.catalogoAddons || '') || [];
+                const valorCat = parseFloat(String(dadosVisualizacao.catalogoValor || '0').replace(',', '.')) || 0;
+                const cat = {
+                    origem: 'catalogo',
+                    produto_id: dadosVisualizacao.catalogoProdutoId || null,
+                    plano_id: dadosVisualizacao.catalogoPlanoId || null,
+                    produto_nome: dadosVisualizacao.catalogoProdutoNome || null,
+                    plano_nome: dadosVisualizacao.catalogoPlanoNome || null,
+                    valor: valorCat || 0,
+                    sessoes: Array.isArray(sessoes) ? sessoes : [],
+                    addons: Array.isArray(addons) ? addons : []
+                };
+                return { catalogo: cat };
+            })()
         };
         
         let propostaId;
@@ -958,7 +1213,35 @@ window.gerarLinkProposta = async function() {
             propostaId = data.id;
         }
 
-        // Persistência de itens e histórico passa a ser feita pelo cliente na visualização
+        // Persistir item de Catálogo imediatamente (para aparecer no Admin), se houver
+        try {
+            const nomeCat = (dadosInsercao.catalogoProdutoNome || '').trim();
+            const planoCat = (dadosInsercao.catalogoPlanoNome || '').trim();
+            const valorCat = parseFloat(String(dadosInsercao.catalogoValor || '0').replace(',', '.')) || 0;
+
+            if (valorCat > 0 || (nomeCat && planoCat)) {
+                const item = {
+                    proposta_criada_id: propostaId,
+                    nome_servico: nomeCat || 'Catálogo',
+                    descricao: planoCat || null,
+                    quantidade: 1,
+                    preco_unitario: valorCat || 0,
+                    desconto_percentual: 0,
+                    total: valorCat || 0,
+                    metadata: { origem: 'pre_geracao' }
+                };
+                const { error: itensErr } = await supabase
+                    .from('proposta_itens')
+                    .insert([item]);
+                if (itensErr) {
+                    console.warn('Falha ao inserir item de catálogo pré-geração:', itensErr);
+                } else {
+                    console.log('Item de catálogo pré-geração persistido para a proposta', propostaId);
+                }
+            }
+        } catch (e) {
+            console.warn('Erro ao persistir item de catálogo pré-geração:', e);
+        }
 
         // Gerar link com UUID
         const baseUrl = (() => {
@@ -967,7 +1250,9 @@ window.gerarLinkProposta = async function() {
             const basePath = idx >= 0 ? pathname.slice(0, idx + 1) : '/';
             return origin + basePath;
         })();
-        const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${propostaId}`;
+        // Montar link apenas com o ID (resto será lido da metadata)
+        const extraParams = new URLSearchParams({ id: String(propostaId) });
+        const linkProposta = `${baseUrl}proposta-visualizacao.html?${extraParams.toString()}`;
         
         // Mostrar modal com o link
         document.getElementById('linkGerado').value = linkProposta;
@@ -1116,20 +1401,21 @@ function coletarDadosFormulario() {
         }
     }
     
-    // Verificar se pelo menos um serviço foi selecionado
-    const servicoSocialMidiaEl = document.getElementById('servicoSocialMidia');
-    const servicoTrafegoPagoEl = document.getElementById('servicoTrafegoPago');
-    
-    if (!servicoSocialMidiaEl || !servicoTrafegoPagoEl) {
-        alert('Erro: Campos de serviço não encontrados.');
+    // Exigir apenas seleção do Catálogo
+    const catalogoProdutoEl = document.getElementById('catalogoProdutoSelect');
+    const catalogoPlanoEl = document.getElementById('catalogoPlanoSelect');
+    const produtoIdSel = catalogoProdutoEl?.value || '';
+    const produtoOptSel = catalogoProdutoEl?.selectedOptions?.[0] || null;
+    const planoOptSel = catalogoPlanoEl?.selectedOptions?.[0] || null;
+    if (!produtoIdSel) {
+        alert('Por favor, selecione o serviço do Catálogo.');
         return null;
     }
-    
-    const socialMedia = servicoSocialMidiaEl.value;
-    const trafegoPago = servicoTrafegoPagoEl.value;
-    
-    if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
-        alert('Por favor, selecione pelo menos um serviço (Social Media ou Tráfego Pago).');
+    // Quando existir wrapper de plano e houver opções, exigir plano
+    const planoWrapper = document.getElementById('catalogoPlanoWrapper');
+    const precisaPlano = !!planoWrapper && planoWrapper.style.display !== 'none' && (catalogoPlanoEl?.options?.length || 0) > 1;
+    if (precisaPlano && !planoOptSel) {
+        alert('Por favor, selecione o plano do serviço do Catálogo.');
         return null;
     }
     
@@ -1139,7 +1425,7 @@ function coletarDadosFormulario() {
         timestampPropostaAtual = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
     }
     
-    return {
+        return {
         clienteId: clienteId,
         nomeCliente: empresaCliente, // Usar empresa como nome do cliente
         empresaCliente: empresaCliente,
@@ -1150,14 +1436,23 @@ function coletarDadosFormulario() {
         representanteLegalCliente: '', // Será capturado no aceite
         responsavelProposta: responsavelProposta,
         diasValidade: diasValidade,
-        servicoSocialMidia: socialMedia,
-        servicoTrafegoPago: trafegoPago,
+        // Forçar serviços antigos como não aplicáveis
+        servicoSocialMidia: 'nao-se-aplica',
+        servicoTrafegoPago: 'nao-se-aplica',
         modeloCobranca: document.getElementById('modeloCobranca')?.value || 'fixo',
         percentualComissao: document.getElementById('percentualComissao')?.value || '0',
         valorFixoTrafego: document.getElementById('valorFixoTrafego')?.value || '0',
         tipoComissaoHibrido: document.getElementById('tipoComissaoHibrido')?.value || 'percentual',
         valorComissaoFixa: document.getElementById('valorComissaoFixa')?.value || '0',
         investimentoMidia: (document.getElementById('investimentoMidia')?.value || '').trim(),
+        // Parâmetros do Catálogo no preview
+        catalogoProdutoId: produtoIdSel || '',
+        catalogoProdutoNome: produtoOptSel?.textContent || '',
+        catalogoPlanoId: planoOptSel?.value || '',
+        catalogoPlanoNome: planoOptSel?.textContent || '',
+        catalogoValor: planoOptSel?.dataset?.valor || '',
+        catalogoSessoes: planoOptSel?.dataset?.sessoes || '',
+        catalogoAddons: planoOptSel?.dataset?.addons || '',
         timestampCriacao: timestampPropostaAtual
     };
 }

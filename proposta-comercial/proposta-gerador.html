@@ -167,95 +167,26 @@
       <section class="form-section">
         <h2>🎯 Serviços Contratados</h2>
         <div class="servicos-grid">
-          <!-- Social Media -->
-          <div class="servico-card">
-            <h3>🧑💻 Social Media</h3>
-            <div class="form-group">
-              <label for="servicoSocialMidia">Selecione o Plano</label>
-              <select id="servicoSocialMidia" name="servicoSocialMidia">
-                <option value="nao-se-aplica">Não se aplica</option>
-                <option value="start">START - R$ 1.500,00</option>
-                <option value="scale">SCALE - R$ 2.200,00</option>
-                <option value="heat">HEAT - R$ 3.200,00</option>
-              </select>
-            </div>
-            <button type="button" class="btn-toggle-entregaveis" id="toggleSocialMedia" onclick="toggleEntregaveis('SocialMedia')" style="display: none;">📋 Ver Entregáveis</button>
-            <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
-              <div class="entregaveis-info" id="infoSocialMedia"></div>
-            </div>
-          </div>
+          <!-- Social Media e Tráfego Pago removidos: fluxo Catálogo-only -->
 
-          <!-- Tráfego Pago -->
+          <!-- Serviço do Catálogo (genérico) -->
           <div class="servico-card">
-            <h3>🎯 Tráfego Pago</h3>
+            <h3>📦 Serviço do Catálogo</h3>
             <div class="form-group">
-              <label for="servicoTrafegoPago">Selecione o Plano</label>
-              <select id="servicoTrafegoPago" name="servicoTrafegoPago">
-                <option value="nao-se-aplica">Não se aplica</option>
-                <option value="foco">FOCO - R$ 2.400,00</option>
-                <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
-                <option value="heat">DESTAQUE - R$ 3.500,00</option>
+              <label for="catalogoProdutoSelect">Selecione o Serviço</label>
+              <select id="catalogoProdutoSelect" name="catalogoProdutoSelect">
+                <option value="">Carregando serviços...</option>
               </select>
             </div>
-            <!-- Badge dinâmica para comissão -->
-            <div class="form-group" id="badgeComissaoWrapper" style="display:none; margin-top:-6px;">
-              <span id="badgeComissaoGenerator" style="display:inline-block; background:#1E5942; color:#fff; padding:6px 12px; border-radius:14px; font-weight:700; font-size:0.85rem;">+ 0% sobre vendas</span>
-            </div>
-            
-            <!-- Modelo de Cobrança -->
-            <div class="form-group" id="modeloCobrancaContainer" style="display: none;">
-              <label for="modeloCobranca">💳 Modelo de Cobrança</label>
-              <select id="modeloCobranca" name="modeloCobranca">
-                <option value="fixo">Valor Fixo Mensal</option>
-                <option value="comissao">Comissão sobre Vendas (%)</option>
-                <option value="hibrido">Fixo + Comissão (Híbrido)</option>
+            <div class="form-group" id="catalogoPlanoWrapper" style="display:none;">
+              <label for="catalogoPlanoSelect">Selecione o Plano (quando aplicável)</label>
+              <select id="catalogoPlanoSelect" name="catalogoPlanoSelect">
+                <option value="">Selecione um serviço primeiro</option>
               </select>
-              <small class="info-investimento">
-                <strong>Fixo:</strong> Valor mensal fixo do plano<br>
-                <strong>Comissão:</strong> Apenas % sobre vendas realizadas<br>
-                <strong>Híbrido:</strong> Fixo reduzido + % ou valor fixo sobre vendas
-              </small>
             </div>
-            
-            <!-- Tipo de Comissão no Híbrido -->
-            <div class="form-group" id="tipoComissaoHibridoContainer" style="display: none;">
-              <label for="tipoComissaoHibrido">📋 Tipo de Comissão sobre Vendas (Híbrido)</label>
-              <select id="tipoComissaoHibrido" name="tipoComissaoHibrido">
-                <option value="percentual">Percentual (%)</option>
-                <option value="fixo">Valor Fixo (R$)</option>
-              </select>
-              <small class="info-investimento">Escolha se a comissão será percentual ou valor fixo por venda</small>
-            </div>
-            
-            <!-- Campos de Comissão -->
-            <div class="form-group" id="percentualComissaoContainer" style="display: none;">
-              <label for="percentualComissao">📊 Percentual de Comissão sobre Vendas</label>
-              <input type="number" id="percentualComissao" name="percentualComissao" min="0" max="100" step="0.1" placeholder="Ex: 5" />
-              <small class="info-investimento">Percentual que será cobrado sobre cada venda realizada</small>
-            </div>
-            
-            <div class="form-group" id="valorComissaoFixaContainer" style="display: none;">
-              <label for="valorComissaoFixa">💵 Valor Fixo por Venda (Híbrido)</label>
-              <input type="number" id="valorComissaoFixa" name="valorComissaoFixa" min="0" step="10" placeholder="Ex: 50" />
-              <small class="info-investimento">Valor fixo que será cobrado por cada venda realizada</small>
-            </div>
-            
-            <div class="form-group" id="valorFixoTrafegoContainer" style="display: none;">
-              <label for="valorFixoTrafego">💰 Valor Fixo Mensal (Híbrido)</label>
-              <input type="number" id="valorFixoTrafego" name="valorFixoTrafego" min="0" step="100" placeholder="Ex: 1500" />
-              <small class="info-investimento">Valor fixo mensal reduzido (complementado pela comissão)</small>
-            </div>
-            
-            <button type="button" class="btn-toggle-entregaveis" id="toggleTrafegoPago" onclick="toggleEntregaveis('TrafegoPago')" style="display: none;">📋 Ver Entregáveis</button>
-            <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
-              <div class="entregaveis-info" id="infoTrafegoPago"></div>
-            </div>
-            <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
-              <label for="investimentoMidia">💵 Investimento em Mídia *</label>
-              <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00" />
-              <small id="limiteInvestimento" class="info-investimento"><strong>⚠️ Importante:</strong> Valor que o cliente investirá em anúncios (não inclui nossa gestão).</small>
-              <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
-              <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
+            <button type="button" class="btn-toggle-entregaveis" id="toggleCatalogo" onclick="toggleEntregaveis('Catalogo')" style="display: none;">📋 Ver Entregáveis</button>
+            <div class="form-group entregaveis-container" id="entregaveisCatalogo" style="display: none;">
+              <div class="entregaveis-info" id="infoCatalogo"></div>
             </div>
           </div>
         </div>
@@ -360,7 +291,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=3"></script>
   <script src="validacao-cpf-cnpj.js?v=2"></script>
-  <script src="proposta-gerador.js?v=2"></script>
+  <script src="proposta-gerador.js?v=5"></script>
   <script>
     // Validação de CPF/CNPJ em tempo real no gerador
     document.addEventListener('DOMContentLoaded', function() {
