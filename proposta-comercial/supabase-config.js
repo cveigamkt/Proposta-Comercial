@@ -23,9 +23,7 @@ function initSupabase() {
             path.endsWith('/proposta-rapida') || path.endsWith('/proposta-rapida.html') ||
             path.endsWith('/index') || path.endsWith('/index.html')
         );
-        const authOptions = isAuthPage
-            ? { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-            : { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false };
+        const authOptions = { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false };
 
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
         // Expor o CLIENTE globalmente (o projeto usa window.supabase como client)
