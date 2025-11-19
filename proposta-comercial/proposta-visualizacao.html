@@ -1437,6 +1437,12 @@
                     <div class="rf-right"><span class="rf-value" id="subtotalGeral">R$ 0,00</span></div>
                 </div>
 
+                <!-- Linha Comissão (condicional) -->
+                <div class="rf-row" id="rf-comissao-row" style="display:none">
+                    <div class="rf-left"><span class="rf-label">Comissão sobre vendas</span></div>
+                    <div class="rf-right"><span class="rf-value" id="rf-comissao-value">—</span></div>
+                </div>
+
                 <!-- Linha 4: Desconto aplicado (condicional) -->
                 <div class="rf-row" id="descontosAplicaveisRow" style="display:none">
                     <div class="rf-left">
@@ -1996,6 +2002,10 @@
                 // Mapear planos
                 const socialKey = mapearPlanoSocialParaKey(data.servico_social_midia);
                 const trafegoKey = mapearPlanoTrafegoParaKey(data.servico_trafego_pago);
+                // Determinar se há produto de Catálogo ativo nesta proposta (antes de usar)
+                const metaProdutoAll = (()=>{ try { return obterMetadataCatalogo(); } catch(_) { return {}; } })();
+                const temProdutoCatalogo = !!(metaProdutoAll && (metaProdutoAll.produto_nome || metaProdutoAll.produto_id || metaProdutoAll.plano_nome));
+                try { window.loadedFromDB = true; } catch(_) {}
                 window.propostaCarregada.servico_social_midia_key = socialKey;
                 window.propostaCarregada.servico_trafego_pago_key = trafegoKey;
 
@@ -2009,7 +2019,7 @@
                 // Montar serviços contratados a partir dos planos + valores vindos do banco (respeitando comissão)
                 valorBase = 0;
                 servicosContratados = [];
-                if (socialKey && socialKey !== 'nao-se-aplica' && planos.socialMidia[socialKey]) {
+                if (!temProdutoCatalogo && socialKey && socialKey !== 'nao-se-aplica' && planos.socialMidia[socialKey]) {
                     const plano = planos.socialMidia[socialKey];
                     const valorSocial = typeof data.valor_social_midia === 'number' ? data.valor_social_midia : plano.valor;
                     valorBase += valorSocial;
@@ -2020,7 +2030,8 @@
                         entregaveis: plano.entregaveis
                     });
                 }
-                if (trafegoKey && trafegoKey !== 'nao-se-aplica' && planos.trafegoPago[trafegoKey]) {
+                const metaProduto = (()=>{ try { return obterMetadataCatalogo(); } catch(_) { return {}; } })();
+                if (!temProdutoCatalogo && trafegoKey && trafegoKey !== 'nao-se-aplica' && planos.trafegoPago[trafegoKey]) {
                     const plano = planos.trafegoPago[trafegoKey];
                     const valorTrafegoFixo = typeof data.valor_trafego_pago === 'number' ? data.valor_trafego_pago : plano.valor;
                     // Em comissão pura, valor_trafego_pago virá 0 (não entra no valorBase)
@@ -2060,32 +2071,61 @@
                             serv.entregaveis = desc ? [desc] : [];
                             servicosContratados.push(serv);
                         });
-                        // Enriquecer com metadata.catalogo (nome do plano e entregáveis/seções)
+                        // Enriquecer com metadata.catalogo e, se faltar, buscar no DB
                         try {
                             const metaCatEnrich = obterMetadataCatalogo();
-                            if (metaCatEnrich && (metaCatEnrich.plano_nome || metaCatEnrich.sessoes || (Array.isArray(metaCatEnrich.addons) && metaCatEnrich.addons.length))) {
-                                servicosContratados = servicosContratados.map(s => {
-                                    if (s.tipo !== 'Catálogo') return s;
-                                    const sc = { ...s };
-                                    if (metaCatEnrich.plano_nome) sc.plano = metaCatEnrich.plano_nome;
-                                    if (metaCatEnrich.sessoes) sc.secoes = metaCatEnrich.sessoes;
-                                    if (Array.isArray(metaCatEnrich.addons) && metaCatEnrich.addons.length) {
-                                        const selecionados = metaCatEnrich.addons.filter(a => a && a.selecionado);
-                                        if (selecionados.length) {
-                                            const itens = selecionados.map(a => {
-                                                const label = (a.nome || '').toString();
-                                                const desc = (a.descricao || '').toString();
-                                                return desc ? `${label} — ${desc}` : label;
-                                            });
-                                            sc.secoes = sc.secoes || {};
-                                            sc.secoes['Add-ons'] = itens;
-                                        }
+                            let entregaveisSource = 'none';
+                            servicosContratados = servicosContratados.map(s => {
+                                if (s.tipo !== 'Catálogo') return s;
+                                const sc = { ...s };
+                                if (metaCatEnrich?.plano_nome) sc.plano = metaCatEnrich.plano_nome;
+                                if (metaCatEnrich?.sessoes) { sc.secoes = metaCatEnrich.sessoes; entregaveisSource = 'metadata'; }
+                                if (Array.isArray(metaCatEnrich?.addons) && metaCatEnrich.addons.length) {
+                                    const itens = metaCatEnrich.addons.filter(a => a && a.selecionado).map(a => {
+                                        const label = (a.nome || '').toString();
+                                        const desc = (a.descricao || '').toString();
+                                        return desc ? `${label} — ${desc}` : label;
+                                    });
+                                    if (itens.length) {
+                                        sc.secoes = sc.secoes || {};
+                                        sc.secoes['Add-ons'] = itens;
                                     }
-                                    return sc;
-                                });
-                                console.log('[Visualização] Catálogo enriquecido via metadata', metaCatEnrich);
+                                }
+                                return sc;
+                            });
+                            
+                            // Se ainda não houver secoes, tentar buscar do DB pelo plano_id
+                            const precisaFallback = !servicosContratados.some(s => s.tipo==='Catálogo' && s.secoes);
+                            if (precisaFallback) {
+                                const planoId = metaCatEnrich?.plano_id || null;
+                                if (planoId && window.supabase) {
+                                    const { data: planoDb, error: planoErr } = await window.supabase
+                                        .from('produto_planos')
+                                        .select('id, nome, sessoes, addons')
+                                        .eq('id', planoId)
+                                        .maybeSingle();
+                                    if (!planoErr && planoDb?.sessoes) {
+                                        servicosContratados = servicosContratados.map(s => {
+                                            if (s.tipo !== 'Catálogo') return s;
+                                            const sc = { ...s };
+                                            sc.plano = planoDb.nome || sc.plano;
+                                            sc.secoes = planoDb.sessoes;
+                                            if (Array.isArray(planoDb.addons) && planoDb.addons.length) {
+                                                sc.addonsDisponiveis = planoDb.addons;
+                                                sc.tipoProduto = 'composicao';
+                                            }
+                                            return sc;
+                                        });
+                                        entregaveisSource = 'produto_planos';
+                                    }
+                                }
                             }
-                        } catch(_) {}
+                            try {
+                                const cat = servicosContratados.find(x => x.tipo==='Catálogo') || {};
+                                const secCount = cat.secoes ? (Array.isArray(cat.secoes) ? cat.secoes.length : Object.keys(cat.secoes||{}).length) : 0;
+                                console.log('[Catálogo] Entregáveis', { source: entregaveisSource, produto_id: metaCatEnrich?.produto_id, plano_id: metaCatEnrich?.plano_id, plano_nome: cat.plano, secoes: secCount });
+                            } catch(_) {}
+                        } catch(e) { console.warn('Enriquecimento de catálogo falhou', e); }
                     }
                 } catch (e) {
                     window.reportError('Falha ao carregar itens de catálogo da proposta', e, { uuid: id });
@@ -2107,28 +2147,28 @@
                     // Fallback (via metadata): se add-ons vierem vazios e houver produto_id, buscar planos do produto e selecionar o que tiver add-ons
                     if ((!Array.isArray(addonsArr) || !addonsArr.length) && metaCat && metaCat.produto_id) {
                         try {
-                            console.info('[Add-ons] Fallback(meta): consultando produto_planos para produto_id', metaCat.produto_id);
+                            
                             const { data: planosResp, error: planosErr } = await window.supabase
                                 .from('produto_planos')
                                 .select('id, nome, valor, addons')
                                 .eq('produto_id', metaCat.produto_id)
                                 .order('created_at', { ascending: true });
                             if (planosErr) {
-                                console.warn('[Add-ons] Fallback(meta) erro ao buscar produto_planos:', planosErr);
+                                
                             }
                             if (Array.isArray(planosResp) && planosResp.length) {
                                 const comAddons = planosResp.find(p => Array.isArray(p.addons) && p.addons.length);
                                 if (comAddons) {
                                     addonsArr = comAddons.addons;
-                                    console.info('[Add-ons] Fallback(meta): add-ons carregados do plano', comAddons.id, comAddons.addons);
+                                    
                                 } else {
-                                    console.info('[Add-ons] Fallback(meta): nenhum plano com add-ons encontrado para produto', metaCat.produto_id);
+                                    
                                 }
                             } else {
-                                console.info('[Add-ons] Fallback(meta): nenhum plano retornado para produto', metaCat.produto_id);
+                                
                             }
                         } catch (e) {
-                            console.warn('[Add-ons] Fallback(meta) exceção ao buscar planos:', e);
+                            
                         }
                     }
                     // Evitar duplicação: se já há itens de catálogo vinculados, não adicionar bloco de catálogo base
@@ -2194,7 +2234,14 @@
                         seen.add(key);
                         return true;
                     });
-                    console.log('[Visualização] Serviços após dedup:', servicosContratados.map(s => `${s.tipo}:${s.plano}`));
+                    
+                } catch(_) {}
+                try {
+                    const vfix = parseFloat(window.propostaCarregada?.valor_fixo_trafego || '0') || 0;
+                    if (vfix > 0) {
+                        servicosContratados = servicosContratados.map(s => s.tipo === 'Catálogo' ? { ...s, valor: vfix } : s);
+                    }
+                    valorBase = servicosContratados.reduce((acc, s) => acc + (parseFloat(s.valor || '0') || 0), 0);
                 } catch(_) {}
                 renderizarServicos();
                 try { calcularValores(); } catch(e) { window.reportError('Falha ao calcular valores iniciais com campos assinados', e); }
@@ -2395,7 +2442,8 @@
             valorBase = 0;
             servicosContratados = [];
             
-            if (socialMidia && socialMidia !== 'nao-se-aplica' && planos.socialMidia[socialMidia]) {
+            const temProdutoCatalogo = !!(catalogoProdutoNome || catalogoPlanoNome || catalogoValorNum > 0);
+            if (!temProdutoCatalogo && socialMidia && socialMidia !== 'nao-se-aplica' && planos.socialMidia[socialMidia]) {
                 const plano = planos.socialMidia[socialMidia];
                 valorBase += plano.valor;
                 servicosContratados.push({
@@ -2406,7 +2454,7 @@
                 });
             }
             
-            if (trafegoPago && trafegoPago !== 'nao-se-aplica' && planos.trafegoPago[trafegoPago]) {
+            if (!temProdutoCatalogo && trafegoPago && trafegoPago !== 'nao-se-aplica' && planos.trafegoPago[trafegoPago]) {
                 const plano = planos.trafegoPago[trafegoPago];
                 // Ajustar conforme modelo de cobrança recebido via URL (preview)
                 const modelo = params.get('modeloCobranca') || 'fixo';
@@ -2444,28 +2492,28 @@
                 // Fallback: se add-ons não vierem de metadata/URL e houver produto_id, buscar planos e pegar o que tiver add-ons
                 if ((!Array.isArray(addonsArr) || !addonsArr.length) && metaCat3 && metaCat3.produto_id) {
                     try {
-                        console.info('[Add-ons] Fallback: consultando produto_planos para produto_id', metaCat3.produto_id);
+                        
                         const { data: planosResp, error: planosErr } = await window.supabase
                             .from('produto_planos')
                             .select('id, nome, valor, addons')
                             .eq('produto_id', metaCat3.produto_id)
                             .order('created_at', { ascending: true });
                         if (planosErr) {
-                            console.warn('[Add-ons] Fallback erro ao buscar produto_planos:', planosErr);
+                            
                         }
                         if (Array.isArray(planosResp) && planosResp.length) {
                             const comAddons = planosResp.find(p => Array.isArray(p.addons) && p.addons.length);
                             if (comAddons) {
                                 addonsArr = comAddons.addons;
-                                console.info('[Add-ons] Fallback: add-ons carregados do plano', comAddons.id, comAddons.addons);
+                                
                             } else {
-                                console.info('[Add-ons] Fallback: nenhum plano com add-ons encontrado para produto', metaCat3.produto_id);
+                                
                             }
                         } else {
-                            console.info('[Add-ons] Fallback: nenhum plano retornado para produto', metaCat3.produto_id);
+                            
                         }
                     } catch (e) {
-                        console.warn('[Add-ons] Fallback exceção ao buscar planos:', e);
+                        
                     }
                 }
                 const serv = {
@@ -2544,6 +2592,7 @@
                 const headerTitulo = (servico.tipo === 'Catálogo')
                     ? (metaCatHeader?.produto_nome || servico.plano || 'Catálogo')
                     : `${servico.tipo} — ${servico.plano}`;
+                try { console.log('[Serviço Selecionado]', { tipo: servico.tipo, titulo: headerTitulo, plano: servico.plano }); } catch(_) {}
                 const baseSections = [];
                 const addonSections = [];
                 if (servico.secoes) {
@@ -2565,8 +2614,22 @@
                     const lista = Array.isArray(servico.entregaveis) ? servico.entregaveis : [];
                     if (lista.length) baseSections.push({ titulo: 'Entregáveis', itens: lista });
                 }
-                let entregaveisHtml = '';
-                entregaveisHtml += `<div class="entregaveis"><h4>Entregáveis incluídos neste plano</h4><div class="entregaveis-grid">`;
+                // Header e linha de modelo (renderizadas no card, não aqui)
+                let modeloLinhaHtml = '';
+                if (servico.tipo === 'Catálogo') {
+                    const loaded = !!window.loadedFromDB;
+                    const pctNum = loaded ? (parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0) : (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0);
+                    const valorFixo = loaded ? (parseFloat(window.propostaCarregada?.valor_fixo_trafego || '0') || 0) : (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0);
+                    const modeloParam = loaded ? ((window.propostaCarregada?.tem_comissao_vendas ? (valorFixo>0 && pctNum>0 ? 'hibrido' : 'comissao') : 'base')) : ((new URLSearchParams(window.location.search).get('modeloCobranca') || '').toLowerCase());
+                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || modeloParam === 'comissao' || modeloParam === 'hibrido');
+                    try { console.log('[Modelo de Cobrança]', { origem: loaded ? 'db' : 'preview', modelo: modeloParam || 'base', percentual: pctNum, valorFixo }); } catch(_) {}
+                    // Não exibir comissão no cabeçalho do serviço; manter apenas para fixo
+                    if (!temComissao && valorFixo > 0) {
+                        const modeloTxt = `Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
+                        modeloLinhaHtml = `<div style=\"display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;\"><div class=\"muted\">SERVIÇO DO CATÁLOGO</div><div style=\"color:#CFCFCF;\"><strong>MODELO DE COBRANÇA:</strong> ${modeloTxt}</div></div>`;
+                    }
+                }
+                let entregaveisHtml = `<div class="entregaveis"><h4>Entregáveis incluídos neste plano</h4><div class="entregaveis-grid">`;
                 baseSections.forEach(sec => {
                     entregaveisHtml += `<div class="entregavel-card"><h5>📦 ${sec.titulo}</h5><ul>`;
                     (Array.isArray(sec.itens) ? sec.itens : []).forEach(item => {
@@ -2589,31 +2652,20 @@
                     entregaveisHtml += `</div></div>`;
                 }
                 
-                // Informações de cobrança específicas para Tráfego Pago
-                // Removido valor/"Fixo R$" do bloco de serviços para evitar confusão; valores ficam só no resumo financeiro
+                // Informações de cobrança (Tráfego Pago e Catálogo)
                 let cobrancaHtml = '';
-                if (servico.tipo === 'Tráfego Pago') {
-                    const pctNum = window.propostaCarregada?.percentual_comissao ?? (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0);
-                    const valorFixo = window.propostaCarregada?.valor_fixo_trafego ?? (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0);
-                    const tipoComissaoHibrido = window.propostaCarregada?.tipo_comissao_hibrido ?? (new URLSearchParams(window.location.search).get('tipoComissaoHibrido') || 'percentual');
-                    const valorComissaoFixa = window.propostaCarregada?.valor_comissao_fixa ?? (parseFloat(new URLSearchParams(window.location.search).get('valorComissaoFixa') || '0') || 0);
-                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'comissao' || (new URLSearchParams(window.location.search).get('modeloCobranca') || '') === 'hibrido');
-                    if (temComissao) {
-                        let desc = '';
-                        if (valorFixo > 0) {
-                            if (tipoComissaoHibrido === 'percentual' && pctNum > 0) {
-                                desc = `Híbrido: ${pctNum}% sobre vendas`;
-                            } else if (tipoComissaoHibrido === 'fixo' && valorComissaoFixa > 0) {
-                                desc = `Híbrido: valor fixo por venda`;
-                            }
-                        } else if (pctNum > 0) {
-                            desc = `Comissão sobre vendas`;
-                        }
-                        if (desc) {
-                            cobrancaHtml = `<div style="margin-top: 10px; padding: 10px; border: 1px dashed #1E5942; border-radius: 8px; color: #CFCFCF; font-size: 0.95rem;"><strong>Modelo de Cobrança:</strong> ${desc}</div>`;
-                        }
-                    }
-                    // Caso modelo fixo, não exibir nada aqui (valor ficará apenas no resumo financeiro)
+                const isCatalogo = (servico.tipo || '').toLowerCase() === 'catálogo';
+                if (servico.tipo === 'Tráfego Pago' || isCatalogo) {
+                    const loaded = !!window.loadedFromDB;
+                    const pctNum = loaded ? (parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0) : (parseFloat(new URLSearchParams(window.location.search).get('percentualComissao') || '0') || 0);
+                    const valorFixo = loaded ? (parseFloat(window.propostaCarregada?.valor_fixo_trafego || '0') || 0) : (parseFloat(new URLSearchParams(window.location.search).get('valorFixoTrafego') || '0') || 0);
+                    const tipoComissaoHibrido = loaded ? (window.propostaCarregada?.tipo_comissao_hibrido || 'percentual') : (new URLSearchParams(window.location.search).get('tipoComissaoHibrido') || 'percentual');
+                    const valorComissaoFixa = loaded ? (parseFloat(window.propostaCarregada?.valor_comissao_fixa || '0') || 0) : (parseFloat(new URLSearchParams(window.location.search).get('valorComissaoFixa') || '0') || 0);
+                    const modeloParam = loaded ? ((window.propostaCarregada?.tem_comissao_vendas ? (valorFixo>0 && pctNum>0 ? 'hibrido' : 'comissao') : 'base')) : ((new URLSearchParams(window.location.search).get('modeloCobranca') || '').toLowerCase());
+                    const temComissao = !!(window.propostaCarregada?.tem_comissao_vendas || modeloParam === 'comissao' || modeloParam === 'hibrido');
+                    // Não exibir informações de cobrança no card de serviços
+                    cobrancaHtml = '';
+                    modeloLinhaHtml = '';
                 }
                 
                 card.innerHTML = `
@@ -2621,6 +2673,7 @@
                         <h3>${headerTitulo}</h3>
                         <div class="servico-badge">🔒 Plano Base Incluído</div>
                     </div>
+                    ${modeloLinhaHtml}
                     ${entregaveisHtml}
                     ${cobrancaHtml}
                 `;
@@ -3395,7 +3448,7 @@
                 return anyMeta ? 'Produto' : 'Heurística';
             };
             const f = ctx.flags;
-            console.groupCollapsed('🔎 Diagnóstico Financeiro da Proposta');
+            
             console.log('Produto ID:', ctx.produtoId || '(não informado)');
             console.log('Tipo de Produto (inferido):', ctx.tipoProdutoInferido);
             console.log('Supabase disponível:', ctx.temSupabase);
@@ -3416,7 +3469,7 @@
             if (f.descontoCondicionalAtivo && descontoCondRow && descontoCondRow.style.display === 'none') {
                 console.warn('Aviso: desconto condicional ativo mas a linha correspondente está oculta.');
             }
-            console.groupEnd();
+            
         }
 
         // Helper: coletar add-ons selecionados e calcular totais
@@ -3492,7 +3545,7 @@
                 const params = new URLSearchParams(window.location.search);
                 const produtoId = params.get('catalogoProdutoId') || params.get('produtoId') || params.get('catalogoProduto') || (window.propostaCarregada?.metadata?.catalogo?.produto_id || '');
                 if (!produtoId || !window.supabase) {
-                    console.info('[Catálogo] Sync pulado: produtoId ou supabase indisponíveis.', { produtoId, supabase: !!window.supabase });
+                    
                     return;
                 }
                 const { data, error } = await window.supabase
@@ -3518,7 +3571,7 @@
                     window.propostaCarregada.metadata = window.propostaCarregada.metadata || {};
                     window.propostaCarregada.metadata.catalogo = window.propostaCarregada.metadata.catalogo || {};
                     window.propostaCarregada.metadata.catalogo.tipo = window.produtoTipoDb;
-                    console.info('[Catálogo] Produto sincronizado do DB:', { id: data.id, tipo: window.produtoTipoDb, flags: { recorrencia: !!data.recorrencia, desconto_pagamento: !!data.desconto_pagamento, desconto_condicional: !!data.desconto_condicional, desconto_recorrencia: !!data.desconto_recorrencia } });
+                    
                 } catch(_) {}
                 calcularValores();
                 atualizarResumo();
@@ -5330,11 +5383,21 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                 
                 // Gerar e armazenar contrato
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📄 Gerando contrato em PDF...</p>';
+                const catalogoSrv = (Array.isArray(window.servicosContratados) ? window.servicosContratados.find(s => (s?.tipo || '').toLowerCase() === 'catálogo') : null);
+                const metaCat = (function(){
+                    try { return obterMetadataCatalogo(); } catch(_) { return {}; }
+                })();
                 const dadosContrato = {
                     ...dadosProposta,
                     timestamp: timestamp,
                     ipAssinatura: ipData.ip,
-                    hashAssinatura: hashAssinatura
+                    hashAssinatura: hashAssinatura,
+                    catalogoProdutoNome: metaCat.produto_nome || null,
+                    catalogoPlanoNome: (catalogoSrv?.plano || metaCat.plano_nome || null),
+                    catalogoSessoes: (catalogoSrv?.secoes || metaCat.sessoes || null),
+                    catalogoEntregaveis: (Array.isArray(catalogoSrv?.entregaveis) ? catalogoSrv.entregaveis : null),
+                    catalogoAddons: (Array.isArray(catalogoSrv?.addOnsContratados) ? catalogoSrv.addOnsContratados : (Array.isArray(metaCat.addons) ? metaCat.addons : null)),
+                    catalogoModelo: (new URLSearchParams(window.location.search).get('modeloCobranca') || metaCat.modelo || null)
                 };
                 
                 let contratoResult;
@@ -6153,12 +6216,12 @@ function iniciarTimer(timestampCriacao, diasValidade) {
 // Desativação do envio por e-mail após assinatura
 // Esta redefinição garante que quaisquer chamadas existentes não executem envio.
 async function enviarEmailPropostaAssinada() {
-  console.info('Envio de proposta por e-mail desativado após assinatura.');
+  
   return { ok: true, disabled: true };
 }
 
 function reenviarContratoPorEmail() {
-  console.info('Reenvio por e-mail desativado.');
+  
   const statusEl = document.getElementById('statusEnvioEmail');
   if (statusEl) {
     statusEl.textContent = 'Envio por e-mail desativado.';
@@ -6167,3 +6230,18 @@ function reenviarContratoPorEmail() {
 </script>
 </body>
 </html>
+            // Comissão visível apenas no resumo financeiro
+            try {
+                const temComissao = !!window.propostaCarregada?.tem_comissao_vendas;
+                const pct = parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0;
+                const row = document.getElementById('rf-comissao-row');
+                const val = document.getElementById('rf-comissao-value');
+                if (row && val) {
+                    if (temComissao && pct > 0) {
+                        row.style.display = '';
+                        val.textContent = `${pct}% (valor variável)`;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            } catch(_) {}

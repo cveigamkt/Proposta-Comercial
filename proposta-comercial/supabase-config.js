@@ -28,7 +28,7 @@ function initSupabase() {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
         // Expor o CLIENTE globalmente (o projeto usa window.supabase como client)
         window.supabase = supabase;
-        console.log(`✅ Supabase inicializado (persistSession=${authOptions.persistSession}, autoRefreshToken=${authOptions.autoRefreshToken})`);
+        console.log('✅ DB conectado (Supabase)');
     }
     return supabase;
 }
@@ -75,10 +75,10 @@ async function salvarPropostaAceita(dadosProposta) {
               .select('id, status, recorrencia, forma_pagamento, melhor_dia_pagamento')
               .maybeSingle();
             if (updError) {
-                console.error('❌ Erro ao atualizar propostas_criadas no aceite:', updError);
+                console.error('❌ Aceite: falha ao atualizar propostas_criadas', updError);
                 throw updError;
             }
-            console.log('✅ Atualização confirmada:', updData);
+            console.log('✅ Aceite salvo', { id: updData?.id });
         }
 
         // Inserir itens selecioandos (se houver) e registrar status 'itens_preenchidos'
@@ -121,7 +121,7 @@ async function salvarPropostaAceita(dadosProposta) {
                   .from('proposta_itens')
                   .insert(itensDetalhados);
                 if (itensError) {
-                    console.warn('Falha ao inserir itens selecionados pelo cliente:', itensError);
+                    console.error('❌ Itens: falha ao inserir seleção do cliente', itensError);
                 } else {
                     const { error: statusItensError } = await supabase
                       .from('proposta_status_history')
@@ -132,12 +132,12 @@ async function salvarPropostaAceita(dadosProposta) {
                         created_by: null
                       });
                     if (statusItensError) {
-                        console.warn('Falha ao registrar status itens_preenchidos:', statusItensError);
+                        console.error('❌ Histórico: falha ao registrar itens_preenchidos', statusItensError);
                     }
                 }
             }
         } catch (e) {
-            console.warn('Erro ao persistir itens do aceite (seguir fluxo):', e);
+            console.error('❌ Itens: erro ao persistir seleção', e);
         }
 
         // Registra no histórico
@@ -151,12 +151,12 @@ async function salvarPropostaAceita(dadosProposta) {
                 created_by: null
               });
             if (histError) {
-                console.warn('Falha ao registrar histórico de status (seguindo):', histError);
+                console.error('❌ Histórico: falha ao registrar aceite', histError);
             }
         }
 
         // Retorna o id da proposta criada para ser usado como chave única
-        console.log('✅ Proposta aceita e atualizada (propostas_criadas).');
+        console.log('✅ Aceite concluído');
         return { id: propostaCriadaId };
     } catch (error) {
         console.error('❌ Erro ao salvar proposta:', error);
@@ -185,7 +185,7 @@ async function gerarEArmazenarContrato(propostaCriadaId, dadosContrato) {
             });
         
         if (uploadError) {
-            console.error('❌ Erro ao fazer upload do PDF:', uploadError);
+            console.error('❌ Contrato: falha no upload PDF', uploadError);
             throw uploadError;
         }
         
@@ -207,17 +207,17 @@ async function gerarEArmazenarContrato(propostaCriadaId, dadosContrato) {
             .select();
         
         if (contratoError) {
-            console.error('❌ Erro ao salvar contrato:', contratoError);
+            console.error('❌ Contrato: falha ao salvar registro', contratoError);
             throw contratoError;
         }
         
-        console.log('✅ Contrato gerado e armazenado:', contratoData);
+        console.log('✅ Contrato gerado', { url: urlData.publicUrl });
         return {
             contratoId: contratoData[0].id,
             pdfUrl: urlData.publicUrl
         };
     } catch (error) {
-        console.error('❌ Erro ao gerar e armazenar contrato:', error);
+        console.error('❌ Contrato: erro geral', error);
         throw error;
     }
 }
@@ -553,6 +553,89 @@ Suporte:
     } catch (e) {
         console.warn('Não foi possível carregar contrato-template.md, usando fallback. Erro:', e);
     }
+    // Inserir seção de Catálogo quando existir (mesmo com template)
+    try {
+        // Preferir dados vindos do contrato (evita depender de window)
+        let catalogo = null;
+        const fromDados = dadosContrato && (dadosContrato.catalogoSessoes || dadosContrato.catalogoEntregaveis || dadosContrato.catalogoPlanoNome || dadosContrato.catalogoProdutoNome);
+        if (fromDados) {
+            catalogo = {
+                plano: dadosContrato.catalogoPlanoNome || 'Plano',
+                secoes: dadosContrato.catalogoSessoes || null,
+                entregaveis: dadosContrato.catalogoEntregaveis || null,
+                addOnsContratados: Array.isArray(dadosContrato.catalogoAddons) ? dadosContrato.catalogoAddons : []
+            };
+        } else {
+            const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+            catalogo = servicosPDF.find(s => (s?.tipo || '').toLowerCase() === 'catálogo');
+        }
+        if (catalogo) {
+            const titulo = `SERVIÇO DO CATÁLOGO — ${String(catalogo.plano || catalogo.produto || 'Plano').toUpperCase()}`;
+            const montarLista = () => {
+                let linhas = [];
+                if (catalogo.secoes) {
+                    if (Array.isArray(catalogo.secoes)) {
+                        catalogo.secoes.forEach(sec => {
+                            const nome = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            linhas.push(`${nome}:`);
+                            itens.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                        });
+                    } else if (typeof catalogo.secoes === 'object') {
+                        Object.keys(catalogo.secoes).forEach(nome => {
+                            const lista = catalogo.secoes[nome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            linhas.push(`${nome}:`);
+                            itens.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                        });
+                    }
+                } else {
+                    const base = Array.isArray(catalogo.entregaveis) ? catalogo.entregaveis : [];
+                    base.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                }
+                return linhas;
+            };
+            const linhas = montarLista();
+            if (linhas.length) {
+                doc.setFontSize(12); doc.setFont('helvetica','bold');
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.text(titulo, margemEsq, y); y += 8;
+                // Modelo de cobrança
+                try {
+                    const pctNum = parseFloat(dadosContrato.percentual_comissao || dadosContrato.catalogoAddons?.percentual || 0) || 0;
+                    const valorFixo = parseFloat(dadosContrato.valor_fixo_trafego || dadosContrato.valorMensal || 0) || 0;
+                    const modeloTxt = (function(){
+                        const m = (dadosContrato.catalogoModelo || '').toLowerCase();
+                        if (m === 'comissao' && pctNum > 0) return `Modelo de cobrança: Comissão ${pctNum}% sobre vendas`;
+                        if (m === 'hibrido' && valorFixo > 0 && pctNum > 0) return `Modelo de cobrança: Híbrido — Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })} + ${pctNum}%`;
+                        if (m === 'alterado' && valorFixo > 0) return `Modelo de cobrança: Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })}/mês`;
+                        if (valorFixo > 0) return `Modelo de cobrança: Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })}/mês`;
+                        return '';
+                    })();
+                    if (modeloTxt) { doc.setFont('helvetica','normal'); doc.setFontSize(10); paragrafo(modeloTxt); }
+                } catch(_) {}
+                doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                linhas.forEach(l => { paragrafo(l); });
+                // Add-ons selecionados
+                try {
+                    const addons = Array.isArray(catalogo.addOnsContratados) ? catalogo.addOnsContratados : [];
+                    if (addons.length) {
+                        doc.setFontSize(11); doc.setFont('helvetica','bold');
+                        if (y > 250) { doc.addPage(); y = 20; }
+                        doc.text('ADD-ONS SELECIONADOS', margemEsq, y); y += 6;
+                        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                        addons.forEach(a => {
+                            const unit = (a.tipoPreco === 'unitario');
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                            const total = unit ? (precoUnit * qtd) : precoUnit;
+                            paragrafo(`• ${a.nome} — ${unit ? `${qtd}× R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Total R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`);
+                        });
+                    }
+                } catch(_) {}
+            }
+        }
+    } catch(_) { /* silencioso */ }
     if (!usouTemplate) {
         // Fallback: renderiza cabeçalho, partes e cláusulas resumidas
         doc.setFontSize(20);

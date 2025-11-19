@@ -750,7 +750,7 @@ function inicializarCatalogoServicos() {
                 opt.textContent = `${(pl.nome || '').toString()} - ${vTxt}`;
                 opt.dataset.valor = Number.isFinite(vNum) ? vNum : '';
                 opt.dataset.info = pl.info || '';
-                try { opt.dataset.sessoes = pl.sessoes ? JSON.stringify(pl.sessoes) : ''; } catch(_) { opt.dataset.sessoes = ''; }
+                try { opt.dataset.sessoes = pl.secoes ? JSON.stringify(pl.secoes) : ''; } catch(_) { opt.dataset.sessoes = ''; }
                 try { opt.dataset.addons = pl.addons ? JSON.stringify(pl.addons) : ''; } catch(_) { opt.dataset.addons = ''; }
                 planoSelect.appendChild(opt);
             });
@@ -789,7 +789,23 @@ function renderInfoSessoes(info, sessoes, valorNum, addons) {
         try { html += `<p><strong>Preço do plano:</strong> ${formatarMoeda(Number(valorNum))}</p>`; } catch(_) { /* ignore */ }
     }
     if (info) html += `<p>${info}</p>`;
-    if (sessoes && typeof sessoes === 'object') {
+    if (Array.isArray(sessoes)) {
+        try {
+            sessoes.forEach(sec => {
+                const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
+                const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                const toText = (i) => {
+                    if (typeof i === 'string') return i;
+                    if (i && typeof i === 'object') {
+                        const base = i.nome || i.titulo || i.label || i.descricao || i.texto || i.item || '';
+                        return base || (() => { try { return JSON.stringify(i); } catch(_) { return String(i); } })();
+                    }
+                    return String(i ?? '');
+                };
+                html += `<div class="entregaveis-section"><strong>${titulo}</strong><ul>${itens.map(i => `<li>${toText(i)}</li>`).join('')}</ul></div>`;
+            });
+        } catch(_) { /* ignore */ }
+    } else if (sessoes && typeof sessoes === 'object') {
         try {
             Object.entries(sessoes).forEach(([sec, itens]) => {
                 const lista = Array.isArray(itens) ? itens : [];
@@ -1024,6 +1040,30 @@ window.previewProposta = function() {
         
         // Criar URL com parâmetros
         const params = new URLSearchParams(dadosVisualizacao);
+        // Normalizar modelo para visualização (nomes esperados na página de preview)
+        try {
+            const catalogoValorNum = parseFloat(dadosVisualizacao.catalogoValor || '0') || 0;
+            const modeloCatalogo = (dadosVisualizacao.modeloCatalogo || 'base').toLowerCase();
+            const overrideTxt = String(dadosVisualizacao.valorCatalogoOverride || '').replace(/\./g,'').replace(',','.');
+            const overrideNum = parseFloat(overrideTxt || '0') || 0;
+            const pctNum = parseFloat(String(dadosVisualizacao.percentualCatalogo || '0')) || 0;
+            let valorMensal = catalogoValorNum;
+            let modeloNorm = modeloCatalogo;
+            if (modeloCatalogo === 'base') {
+                if (overrideNum > 0) modeloNorm = 'alterado';
+                valorMensal = catalogoValorNum;
+            } else if (modeloCatalogo === 'comissao') {
+                valorMensal = 0;
+            } else if (modeloCatalogo === 'alterado') {
+                valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            } else if (modeloCatalogo === 'hibrido') {
+                valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            }
+            try { console.log('[Gerador][Preview]', { servico: dadosVisualizacao.catalogoProdutoNome, plano: dadosVisualizacao.catalogoPlanoNome, modelo: modeloNorm, percentual: pctNum, valorFixo: valorMensal }); } catch(_) {}
+            params.set('modeloCobranca', modeloNorm);
+            params.set('percentualComissao', String(pctNum || ''));
+            params.set('valorFixoTrafego', String(valorMensal || ''));
+        } catch(_) {}
         const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
         
         // Abrir diretamente (sem salvar)
@@ -1040,8 +1080,12 @@ window.gerarLinkProposta = async function() {
         const dadosVisualizacao = coletarDadosFormulario();
         if (!dadosVisualizacao) return;
         
-        // Calcular valores usando somente o Catálogo
+        // Calcular valores usando o Catálogo (com modelo escolhido)
         const catalogoValorNum = parseFloat(dadosVisualizacao.catalogoValor || '0') || 0;
+        const modeloCatalogo = (dadosVisualizacao.modeloCatalogo || 'base').toLowerCase();
+        const overrideTxt = String(dadosVisualizacao.valorCatalogoOverride || '').replace(/\./g,'').replace(',','.');
+        const overrideNum = parseFloat(overrideTxt || '0') || 0;
+        const pctNum = parseFloat(String(dadosVisualizacao.percentualCatalogo || '0')) || 0;
         let valorMensal = catalogoValorNum;
         // Zerar campos legados
         let valorSocialMidia = 0;
@@ -1067,8 +1111,29 @@ window.gerarLinkProposta = async function() {
             }
         }
         
-        const valorMensalFinal = valorMensal - descontoCustomizado;
-        const valorTotal = valorMensalFinal; // Por enquanto sem recorrência
+        // Aplicar modelo de cobrança (normalizado independentemente do dropdown)
+        const modeloNormalizado = (function(){
+            const temPct = pctNum > 0;
+            const temOverride = overrideNum > 0;
+            if (temPct && temOverride) return 'hibrido';
+            if (temPct) return 'comissao';
+            if (temOverride) return 'alterado';
+            return (modeloCatalogo || 'base');
+        })();
+        if (modeloNormalizado === 'comissao') {
+            valorMensal = 0; temComissaoVendas = true; percentualComissao = pctNum;
+        } else if (modeloNormalizado === 'alterado') {
+            valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            temComissaoVendas = false; percentualComissao = 0;
+        } else if (modeloNormalizado === 'hibrido') {
+            valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            temComissaoVendas = true; percentualComissao = pctNum;
+        } else {
+            valorMensal = catalogoValorNum; temComissaoVendas = false; percentualComissao = 0;
+        }
+        valorFixoTrafego = valorMensal; // reutilizado como fixo mensal do catálogo
+        const valorMensalFinal = Math.max(0, valorMensal - descontoCustomizado);
+        const valorTotal = valorMensalFinal; // recorrência aplicada na visualização
         
         // Inicializar Supabase
         if (!window.supabaseConfig) {
@@ -1132,13 +1197,18 @@ window.gerarLinkProposta = async function() {
                     plano_id: dadosVisualizacao.catalogoPlanoId || null,
                     produto_nome: dadosVisualizacao.catalogoProdutoNome || null,
                     plano_nome: dadosVisualizacao.catalogoPlanoNome || null,
-                    valor: valorCat || 0,
+                    valor: valorMensalFinal || valorCat || 0,
                     sessoes: Array.isArray(sessoes) ? sessoes : [],
-                    addons: Array.isArray(addons) ? addons : []
+                    addons: Array.isArray(addons) ? addons : [],
+                    modelo: modeloNormalizado,
+                    percentual: percentualComissao,
+                    valor_override: overrideNum || null
                 };
                 return { catalogo: cat };
             })()
         };
+
+        try { console.log('[Gerador][Salvar]', { modelo: modeloNormalizado, percentual: percentualComissao, valorFixo: valorFixoTrafego, valorMensalFinal }); } catch(_) {}
         
         let propostaId;
         
@@ -1425,7 +1495,7 @@ function coletarDadosFormulario() {
         timestampPropostaAtual = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
     }
     
-        return {
+    return {
         clienteId: clienteId,
         nomeCliente: empresaCliente, // Usar empresa como nome do cliente
         empresaCliente: empresaCliente,
@@ -1453,6 +1523,9 @@ function coletarDadosFormulario() {
         catalogoValor: planoOptSel?.dataset?.valor || '',
         catalogoSessoes: planoOptSel?.dataset?.sessoes || '',
         catalogoAddons: planoOptSel?.dataset?.addons || '',
+        modeloCatalogo: (document.querySelector('input[name="modeloCatalogo"]:checked')?.value || 'base'),
+        valorCatalogoOverride: (document.getElementById('valorCatalogoOverride')?.value || '').trim(),
+        percentualCatalogo: (document.getElementById('percentualCatalogo')?.value || '').trim(),
         timestampCriacao: timestampPropostaAtual
     };
 }
@@ -1620,3 +1693,31 @@ async function carregarPropostaParaEdicao(propostaId) {
     const clienteId = clienteOpt?.value || null;
     const clienteEmail = clienteOpt?.dataset?.email || '';
     const clienteTelefone = clienteOpt?.dataset?.telefone || '';
+    // Modelo de cobrança: mostrar/ocultar campos conforme seleção
+    try {
+        const sel = document.getElementById('modeloCatalogoSelect');
+        const campos = document.getElementById('catalogoModeloFields');
+        const valorInput = document.getElementById('valorCatalogoOverride');
+        const pctInput = document.getElementById('percentualCatalogo');
+        const updateFields = () => {
+            const v = (sel?.value || 'base');
+            if (!campos || !valorInput || !pctInput) return;
+            if (v === 'base') {
+                campos.style.display = 'none';
+            } else if (v === 'comissao') {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = 'none';
+                pctInput.parentElement.style.display = '';
+            } else if (v === 'alterado') {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = '';
+                pctInput.parentElement.style.display = 'none';
+            } else {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = '';
+                pctInput.parentElement.style.display = '';
+            }
+        };
+        sel?.addEventListener('change', updateFields);
+        updateFields();
+    } catch(_) {}

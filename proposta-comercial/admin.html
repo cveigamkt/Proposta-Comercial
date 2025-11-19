@@ -273,6 +273,20 @@ async function queryResumo(filtros){
         const ids = baseView.map(r => r.id).filter(Boolean);
         const mapProp = new Map(); // sem uso do legado 'propostas'
         const melhorDiaMap = new Map(); // usar campo direto de propostas_criadas
+        // Popular melhor dia de pagamento quando a view não trouxer
+        if (ids.length > 0) {
+          try {
+            const { data: melhorDiaRows } = await client
+              .from('propostas_criadas')
+              .select('id, melhor_dia_pagamento')
+              .in('id', ids);
+            (melhorDiaRows||[]).forEach(row => {
+              melhorDiaMap.set(row.id, row.melhor_dia_pagamento ?? null);
+            });
+          } catch (e) {
+            console.warn('Admin: falha ao buscar melhor_dia_pagamento diretamente:', e?.message || e);
+          }
+        }
         const propDataMap = new Map(); // usar campos assinados da própria view/base
         const propIds = []; // não usado sem legado
         // Contratos: priorizar tabela normalizada (proposta_contratos por proposta_criada_id)
@@ -308,7 +322,7 @@ async function queryResumo(filtros){
           ...pc,
           status: (pc.status === 'aceita' || pc.aceita_em) ? 'aceita' : pc.status,
           representante_nome: pc.representante_cliente || null,
-          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? null),
+          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? melhorDiaMap.get(pc.id) ?? null),
           recorrencia_assinada: pc.recorrencia_assinada || null,
           forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
           proposta_aceita_id: null,
@@ -510,6 +524,8 @@ async function queryResumo(filtros){
                 <div><strong>Melhor dia pagamento:</strong> ${(r.melhor_dia_pagamento ?? '—')}</div>
                 <div><strong>Email:</strong> ${r.email_cliente || '—'}</div>
                 <div><strong>Telefone:</strong> ${r.telefone_cliente || '—'}</div>
+                <div><strong>CPF/CNPJ:</strong> ${r.cpf_cnpj || '—'}</div>
+                <div><strong>Serviço(s):</strong> ${linhaServico(r)}</div>
                 ${(r.recorrencia_assinada || r.forma_pagamento_assinada) ? `<div><strong>Assinado:</strong> ${(r.recorrencia_assinada || '—')} • ${(r.forma_pagamento_assinada || '—')}</div>` : ''}
                 ${r.assinado_em ? `<div><strong>Assinado em:</strong> ${formatarDataHora(r.assinado_em)}</div>` : ''}
                 ${r.contrato_pdf_url ? `<div><a class="link" href="${r.contrato_pdf_url}" target="_blank">📄 Contrato</a></div>` : ''}
