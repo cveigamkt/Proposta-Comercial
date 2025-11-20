@@ -43,6 +43,13 @@
                 }
                 console.groupEnd();
             };
+            (function(){
+                try {
+                    if (typeof window.DEBUG === 'undefined') window.DEBUG = false;
+                    const _log = console.log.bind(console);
+                    console.log = function(){ if (window.DEBUG) _log.apply(console, arguments); };
+                } catch(_) {}
+            })();
             function serializeError(err) {
                 try {
                     if (!err) return { message: 'Erro indefinido' };
@@ -1295,8 +1302,6 @@
         </div>
     </div>
 
-        </div>
-    </section>
 
     <!-- Metodologia Heat -->
     <section class="section metodologia">
@@ -1404,10 +1409,8 @@
                 </div>
             </div>
 
-            <!-- Resumo Financeiro -->
             <div class="resumo-financeiro" id="resumoFinanceiro">
                 <h3>💰 Resumo Financeiro</h3>
-                <!-- Linha 1: Valor Base -->
                 <div class="rf-row" id="rf-base-row">
                     <div class="rf-left">
                         <button class="rf-toggle" id="rf-base-toggle" aria-expanded="false" style="display:none">+</button>
@@ -1419,7 +1422,6 @@
                 </div>
                 <div class="rf-details" id="rf-base-details" style="display:none"></div>
 
-                <!-- Linha 2: Add-ons (condicional) -->
                 <div class="rf-row" id="rf-addons-row" style="display:none">
                     <div class="rf-left">
                         <button class="rf-toggle" id="rf-addons-toggle" aria-expanded="false" style="display:none">+</button>
@@ -1431,19 +1433,16 @@
                 </div>
                 <div class="rf-details" id="rf-addons-details" style="display:none"></div>
 
-                <!-- Linha 3: Subtotal (condicional) -->
                 <div class="rf-row" id="rf-subtotal-row" style="display:none">
                     <div class="rf-left"><span class="rf-label">Subtotal</span></div>
                     <div class="rf-right"><span class="rf-value" id="subtotalGeral">R$ 0,00</span></div>
                 </div>
 
-                <!-- Linha Comissão (condicional) -->
                 <div class="rf-row" id="rf-comissao-row" style="display:none">
                     <div class="rf-left"><span class="rf-label">Comissão sobre vendas</span></div>
                     <div class="rf-right"><span class="rf-value" id="rf-comissao-value">—</span></div>
                 </div>
 
-                <!-- Linha 4: Desconto aplicado (condicional) -->
                 <div class="rf-row" id="descontosAplicaveisRow" style="display:none">
                     <div class="rf-left">
                         <button class="rf-toggle" id="rf-desconto-toggle" aria-expanded="false" style="display:none">+</button>
@@ -1453,19 +1452,16 @@
                 </div>
                 <div class="rf-details" id="rf-desconto-details" style="display:none"></div>
 
-                <!-- Linha 5: Total (destacado) -->
                 <div class="rf-row rf-total">
                     <div class="rf-left"><span class="rf-label rf-total-label">TOTAL FINAL</span></div>
                     <div class="rf-right"><span class="rf-value rf-total-value" id="totalFinalContrato">R$ 0,00</span></div>
                 </div>
 
-                <!-- Linha 6: Mensal/Parcelado (condicional) -->
                 <div class="rf-row" id="rf-mensal-parcelado-row" style="display:none">
                     <div class="rf-left"><span class="rf-label" id="rf-mp-label">Mensalidade</span></div>
                     <div class="rf-right"><span class="rf-value" id="rf-mp-value">R$ 0,00</span></div>
                 </div>
 
-                <!-- Compat: valores brutos não exibidos -->
                 <span id="valorFinalMensal" style="display:none">R$ 0,00</span>
                 <span id="valorTotalPeriodo" style="display:none">R$ 0,00</span>
             </div>
@@ -2120,6 +2116,32 @@
                                     }
                                 }
                             }
+                            // Fallback adicional: se ainda não há addonsDisponiveis, buscar por produto_id
+                            try {
+                                const catMeta = metaCatEnrich || {};
+                                const produtoId = catMeta.produto_id || null;
+                                const precisaAddons = !servicosContratados.some(s => s.tipo==='Catálogo' && Array.isArray(s.addonsDisponiveis) && s.addonsDisponiveis.length);
+                                if (precisaAddons && produtoId && window.supabase) {
+                                    const { data: planosAll } = await window.supabase
+                                        .from('produto_planos')
+                                        .select('id, nome, addons')
+                                        .eq('produto_id', produtoId);
+                                    let planoComAddons = null;
+                                    if (Array.isArray(planosAll)) {
+                                        planoComAddons = planosAll.find(p => Array.isArray(p.addons) && p.addons.length && (catMeta.plano_nome ? p.nome === catMeta.plano_nome : true))
+                                            || planosAll.find(p => Array.isArray(p.addons) && p.addons.length);
+                                    }
+                                    if (planoComAddons && Array.isArray(planoComAddons.addons) && planoComAddons.addons.length) {
+                                        servicosContratados = servicosContratados.map(s => {
+                                            if (s.tipo !== 'Catálogo') return s;
+                                            const sc = { ...s };
+                                            sc.addonsDisponiveis = planoComAddons.addons;
+                                            sc.tipoProduto = 'composicao';
+                                            return sc;
+                                        });
+                                    }
+                                }
+                            } catch(_) {}
                             try {
                                 const cat = servicosContratados.find(x => x.tipo==='Catálogo') || {};
                                 const secCount = cat.secoes ? (Array.isArray(cat.secoes) ? cat.secoes.length : Object.keys(cat.secoes||{}).length) : 0;
@@ -6127,18 +6149,6 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                 if (typeof preencherResumoAssinaturaFinal === 'function') {
                     preencherResumoAssinaturaFinal();
                 }
-                // Enviar contrato por e-mail automaticamente
-                try {
-                    await enviarEmailPropostaAssinada({
-                        pdfUrl: contratoResult.pdfUrl,
-                        nomeCliente: dadosProposta.nomeCliente,
-                        empresaCliente: dadosProposta.empresaCliente,
-                        emailCliente: dadosProposta.emailCliente,
-                        emailFaturamento: dadosAssinaturaTemp?.email || ''
-                    });
-                } catch (e) {
-                    console.warn('Falha ao enviar e-mail automático:', e);
-                }
                 document.getElementById('modalContratoSucesso').style.display = 'block';
 
             } catch (error) {
@@ -6155,7 +6165,6 @@ function iniciarTimer(timestampCriacao, diasValidade) {
             const statusEl = document.getElementById('statusEnvioEmail');
             if (statusEl) statusEl.textContent = '✉️ Enviando contrato por e-mail...';
             try {
-                // Garantir cliente Supabase
                 if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
                     window.supabaseConfig.initSupabase();
                 }
@@ -6168,8 +6177,42 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                     throw new Error('Nenhum e-mail de destino informado.');
                 }
 
-                const htmlBody = `Contrato assinado por ${nomeCliente || 'Cliente'}${empresaCliente ? ' (' + empresaCliente + ')' : ''}. ` +
-                    `Link para download: <a href="${pdfUrl}" target="_blank">${pdfUrl}</a>`;
+                const cat = (Array.isArray(servicosContratados) ? servicosContratados.find(s => s.tipo === 'Catálogo') : null) || {};
+                const tituloPlano = String(cat.plano || '').trim();
+                function renderLista(itens) {
+                    const arr = Array.isArray(itens) ? itens : [];
+                    return arr.map(i => `<li>${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.descricao || i?.texto || i?.item || '')}</li>`).join('');
+                }
+                function renderSecoes(secoes) {
+                    if (Array.isArray(secoes)) {
+                        return secoes.map(sec => {
+                            const t = sec?.titulo || sec?.nome || 'Seção';
+                            const lis = renderLista(sec?.itens);
+                            return `<div><strong>${t}</strong><ul>${lis}</ul></div>`;
+                        }).join('');
+                    }
+                    if (secoes && typeof secoes === 'object') {
+                        return Object.entries(secoes).map(([t, itens]) => `<div><strong>${t}</strong><ul>${renderLista(itens)}</ul></div>`).join('');
+                    }
+                    return '';
+                }
+                const entregaveisHtml = renderSecoes(cat.secoes) || (Array.isArray(cat.entregaveis) ? `<ul>${renderLista(cat.entregaveis)}</ul>` : '');
+                let addonsHtml = '';
+                if (Array.isArray(cat.addonsDisponiveis) && cat.addonsDisponiveis.length) {
+                    const selecionados = cat.addonsDisponiveis.filter(a => a && a.selecionado);
+                    if (selecionados.length) {
+                        const lis = selecionados.map(a => `<li>${(a.nome || '')}${a.descricao ? ' — ' + a.descricao : ''}</li>`).join('');
+                        addonsHtml = `<div><strong>Add-ons</strong><ul>${lis}</ul></div>`;
+                    }
+                }
+
+                const htmlBody = [
+                    `<p>Contrato assinado por ${nomeCliente || 'Cliente'}${empresaCliente ? ' (' + empresaCliente + ')' : ''}.</p>`,
+                    `<p>Link para download: <a href="${pdfUrl}" target="_blank">${pdfUrl}</a></p>`,
+                    tituloPlano ? `<h3 style="margin:16px 0 8px">Seu Pacote de Serviços${tituloPlano ? ' — ' + tituloPlano : ''}</h3>` : `<h3 style="margin:16px 0 8px">Seu Pacote de Serviços</h3>`,
+                    entregaveisHtml ? `<div>${entregaveisHtml}</div>` : '',
+                    addonsHtml
+                ].join('');
 
                 const { data, error } = await window.supabase.functions.invoke('send-contract-email', {
                     body: {
@@ -6212,36 +6255,21 @@ function iniciarTimer(timestampCriacao, diasValidade) {
             }
         }
     </script>
-<script>
-// Desativação do envio por e-mail após assinatura
-// Esta redefinição garante que quaisquer chamadas existentes não executem envio.
-async function enviarEmailPropostaAssinada() {
-  
-  return { ok: true, disabled: true };
-}
-
-function reenviarContratoPorEmail() {
-  
-  const statusEl = document.getElementById('statusEnvioEmail');
-  if (statusEl) {
-    statusEl.textContent = 'Envio por e-mail desativado.';
-  }
-}
-</script>
+    <script>
+        try {
+            const temComissao = !!window.propostaCarregada?.tem_comissao_vendas;
+            const pct = parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0;
+            const row = document.getElementById('rf-comissao-row');
+            const val = document.getElementById('rf-comissao-value');
+            if (row && val) {
+                if (temComissao && pct > 0) {
+                    row.style.display = '';
+                    val.textContent = `${pct}% (valor variável)`;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        } catch(_) {}
+    </script>
 </body>
 </html>
-            // Comissão visível apenas no resumo financeiro
-            try {
-                const temComissao = !!window.propostaCarregada?.tem_comissao_vendas;
-                const pct = parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0;
-                const row = document.getElementById('rf-comissao-row');
-                const val = document.getElementById('rf-comissao-value');
-                if (row && val) {
-                    if (temComissao && pct > 0) {
-                        row.style.display = '';
-                        val.textContent = `${pct}% (valor variável)`;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                }
-            } catch(_) {}

@@ -524,30 +524,35 @@ Suporte:
                     paragrafo(t);
                 }
             });
-            // Seção de Add-ons selecionados (quando existirem)
-            try {
-                const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
-                const addonsSel = [];
-                servicosPDF.forEach(s => {
-                    const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
-                    arr.forEach(a => {
-                        const qtd = Math.max(1, a.qtdSelecionada || 1);
-                        const unit = a.tipoPreco === 'unitario';
-                        const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
-                        const total = unit ? (precoUnit * qtd) : precoUnit;
-                        addonsSel.push({ nome: a.nome, qtd, precoUnit, total });
+                // Seção de Add-ons selecionados (quando existirem)
+                try {
+                    const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+                    const addonsSel = [];
+                    servicosPDF.forEach(s => {
+                        const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                        arr.forEach(a => {
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const unit = a.tipoPreco === 'unitario';
+                            const hasPreco = (a.valorUnitario != null) || (a.valor != null);
+                            const precoUnit = hasPreco ? (unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0)) : null;
+                            const total = hasPreco ? (unit ? (precoUnit * qtd) : precoUnit) : null;
+                            addonsSel.push({ nome: a.nome, qtd, precoUnit, total, descricao: a.descricao || '' });
+                        });
                     });
-                });
-                if (addonsSel.length) {
-                    doc.setFontSize(12); doc.setFont('helvetica','bold');
-                    if (y > 250) { doc.addPage(); y = 20; }
-                    doc.text('ANEXO — ADD-ONS SELECIONADOS', margemEsq, y); y += 8;
-                    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-                    addonsSel.forEach(a => {
-                        paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
-                    });
-                }
-            } catch (_) { /* silencioso */ }
+                    if (addonsSel.length) {
+                        doc.setFontSize(12); doc.setFont('helvetica','bold');
+                        if (y > 250) { doc.addPage(); y = 20; }
+                        doc.text('ANEXO — ADD-ONS SELECIONADOS', margemEsq, y); y += 8;
+                        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                        addonsSel.forEach(a => {
+                            if (a.precoUnit != null && a.total != null) {
+                                paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
+                            } else {
+                                paragrafo(`• ${a.nome}${a.descricao ? ' — ' + a.descricao : ''}${a.qtd ? ' (' + a.qtd + 'x)' : ''}`);
+                            }
+                        });
+                    }
+                } catch (_) { /* silencioso */ }
             usouTemplate = true;
         }
     } catch (e) {
@@ -627,9 +632,14 @@ Suporte:
                         addons.forEach(a => {
                             const unit = (a.tipoPreco === 'unitario');
                             const qtd = Math.max(1, a.qtdSelecionada || 1);
-                            const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
-                            const total = unit ? (precoUnit * qtd) : precoUnit;
-                            paragrafo(`• ${a.nome} — ${unit ? `${qtd}× R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Total R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`);
+                            const hasPreco = (a.valorUnitario != null) || (a.valor != null);
+                            if (hasPreco) {
+                                const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                                const total = unit ? (precoUnit * qtd) : precoUnit;
+                                paragrafo(`• ${a.nome} — ${unit ? `${qtd}× R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Total R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`);
+                            } else {
+                                paragrafo(`• ${a.nome}${a.descricao ? ' — ' + a.descricao : ''}${qtd ? ' (' + qtd + 'x)' : ''}`);
+                            }
                         });
                     }
                 } catch(_) {}
