@@ -5409,6 +5409,26 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                 const metaCat = (function(){
                     try { return obterMetadataCatalogo(); } catch(_) { return {}; }
                 })();
+                const secoesCatalogo = (catalogoSrv?.secoes || metaCat.sessoes || null);
+                let catalogoEntregaveisNorm = null;
+                if (Array.isArray(catalogoSrv?.entregaveis)) {
+                    catalogoEntregaveisNorm = catalogoSrv.entregaveis;
+                } else if (secoesCatalogo) {
+                    if (Array.isArray(secoesCatalogo)) {
+                        catalogoEntregaveisNorm = secoesCatalogo.reduce((acc, sec) => {
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            itens.forEach(i => acc.push(i));
+                            return acc;
+                        }, []);
+                    } else if (typeof secoesCatalogo === 'object') {
+                        catalogoEntregaveisNorm = Object.keys(secoesCatalogo).reduce((acc, nome) => {
+                            const lista = secoesCatalogo[nome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            itens.forEach(i => acc.push(i));
+                            return acc;
+                        }, []);
+                    }
+                }
                 const dadosContrato = {
                     ...dadosProposta,
                     timestamp: timestamp,
@@ -5416,9 +5436,13 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                     hashAssinatura: hashAssinatura,
                     catalogoProdutoNome: metaCat.produto_nome || null,
                     catalogoPlanoNome: (catalogoSrv?.plano || metaCat.plano_nome || null),
-                    catalogoSessoes: (catalogoSrv?.secoes || metaCat.sessoes || null),
-                    catalogoEntregaveis: (Array.isArray(catalogoSrv?.entregaveis) ? catalogoSrv.entregaveis : null),
-                    catalogoAddons: (Array.isArray(catalogoSrv?.addOnsContratados) ? catalogoSrv.addOnsContratados : (Array.isArray(metaCat.addons) ? metaCat.addons : null)),
+                    catalogoSessoes: secoesCatalogo,
+                    catalogoEntregaveis: (Array.isArray(catalogoEntregaveisNorm) && catalogoEntregaveisNorm.length ? catalogoEntregaveisNorm : null),
+                    catalogoAddons: (
+                        Array.isArray(catalogoSrv?.addOnsContratados)
+                          ? catalogoSrv.addOnsContratados
+                          : (Array.isArray(metaCat.addons) ? metaCat.addons.filter(a => a && !!a.selecionado) : null)
+                    ),
                     catalogoModelo: (new URLSearchParams(window.location.search).get('modeloCobranca') || metaCat.modelo || null)
                 };
                 
@@ -5840,6 +5864,69 @@ function iniciarTimer(timestampCriacao, diasValidade) {
             Object.keys(mapa).forEach(k => {
                 textoContrato = textoContrato.replaceAll(k, mapa[k]);
             });
+            // Acrescentar seção de Catálogo (entregáveis) e Add-ons
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const planoNome = params.get('catalogoPlanoNome') || null;
+                const sessoesStr = params.get('catalogoSessoes') || '';
+                const entregaveisStr = params.get('catalogoEntregaveis') || '';
+                const addonsStr = params.get('catalogoAddons') || '';
+                let secoes = null; let entregaveis = null; let addons = [];
+                try { if (sessoesStr) secoes = JSON.parse(sessoesStr); } catch(_) {}
+                try { if (entregaveisStr) entregaveis = JSON.parse(entregaveisStr); } catch(_) {}
+                try { if (addonsStr) addons = JSON.parse(addonsStr); } catch(_) {}
+                const metaCat = obterMetadataCatalogo();
+                const catSrv = (Array.isArray(window.servicosContratados) ? window.servicosContratados.find(s => (s?.tipo || '').toLowerCase() === 'catálogo') : null) || {};
+                const planoTitulo = (catSrv?.plano || metaCat.plano_nome || planoNome || 'Plano').toUpperCase();
+                secoes = secoes ?? metaCat.sessoes ?? catSrv.secoes ?? null;
+                entregaveis = entregaveis ?? (Array.isArray(catSrv?.entregaveis) ? catSrv.entregaveis : null);
+                const addonsSel = (Array.isArray(catSrv?.addOnsContratados) ? catSrv.addOnsContratados : addons)
+                  .filter(a => a && (a.selecionado === undefined || !!a.selecionado));
+                const linhasCat = [];
+                const pushLinha = (t) => { if (t && String(t).trim()) linhasCat.push(`- ${t}`); };
+                if (secoes) {
+                    if (Array.isArray(secoes)) {
+                        secoes.forEach(sec => {
+                            const nome = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            pushLinha(`${nome}:`);
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            itens.forEach(i => pushLinha(typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))));
+                        });
+                    } else if (typeof secoes === 'object') {
+                        Object.keys(secoes).forEach(nome => {
+                            pushLinha(`${nome}:`);
+                            const lista = secoes[nome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            itens.forEach(i => pushLinha(typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))));
+                        });
+                    }
+                } else if (Array.isArray(entregaveis)) {
+                    entregaveis.forEach(i => pushLinha(typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))));
+                }
+                let bloco = '';
+                if (linhasCat.length) {
+                    bloco += `\nSERVIÇO DO CATÁLOGO — ${planoTitulo}\n`;
+                    linhasCat.forEach(l => { bloco += `${l}\n`; });
+                }
+                if (addonsSel && addonsSel.length) {
+                    bloco += `\nADD-ONS SELECIONADOS\n`;
+                    addonsSel.forEach(a => {
+                        const unit = (a.tipoPreco === 'unitario');
+                        const qtd = Math.max(1, a.qtdSelecionada || 1);
+                        const hasPreco = (a.valorUnitario != null) || (a.valor != null);
+                        if (hasPreco) {
+                            const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                            const total = unit ? (precoUnit * qtd) : precoUnit;
+                            bloco += `- ${a.nome} — ${unit ? `${qtd}× R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Total R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})\n`;
+                        } else {
+                            bloco += `- ${a.nome}${a.descricao ? ' — ' + a.descricao : ''}${qtd ? ' (' + qtd + 'x)' : ''}\n`;
+                        }
+                    });
+                }
+                if (bloco.trim()) {
+                    textoContrato += `\n\n${bloco}`;
+                }
+            } catch(_) {}
             
             // Converter markdown para HTML com melhor formatação
             // Dividir por linhas e processar

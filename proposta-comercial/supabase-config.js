@@ -607,8 +607,8 @@ Suporte:
                 doc.text(titulo, margemEsq, y); y += 8;
                 // Modelo de cobrança
                 try {
-                    const pctNum = parseFloat(dadosContrato.percentual_comissao || dadosContrato.catalogoAddons?.percentual || 0) || 0;
-                    const valorFixo = parseFloat(dadosContrato.valor_fixo_trafego || dadosContrato.valorMensal || 0) || 0;
+                    const pctNum = parseFloat(dadosContrato.percentualComissao || dadosContrato.percentual_comissao || 0) || 0;
+                    const valorFixo = parseFloat(dadosContrato.valorFixoTrafego || dadosContrato.valor_fixo_trafego || dadosContrato.valorMensal || 0) || 0;
                     const modeloTxt = (function(){
                         const m = (dadosContrato.catalogoModelo || '').toLowerCase();
                         if (m === 'comissao' && pctNum > 0) return `Modelo de cobrança: Comissão ${pctNum}% sobre vendas`;
@@ -623,7 +623,9 @@ Suporte:
                 linhas.forEach(l => { paragrafo(l); });
                 // Add-ons selecionados
                 try {
-                    const addons = Array.isArray(catalogo.addOnsContratados) ? catalogo.addOnsContratados : [];
+                    const addons = Array.isArray(catalogo.addOnsContratados)
+                      ? catalogo.addOnsContratados.filter(a => a && (a.selecionado === undefined || !!a.selecionado))
+                      : [];
                     if (addons.length) {
                         doc.setFontSize(11); doc.setFont('helvetica','bold');
                         if (y > 250) { doc.addPage(); y = 20; }
