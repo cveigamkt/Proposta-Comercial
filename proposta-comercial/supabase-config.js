@@ -32,8 +32,14 @@ function initSupabase() {
         );
         const authOptions = { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false };
 
-        window.supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
-        console.log('✅ DB conectado (Supabase)');
+        console.log('[Supabase Debug] Tentando conectar...', { url: SUPABASE_URL, hasKey: !!SUPABASE_ANON_KEY });
+        try {
+            window.supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
+            console.log('✅ DB conectado (Supabase)');
+        } catch (err) {
+            console.error('❌ Erro crítico na criação do cliente Supabase:', err);
+            throw err;
+        }
     }
     return window.supabaseInstance;
 }
