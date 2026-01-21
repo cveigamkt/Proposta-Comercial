@@ -145,22 +145,6 @@
         <thead>
           <tr>
             <th>Cliente</th>
-<<<<<<< HEAD
-            <th>Empresa</th>
-            <th>CPF/CNPJ</th>
-            <th>Representante</th>
-            <th>Serviços</th>
-            <th>Modelo Cobrança</th>
-            <th class="right">Valores</th>
-            <th>Recorrência</th>
-            <th>Pagamento</th>
-            <th>Status</th>
-            <th>Última Atualização</th>
-            <th>Proposta</th>
-            <th>Contrato</th>
-            <th>Ações</th>
-          </tr>
-=======
             <th>Empresa/CNPJ</th>
             <th>Serviço(s)</th>
             <th>Modelo</th>
@@ -171,7 +155,6 @@
           <th>Detalhes</th>
           <th>Ações</th>
         </tr>
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         </thead>
         <tbody id="tbodyPropostas">
           <tr><td colspan="9" class="muted" id="estadoLista">Carregando…</td></tr>
@@ -377,17 +360,6 @@ async function queryResumo(filtros){
             .in('proposta_criada_id', ids);
           contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
         }
-<<<<<<< HEAD
-        // Buscar dados do representante vinculados à proposta criada
-        let repMap = new Map();
-        if (ids.length>0) {
-          const { data: reps } = await client
-            .from('representantes_proposta')
-            .select('proposta_criada_id, nome_completo, cpf, validado')
-            .in('proposta_criada_id', ids);
-          repMap = new Map((reps||[]).map(r => [r.proposta_criada_id, r]));
-        }
-=======
         // Itens de catálogo
         let itensMap = new Map();
         if (ids.length > 0) {
@@ -406,7 +378,6 @@ async function queryResumo(filtros){
           itensMap = agrupado;
         }
         let contratosLegadoMap = new Map();
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         return base.map(pc => ({
           id: pc.id,
           nome_cliente: pc.nome_cliente,
@@ -414,15 +385,9 @@ async function queryResumo(filtros){
           telefone_cliente: pc.telefone_cliente,
           empresa_cliente: pc.empresa_cliente,
           cpf_cnpj: pc.cpf_cnpj,
-<<<<<<< HEAD
-          representante_nome: repMap.get(pc.id)?.nome_completo || null,
-          representante_cpf: repMap.get(pc.id)?.cpf || null,
-          representante_validado: repMap.get(pc.id)?.validado || false,
-=======
           responsavel_proposta: pc.responsavel_proposta,
           representante_nome: pc.representante_cliente || null,
           melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? melhorDiaMap.get(pc.id) ?? null),
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           servico_social_midia: pc.servico_social_midia,
           servico_trafego_pago: pc.servico_trafego_pago,
           valor_social_midia: pc.valor_social_midia,
@@ -525,35 +490,12 @@ async function queryResumo(filtros){
       }
       document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
       for (const r of rows){
-<<<<<<< HEAD
-  const url = `${window.location.origin}/proposta-visualizacao.html?id=${r.id}`;
-        
-        // Mostrar recorrência e pagamento para propostas aceitas (com ou sem valores)
-        const recorrenciaFinal = (r.status === 'aceita') 
-          ? (r.recorrencia || '<span class="muted">—</span>')
-          : '<span class="muted">—</span>';
-        const pagamentoFinal = (r.status === 'aceita') 
-          ? (r.forma_pagamento || '<span class="muted">—</span>')
-          : '<span class="muted">—</span>';
-        
-=======
         try { console.log('[Admin] Render linha', { id: r.id, itens_catalogo: (r.itens_catalogo||[]).length }); } catch(_) {}
         const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
         const cnpj = r.cpf_cnpj || '—';
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         const tr = document.createElement('tr');
         const vf = r.status === 'aceita' ? calcularValorFinal(r) : { mensal: Number(r.valor_mensal)||0, total: Number(r.valor_total)||0, meses: 0 };
         tr.innerHTML = `
-<<<<<<< HEAD
-          <td class="nowrap">${r.criada_em ? new Date(r.criada_em).toLocaleString('pt-BR') : '—'}</td>
-          <td>${r.nome_cliente || '—'}</td>
-          <td>${r.empresa_cliente || '—'}</td>
-          <td class="nowrap">${r.cpf_cnpj || '—'}</td>
-          <td>
-            ${r.representante_nome ? `<div>${r.representante_nome}</div>` : '<span class="muted">—</span>'}
-            ${r.representante_cpf ? `<div class="muted" style="font-size:.85rem">CPF: ${r.representante_cpf}</div>` : ''}
-            ${r.representante_validado ? '<span class="chip" style="margin-top:6px;background:#0bd47e14;border-color:#0bd47e33;color:#0bd47e">✅ Validado</span>' : ''}
-=======
           <td class="cliente-col">
             <div class="cliente-nome"><strong>${r.nome_cliente || '—'}</strong></div>
             <div class="contato-sub">${r.telefone_cliente || '—'} • ${r.email_cliente || '—'}</div>
@@ -561,7 +503,6 @@ async function queryResumo(filtros){
           <td>
             <div>${r.empresa_cliente || '—'}</div>
             <div class="muted">${cnpj}</div>
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           </td>
           <td>${linhaServico(r)}</td>
           <td>${formatarModeloCobranca(r)}</td>
@@ -575,17 +516,6 @@ async function queryResumo(filtros){
             <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
             ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
           </td>
-<<<<<<< HEAD
-          <td>
-            <a class="link" href="${url}" target="_blank">Abrir</a>
-          </td>
-          <td>${r.contrato_pdf_url ? `<a class="link" href="${r.contrato_pdf_url}" target="_blank">PDF</a>` : '<span class="muted">—</span>'}</td>
-          <td>
-            <div class="actions-cell">
-              <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')" title="Editar proposta">✏️</button>
-              <button class="btn-action btn-delete" onclick="confirmarExclusao('${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
-            </div>
-=======
           <td class="nowrap">
             <details class="details-panel" data-id="${r.id}">
               <summary>+ Detalhes</summary>
@@ -613,7 +543,6 @@ async function queryResumo(filtros){
                 ${r.status === 'aceita' && r.contrato_pdf_url ? `<button type="button" class="btn-action" onclick="enviarContratoPorEmailAdmin('${r.id}')">✉️ Enviar contrato</button>` : ''}
               </div>
             </details>
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           </td>
         `;
         tb.appendChild(tr);
@@ -818,21 +747,6 @@ async function queryResumo(filtros){
       window.location.href = `proposta-gerador.html?edit=${id}`;
     }
 
-<<<<<<< HEAD
-    async function confirmarExclusao(id, nomeCliente) {
-      // Buscar a proposta na lista de dados carregados
-      const proposta = window.ultimasPropostas?.find(p => p.id === id);
-      
-      if (proposta) {
-        // Verificar se está assinada (status = aceita ou tem assinado_em)
-        if (proposta.status === 'aceita' || proposta.assinado_em) {
-          alert('❌ Não é possível excluir propostas que já foram assinadas.');
-          return;
-        }
-      }
-      
-      const confirmacao = confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
-=======
     // Estado de autenticação e permissões
     let usuarioAtual = null;
 
@@ -856,7 +770,6 @@ async function queryResumo(filtros){
       }
       // Buscar a proposta na lista de dados carregados (pode estar aceita)
       const proposta = window.ultimasPropostas?.find(p => p.id === id);
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
       
       let confirmacao = false;
       try {
@@ -871,11 +784,6 @@ async function queryResumo(filtros){
       
       try {
         client = client || window.supabaseConfig.initSupabase();
-<<<<<<< HEAD
-        
-        // Excluir proposta
-        const { data, error } = await client
-=======
 
         // 1) Apagar contratos normalizados e seus PDFs
         console.debug('[Excluir] Buscando contratos normalizados para proposta', id);
@@ -933,7 +841,6 @@ async function queryResumo(filtros){
         // 3) Remover proposta criada (independente do status)
         console.debug('[Excluir] Removendo proposta_criadas id', id);
         const { error } = await client
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           .from('propostas_criadas')
           .delete()
           .eq('id', id)
@@ -945,19 +852,11 @@ async function queryResumo(filtros){
           try { window.__deletingPropostaIds.delete(id); } catch(_) {}
           return false;
         }
-<<<<<<< HEAD
-        if (!data || data.length === 0) {
-          console.warn('Exclusão não retornou registros. Verifique políticas RLS.');
-          alert('❌ Proposta não foi excluída. Verifique permissões de DELETE (RLS).');
-          return;
-        }
-=======
         // Remover da lista local e atualizar UI imediatamente
         try {
           window.ultimasPropostas = (window.ultimasPropostas || []).filter(p => p.id !== id);
           renderTabela(window.ultimasPropostas);
         } catch(_) { /* ignora: render falhar não impede recarregar */ }
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         
         alert('✅ Proposta e registros relacionados excluídos com sucesso!');
         console.log('✅ Exclusão concluída', { id });

@@ -1969,13 +1969,10 @@
                 window.propostaCarregada = data; // Disponível globalmente
                 console.log('Proposta carregada:', data);
 
-<<<<<<< HEAD
-=======
                 // Após carregar a proposta, sincronizar flags do produto do catálogo (se houver produto_id)
                 try { await sincronizarFlagsComProdutoCatalogo(); } catch(_) {}
                 try { reportarDiagnosticoFinanceiro(); } catch(_) {}
 
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
                 // Bloquear ações de aceite se já estiver aceita
                 try {
                     const btnPrincipal = document.getElementById('btnAceitarPrincipal');
@@ -1986,11 +1983,7 @@
                         if (btnFlutuante) { btnFlutuante.disabled = true; btnFlutuante.innerHTML = '<span class="btn-icon">✅</span><span class="btn-text">Assinada</span>'; }
                         if (avisoSelecao) { avisoSelecao.style.display = 'block'; avisoSelecao.textContent = '⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.'; }
                     }
-<<<<<<< HEAD
-                } catch (e) { console.warn('Falha ao aplicar bloqueio de UI:', e); }
-=======
                 } catch (e) { window.reportWarn('Falha ao aplicar bloqueio de UI', e); }
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
 
                 // Cabeçalho
                 // Exibe o nome do cliente/empresa no cabeçalho
@@ -3223,16 +3216,6 @@
             });
             
             // Atualizar display
-<<<<<<< HEAD
-            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
-            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            
-            if (descontoRecorrencia > 0) {
-                document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
-                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else {
-                document.getElementById('descontoRecorrenciaRow').style.display = 'none';
-=======
             // Atualizar subtotais visuais por serviço (mantidos discretos; podem não existir)
             try {
                 const cards = Array.from(document.querySelectorAll('.addons-container'));
@@ -3404,28 +3387,14 @@
                 } else {
                     rfMensalParceladoRow.style.display = 'none';
                 }
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             }
             document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
             
-<<<<<<< HEAD
-            if (descontoPagamento > 0) {
-                document.getElementById('descontoPagamentoRow').style.display = 'flex';
-                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            } else {
-                document.getElementById('descontoPagamentoRow').style.display = 'none';
-            }
-            
-            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
-            
-=======
             // Atualizar economia por período em cada card (como no gerador)
             try {
                 atualizarEconomiaRecorrencia();
             } catch (e) { console.warn('Falha ao atualizar economia por período:', e); }
 
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             atualizarResumo();
             verificarSelecoes();
 
@@ -3676,9 +3645,6 @@
                 elResumoData.textContent = dataAtual;
             }
             if (elResumoValorFinal) {
-<<<<<<< HEAD
-                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
-=======
                 if (pagamentoSelecionadoValor === 'mensal') {
                     elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
                 } else if (pagamentoSelecionadoValor === 'parcelado') {
@@ -3687,7 +3653,6 @@
                 } else {
                     elResumoValorFinal.textContent = 'Não se aplica';
                 }
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             }
             if (elResumoValorTotal) {
                 elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -5394,22 +5359,6 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                 // Salvar dados do representante
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📝 Salvando dados do representante...</p>';
                 try {
-<<<<<<< HEAD
-                    const repPayload = {
-                        propostaCriadaId: dadosProposta.propostaCriadaId,
-                        propostaId: null,
-                        nome: dadosAssinaturaTemp?.nome || nomeAssinatura,
-                        sobrenome: dadosAssinaturaTemp?.sobrenome || sobrenomeAssinatura,
-                        cpf: dadosAssinaturaTemp?.cpfRepresentante,
-                        dataNascimento: dadosAssinaturaTemp?.dataNascimentoRepresentante,
-                        email: dadosAssinaturaTemp?.email || emailAssinatura,
-                        telefone: dadosAssinaturaTemp?.telefone || telefoneAssinatura,
-                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null,
-                        ip: ipCliente,
-                        userAgent: navigator.userAgent
-                    };
-                    await window.supabaseConfig.salvarDadosRepresentante(repPayload);
-=======
                     // Fallback robusto: se por algum motivo dadosAssinaturaTemp não estiverem populados,
                     // lê diretamente dos campos do formulário para garantir persistência.
                     const nomeForm = document.getElementById('nomeAssinatura')?.value?.trim() || '';
@@ -5435,7 +5384,6 @@ function iniciarTimer(timestampCriacao, diasValidade) {
                     };
                     const repResult = await window.supabaseConfig.salvarDadosRepresentante(repPayload);
                     statusDiv.innerHTML = `<p style="color:#7CFC9A;">✅ Dados do representante salvos (ID: ${repResult?.id || '—'})</p>`;
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
                 } catch (e) {
                     console.error('Falha ao salvar dados do representante:', e);
                     const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
