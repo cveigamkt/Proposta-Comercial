@@ -1,5 +1,20 @@
 # Changelog - Sistema de Propostas Comerciais
 
+## [2.1.0] - 2025-11-19
+
+### Comissão Híbrida (% ou Fixo)
+- Permite escolher entre comissão percentual (%) ou valor fixo por venda no modelo Híbrido.
+- Atualizações em `proposta-gerador.html`, `proposta-gerador.js` e `proposta-visualizacao.html` para exibição e cálculo.
+- Script `SUPABASE-UPDATE-COMISSAO-FIXA.sql` adiciona campos em `propostas_criadas`/`propostas` e atualiza views.
+
+### Proteções de Propostas Assinadas
+- Bloqueio de edição e exclusão no `admin.html` para propostas com status aceito/assinado.
+- Redirecionamento e proteção no gerador (`proposta-gerador.js`) para evitar edição de propostas assinadas.
+- Exibição consistente de recorrência e forma de pagamento.
+
+### Observações
+- Consulte a seção de instruções para execução de scripts e validações.
+
 ## [2.0.0] - 2025-01-07
 
 ### ✨ Novas Funcionalidades

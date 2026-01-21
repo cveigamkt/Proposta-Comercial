@@ -1,0 +1,17 @@
+{
+  "$schema": "https://deno.land/x/deno@v1.41.0/cli/schemas/config-file.v1.json",
+  "importMap": "./import_map.json",
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom"],
+    "strict": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  }
+}

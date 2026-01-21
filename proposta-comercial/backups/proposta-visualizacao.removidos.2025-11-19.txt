@@ -1,0 +1,21 @@
+[Remoção] Fechamentos indevidos
+- Linha 1298: "        </div>"
+- Linha 1299: "    </section>"
+
+[Remoção] Comentários redundantes
+- Linha 1407: "            <!-- Resumo Financeiro -->" (mantido título estrutural; comentário removido)
+- Linha 1410: "                <!-- Linha 1: Valor Base -->"
+- Linha 1422: "                <!-- Linha 2: Add-ons (condicional) -->"
+- Linha 1434: "                <!-- Linha 3: Subtotal (condicional) -->"
+- Linha 1440: "                <!-- Linha Comissão (condicional) -->"
+- Linha 1446: "                <!-- Linha 4: Desconto aplicado (condicional) -->"
+- Linha 1456: "                <!-- Linha 5: Total (destacado) -->"
+- Linha 1462: "                <!-- Linha 6: Mensal/Parcelado (condicional) -->"
+- Linha 1468: "                <!-- Compat: valores brutos não exibidos -->"
+
+[Remoção/Movimentação] JS residual pós-</html>
+- Linhas 6277–6291:
+"            // Comissão visível apenas no resumo financeiro\n            try {\n                const temComissao = !!window.propostaCarregada?.tem_comissao_vendas;\n                const pct = parseFloat(window.propostaCarregada?.percentual_comissao || '0') || 0;\n                const row = document.getElementById('rf-comissao-row');\n                const val = document.getElementById('rf-comissao-value');\n                if (row && val) {\n                    if (temComissao && pct > 0) {\n                        row.style.display = '';\n                        val.textContent = `${pct}% (valor variável)`;\n                    } else {\n                        row.style.display = 'none';\n                    }\n                }\n            } catch(_) {}"
+
+[Correção]
+- Linha 6274: `</script>` duplicado removido.

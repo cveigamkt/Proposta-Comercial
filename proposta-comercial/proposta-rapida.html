@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proposta Rápida — Testes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="menu-lateral.js"></script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0f0f10; color:#eaeaea; margin:0; }
+    .container { max-width: 780px; margin: 40px auto; padding: 24px; background:#141416; border:1px solid #222; border-radius:12px; }
+    h1 { margin:0 0 16px; font-size: 22px; }
+    p.desc { color:#b7b7b7; margin:0 0 20px; font-size: 14px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .grid-1 { display:grid; grid-template-columns: 1fr; gap:12px; }
+    label { font-size: 13px; color:#cfcfcf; margin-bottom: 6px; display:block; }
+    input, select, button, textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #2a2a2e; background:#1a1b1e; color:#fff; font-size:14px; }
+    textarea { min-height: 72px; }
+    .btn { background:#1E5942; border:1px solid #1E5942; cursor:pointer; }
+    .btn.secondary { background:#2a2a2e; border-color:#3a3a3e; }
+    .actions { display:flex; gap:12px; margin-top:16px; }
+    .note { font-size: 12px; color:#9aa0a6; margin-top: 8px; }
+    .success { background:#16251f; border:1px solid #264b39; color:#d2f4e6; padding:10px 12px; border-radius:8px; margin-top:16px; display:none; }
+    .error { background:#261919; border:1px solid #5b2c2c; color:#ffd7d7; padding:10px 12px; border-radius:8px; margin-top:16px; display:none; white-space: pre-line; }
+    .link { margin-top: 12px; }
+    .small { font-size: 12px; color:#b7b7b7; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Proposta Rápida para Testes</h1>
+    <p class="desc">Crie rapidamente uma proposta em <code>propostas_criadas</code> e abra a visualização com o UUID gerado. O CNPJ padrão já vem preenchido.</p>
+
+    <div class="grid">
+      <div>
+        <label>Empresa / Cliente</label>
+        <input id="empresaCliente" placeholder="Empresa Teste Ltda" />
+      </div>
+      <div>
+        <label>Responsável pela Proposta</label>
+        <input id="responsavelProposta" placeholder="Admin" />
+      </div>
+      <div>
+        <label>Endereço do Cliente</label>
+        <input id="enderecoCliente" placeholder="Rua de Teste, 123 — Cidade/UF" />
+      </div>
+      <div>
+        <label>CPF/CNPJ do Cliente</label>
+        <input id="cpfCnpjCliente" placeholder="515254240001-00" />
+        <div class="note">CNPJ padrão para validação: <strong>515254240001-00</strong></div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px;">
+      <div>
+        <label>Social Mídia</label>
+        <select id="servicoSocialMidia">
+          <option value="nao-se-aplica">Não se aplica</option>
+          <option value="start" selected>START</option>
+          <option value="scale">SCALE</option>
+          <option value="heat">HEAT</option>
+        </select>
+      </div>
+      <div>
+        <label>Tráfego Pago</label>
+        <select id="servicoTrafegoPago">
+          <option value="nao-se-aplica" selected>Não se aplica</option>
+          <option value="foco">FOCO</option>
+          <option value="aceleracao">ACELERAÇÃO</option>
+          <option value="heat">DESTAQUE</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:16px;">
+      <div>
+        <label>Dias de Validade</label>
+        <input id="diasValidade" type="number" min="1" value="7" />
+      </div>
+      <div>
+        <label>Investimento em Mídia (opcional)</label>
+        <input id="investimentoMidia" placeholder="Ex.: R$ 2.000/mês" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnCriar">Criar proposta rápida</button>
+      <button class="btn secondary" id="btnAbrirUltima" disabled>Abrir última visualização</button>
+    </div>
+
+    <div id="msgSucesso" class="success"></div>
+    <div id="msgErro" class="error"></div>
+    <div id="linkWrapper" class="link" style="display:none;">
+      <label class="small">Link de visualização</label>
+      <input id="linkGerado" readonly />
+    </div>
+  </div>
+
+  <!-- Dependências -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="validacao-cpf-cnpj.js"></script>
+  <script src="supabase-config.js"></script>
+  <script>
+    const planosSocialMedia = { start: { nome: 'START', valor: 1500 }, scale: { nome: 'SCALE', valor: 2200 }, heat: { nome: 'HEAT', valor: 3200 } };
+    const planosTrafego = { foco: { nome: 'FOCO', valor: 2400 }, aceleracao: { nome: 'ACELERAÇÃO', valor: 2800 }, heat: { nome: 'DESTAQUE', valor: 3500 } };
+
+    let ultimoUUID = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Prefill
+      document.getElementById('empresaCliente').value = 'Empresa Teste Ltda';
+      document.getElementById('responsavelProposta').value = 'Admin';
+      document.getElementById('enderecoCliente').value = 'Rua de Teste, 123 — Cidade/UF';
+      document.getElementById('cpfCnpjCliente').value = '515254240001-00';
+
+      document.getElementById('btnCriar').addEventListener('click', criarPropostaRapida);
+      document.getElementById('btnAbrirUltima').addEventListener('click', () => {
+        if (!ultimoUUID) return;
+        const base = baseLink();
+        window.open(`${base}proposta-visualizacao.html?id=${ultimoUUID}`, '_blank');
+      });
+    });
+
+    function baseLink() {
+      const { origin, pathname } = window.location;
+      const idx = pathname.lastIndexOf('/');
+      const basePath = idx >= 0 ? pathname.slice(0, idx + 1) : '/';
+      return origin + basePath;
+    }
+
+    async function criarPropostaRapida() {
+      const sucesso = document.getElementById('msgSucesso');
+      const erro = document.getElementById('msgErro');
+      const linkWrapper = document.getElementById('linkWrapper');
+      const linkGerado = document.getElementById('linkGerado');
+      sucesso.style.display = 'none';
+      erro.style.display = 'none';
+      linkWrapper.style.display = 'none';
+
+      try {
+        // Inicializar Supabase
+        const client = window.supabaseConfig.initSupabase();
+
+        // Coletar dados
+        const empresa = document.getElementById('empresaCliente').value.trim() || 'Empresa Teste Ltda';
+        const responsavel = document.getElementById('responsavelProposta').value.trim() || 'Admin';
+        const endereco = document.getElementById('enderecoCliente').value.trim() || 'Rua de Teste, 123 — Cidade/UF';
+        const cpfCnpj = document.getElementById('cpfCnpjCliente').value.trim() || '515254240001-00';
+        const socialKey = document.getElementById('servicoSocialMidia').value;
+        const trafegoKey = document.getElementById('servicoTrafegoPago').value;
+        const diasValidade = parseInt(document.getElementById('diasValidade').value || '7');
+        const investimentoMidia = document.getElementById('investimentoMidia').value.trim() || null;
+
+        // Validação rápida de CPF/CNPJ (se lib estiver presente)
+        if (window.validacaoCPFCNPJ) {
+          const r = window.validacaoCPFCNPJ.validarCPFouCNPJ(cpfCnpj);
+          if (!r.valido) throw new Error(`Documento inválido: ${r.tipo}`);
+        }
+
+        // Calcular valores
+        let valorMensal = 0;
+        let valorSocialMidia = 0;
+        let valorTrafegoPago = 0;
+        let temComissaoVendas = false;
+        let percentualComissao = 0;
+        let valorFixoTrafego = 0;
+
+        if (socialKey !== 'nao-se-aplica' && planosSocialMedia[socialKey]) {
+          valorSocialMidia = planosSocialMedia[socialKey].valor;
+          valorMensal += valorSocialMidia;
+        }
+        if (trafegoKey !== 'nao-se-aplica' && planosTrafego[trafegoKey]) {
+          valorTrafegoPago = planosTrafego[trafegoKey].valor;
+          valorMensal += valorTrafegoPago;
+        }
+
+        const valorTotal = valorMensal; // Sem recorrência por ora
+
+        // Data de expiração
+        const expira = new Date();
+        expira.setDate(expira.getDate() + diasValidade);
+
+        const dados = {
+          nome_cliente: empresa,
+          empresa_cliente: empresa,
+          email_cliente: 'sem-email@proposta.com',
+          telefone_cliente: 'Não informado',
+          cpf_cnpj: cpfCnpj,
+          servico_social_midia: socialKey !== 'nao-se-aplica' ? planosSocialMedia[socialKey].nome : null,
+          servico_trafego_pago: trafegoKey !== 'nao-se-aplica' ? planosTrafego[trafegoKey].nome : null,
+          valor_social_midia: valorSocialMidia,
+          valor_trafego_pago: valorTrafegoPago,
+          tem_comissao_vendas: temComissaoVendas,
+          percentual_comissao: percentualComissao,
+          valor_fixo_trafego: valorFixoTrafego,
+          tipo_comissao_hibrido: 'percentual',
+          valor_comissao_fixa: 0,
+          investimento_midia: investimentoMidia,
+          endereco_cliente: endereco,
+          representante_cliente: null,
+          valor_mensal: valorMensal,
+          valor_total: valorTotal,
+          desconto_aplicado: 0,
+          recorrencia: null,
+          forma_pagamento: null,
+          responsavel_proposta: responsavel,
+          dias_validade: diasValidade,
+          expira_em: expira.toISOString(),
+          observacoes: null,
+          status: 'pendente'
+        };
+
+        const { data, error } = await client
+          .from('propostas_criadas')
+          .insert(dados)
+          .select('id')
+          .single();
+
+        if (error) throw error;
+
+        ultimoUUID = data.id;
+        const link = `${baseLink()}proposta-visualizacao.html?id=${ultimoUUID}`;
+        linkGerado.value = link;
+        linkWrapper.style.display = 'block';
+        document.getElementById('btnAbrirUltima').disabled = false;
+        sucesso.textContent = '✅ Proposta criada com sucesso!';
+        sucesso.style.display = 'block';
+      } catch (e) {
+        const msg = e?.message || e?.error_description || e?.details || e?.hint || 'Erro desconhecido';
+        erro.textContent = `❌ Falha ao criar proposta.\n${msg}`;
+        erro.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

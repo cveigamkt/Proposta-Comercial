@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel Admin — Propostas</title>
+    <title>Painel Propostas — Propostas</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -57,23 +57,47 @@
     .btn-assinar{background:#00E388;color:#000;border:none;padding:6px 12px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
     .btn-assinar:hover{background:#00cc7a}
     .btn-assinar:disabled{background:#555;color:#999;cursor:not-allowed}
+    .hidden{display:none}
+    /* Hierarquia visual refinada */
+    .cliente-col strong{font-weight:800}
+    .contato-sub{font-size:.85rem;color:var(--muted);margin-top:4px}
+    .valor-destaque{color:var(--brand-2);font-weight:800}
+    /* Menu de ações com summary */
+    .actions{display:flex;gap:8px;align-items:center}
+    .actions-menu{position:relative;display:inline-block}
+    .actions-menu > summary{list-style:none;cursor:pointer;background:#222;color:#e5e5e5;border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;}
+    .actions-menu[open] > summary{background:#2a2a2a}
+    .actions-dropdown{position:absolute;right:0;top:36px;background:#151515;border:1px solid var(--border);border-radius:10px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px;display:grid;gap:6px;z-index:10}
+    .actions-dropdown .btn-action{width:100%;text-align:left}
+    /* Painel de detalhes por linha */
+    .details-panel > summary{list-style:none;cursor:pointer;background:#222;color:#e5e5e5;border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center}
+    .details-panel[open] > summary{background:#2a2a2a}
+    .details-content{margin-top:8px;background:#151515;border:1px solid var(--border);border-radius:10px;padding:8px;display:grid;gap:6px}
     @media (max-width:900px){
       .filters{grid-template-columns:1fr;gap:10px}
       .stats{grid-template-columns:repeat(2,1fr)}
       .table{overflow-x:auto}
-      table{min-width:1200px}
+      table{min-width:1000px}
       .toolbar{flex-direction:column;gap:8px;width:100%}
       .toolbar .btn,.toolbar button{width:100%}
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
+  <script src="menu-lateral.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>📊 Painel de Propostas</h1>
       <div class="toolbar">
+        <div id="authBar" style="display:flex;gap:8px;align-items:center">
+          <span id="authStatus" class="muted">Não autenticado</span>
+          <input id="authEmail" type="email" placeholder="email" style="background:#111;border:1px solid var(--border);color:#fff;padding:6px 8px;border-radius:6px;font-size:.9rem;width:200px">
+          <input id="authPassword" type="password" placeholder="senha" style="background:#111;border:1px solid var(--border);color:#fff;padding:6px 8px;border-radius:6px;font-size:.9rem;width:160px">
+          <button id="btnLogin" class="btn secondary">Entrar</button>
+          <button id="btnLogout" class="btn secondary" style="display:none">Sair</button>
+        </div>
         <button id="btnRecarregar" class="btn secondary">🔄 Recarregar</button>
         <a class="btn" href="proposta-gerador.html">+ Nova Proposta</a>
       </div>
@@ -102,7 +126,7 @@
       </div>
     </div>
 
-    <div class="filters">
+    <div class="filters" id="filtersContainer">
       <input id="filtroNome" placeholder="🔍 Pesquisar por nome do cliente" />
       <input id="filtroCPF" placeholder="Pesquisar por CPF/CNPJ" />
       <input id="filtroEmpresa" placeholder="Pesquisar por empresa" />
@@ -116,12 +140,12 @@
       <button id="btnBuscar" class="btn">Buscar</button>
     </div>
 
-    <div class="table">
+    <div class="table" id="tableContainer">
       <table>
         <thead>
           <tr>
-            <th>Data</th>
             <th>Cliente</th>
+<<<<<<< HEAD
             <th>Empresa</th>
             <th>CPF/CNPJ</th>
             <th>Representante</th>
@@ -136,25 +160,73 @@
             <th>Contrato</th>
             <th>Ações</th>
           </tr>
+=======
+            <th>Empresa/CNPJ</th>
+            <th>Serviço(s)</th>
+            <th>Modelo</th>
+            <th class="right">Valor Total</th>
+            <th>Status</th>
+            <th>Responsável</th>
+          <th>Última Atualização</th>
+          <th>Detalhes</th>
+          <th>Ações</th>
+        </tr>
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         </thead>
         <tbody id="tbodyPropostas">
-          <tr><td colspan="15" class="muted" id="estadoLista">Carregando…</td></tr>
+          <tr><td colspan="9" class="muted" id="estadoLista">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="footer">
+    <div class="footer" id="footerContainer">
       <span id="resumoQtd" class="muted">—</span>
       <span class="muted">Ordenado por data (mais recentes primeiro)</span>
+    </div>
+
+    <!-- Gestão de Usuários (somente admin) -->
+    <div id="usuariosSection" class="hidden" style="margin-top:24px">
+      <div class="stat-card" style="margin-bottom:12px">
+        <div class="stat-label">Gestão de Usuários</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <input id="novoUsuarioEmail" type="email" placeholder="email do usuário" style="background:#111;border:1px solid var(--border);color:#fff;padding:8px 10px;border-radius:8px;font-size:.9rem">
+          <input id="novoUsuarioNome" type="text" placeholder="nome (opcional)" style="background:#111;border:1px solid var(--border);color:#fff;padding:8px 10px;border-radius:8px;font-size:.9rem">
+          <select id="novoUsuarioPapel" style="background:#111;border:1px solid var(--border);color:#fff;padding:8px 10px;border-radius:8px;font-size:.9rem">
+            <option value="viewer">viewer</option>
+            <option value="editor">editor</option>
+            <option value="admin">admin</option>
+          </select>
+          <button id="btnSalvarUsuario" class="btn">Salvar/Atualizar</button>
+        </div>
+        <div class="status-update-info">Observação: usuários devem se cadastrar/logar para associar seu user_id; o admin define o papel aqui.</div>
+      </div>
+
+      <div class="table">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nome</th>
+              <th>Papel</th>
+              <th>User ID</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUsuarios">
+            <tr><td colspan="4" class="muted">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <script>
     let client;
     const baseLink = () => {
-      // Garante sempre barra final após remover admin.html
-      const root = window.location.origin + window.location.pathname.replace(/admin\.html$/,'');
-      return root.endsWith('/') ? root : root + '/';
+      // Base absoluta na raiz do projeto: remove /admin ou /admin.html do final do path
+      const { origin, pathname } = window.location;
+      const rootPath = pathname.replace(/admin(?:\.html)?$/i, '');
+      const withSlash = rootPath.endsWith('/') ? rootPath : rootPath + '/';
+      return origin + withSlash;
     };
 
     function fmtMoeda(n){
@@ -201,7 +273,7 @@
       }
     }
 
-    async function queryResumo(filtros){
+async function queryResumo(filtros){
       // Tenta usar a view resumo_propostas; se falhar, faz fallback manual
       try {
         let q = client.from('resumo_propostas').select('*').order('criada_em', { ascending:false }).limit(200);
@@ -210,7 +282,71 @@
         if (filtros.termoEmpresa) q = q.ilike('empresa_cliente', `%${filtros.termoEmpresa}%`);
         const { data, error } = await q;
         if (error) throw error;
-        return data || [];
+        const baseView = data || [];
+        console.log('[Admin] View resumo_propostas carregada:', { qtd: baseView.length });
+        if (baseView.length === 0) return baseView;
+
+        // Enriquecer com contrato PDF (normalizado) usando proposta_criada_id
+        const ids = baseView.map(r => r.id).filter(Boolean);
+        const mapProp = new Map(); // sem uso do legado 'propostas'
+        const melhorDiaMap = new Map(); // usar campo direto de propostas_criadas
+        // Popular melhor dia de pagamento quando a view não trouxer
+        if (ids.length > 0) {
+          try {
+            const { data: melhorDiaRows } = await client
+              .from('propostas_criadas')
+              .select('id, melhor_dia_pagamento')
+              .in('id', ids);
+            (melhorDiaRows||[]).forEach(row => {
+              melhorDiaMap.set(row.id, row.melhor_dia_pagamento ?? null);
+            });
+          } catch (e) {
+            console.warn('Admin: falha ao buscar melhor_dia_pagamento diretamente:', e?.message || e);
+          }
+        }
+        const propDataMap = new Map(); // usar campos assinados da própria view/base
+        const propIds = []; // não usado sem legado
+        // Contratos: priorizar tabela normalizada (proposta_contratos por proposta_criada_id)
+        let contratosNormMap = new Map();
+        if (ids.length > 0) {
+          const { data: contratosNorm } = await client
+            .from('proposta_contratos')
+            .select('proposta_criada_id, contrato_url')
+            .in('proposta_criada_id', ids);
+          contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
+        }
+
+        // Enriquecer com itens de catálogo (proposta_itens)
+        let itensMap = new Map();
+        if (ids.length > 0) {
+          console.log('[Admin] Buscando proposta_itens para IDs:', ids);
+          const { data: itens } = await client
+            .from('proposta_itens')
+            .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
+            .in('proposta_criada_id', ids);
+          const agrupado = new Map();
+          (itens||[]).forEach(it => {
+            const arr = agrupado.get(it.proposta_criada_id) || [];
+            arr.push(it);
+            agrupado.set(it.proposta_criada_id, arr);
+          });
+          console.log('[Admin] Itens de catálogo retornados:', { qtd: (itens||[]).length });
+          itensMap = agrupado;
+        }
+        let contratosLegadoMap = new Map();
+
+        return baseView.map(pc => ({
+          ...pc,
+          status: (pc.status === 'aceita' || pc.aceita_em) ? 'aceita' : pc.status,
+          representante_nome: pc.representante_cliente || null,
+          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? melhorDiaMap.get(pc.id) ?? null),
+          recorrencia_assinada: pc.recorrencia_assinada || null,
+          forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
+          proposta_aceita_id: null,
+          contrato_pdf_url: (contratosNormMap.get(pc.id) ?? pc.contrato_pdf_url ?? null),
+          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false,
+          itens_catalogo: itensMap.get(pc.id) || []
+        }));
       } catch (e) {
         console.warn('View resumo_propostas indisponível. Aplicando fallback.', e.message);
         // Fallback: buscar em propostas_criadas e, depois, relacionar com propostas/contratos
@@ -224,17 +360,24 @@
         }
         const { data: base, error: e1 } = await q;
         if (e1) throw e1;
+        console.log('[Admin] Fallback propostas_criadas carregado:', { qtd: (base||[]).length });
         const ids = base.map(r => r.id);
         if (ids.length===0) return [];
-        // Buscar propostas aceitas vinculadas
-        const { data: props, error: e2 } = await client.from('propostas').select('id, proposta_criada_id').in('proposta_criada_id', ids);
-        const mapProp = new Map((props||[]).map(p => [p.proposta_criada_id, p.id]));
-        const propIds = (props||[]).map(p => p.id);
-        let contratosMap = new Map();
-        if (propIds.length>0) {
-          const { data: contratos } = await client.from('contratos').select('proposta_id, pdf_url').in('proposta_id', propIds);
-          contratosMap = new Map((contratos||[]).map(c => [c.proposta_id, c.pdf_url]));
+        // Sem tabela legado 'propostas': usar apenas dados de propostas_criadas e contratos normalizados
+        const mapProp = new Map();
+        const melhorDiaMap = new Map();
+        const propDataMap = new Map();
+        const propIds = [];
+        // Contratos normalizados por proposta_criada_id; fallback para contratos legados por proposta_id
+        let contratosNormMap = new Map();
+        if (ids.length>0) {
+          const { data: contratosNorm } = await client
+            .from('proposta_contratos')
+            .select('proposta_criada_id, contrato_url')
+            .in('proposta_criada_id', ids);
+          contratosNormMap = new Map((contratosNorm||[]).map(c => [c.proposta_criada_id, c.contrato_url]));
         }
+<<<<<<< HEAD
         // Buscar dados do representante vinculados à proposta criada
         let repMap = new Map();
         if (ids.length>0) {
@@ -244,14 +387,42 @@
             .in('proposta_criada_id', ids);
           repMap = new Map((reps||[]).map(r => [r.proposta_criada_id, r]));
         }
+=======
+        // Itens de catálogo
+        let itensMap = new Map();
+        if (ids.length > 0) {
+          console.log('[Admin] Fallback: buscando proposta_itens para IDs:', ids);
+          const { data: itens } = await client
+            .from('proposta_itens')
+            .select('proposta_criada_id, nome_servico, descricao, preco_unitario, desconto_percentual, total')
+            .in('proposta_criada_id', ids);
+          const agrupado = new Map();
+          (itens||[]).forEach(it => {
+            const arr = agrupado.get(it.proposta_criada_id) || [];
+            arr.push(it);
+            agrupado.set(it.proposta_criada_id, arr);
+          });
+          console.log('[Admin] Fallback: itens retornados:', { qtd: (itens||[]).length });
+          itensMap = agrupado;
+        }
+        let contratosLegadoMap = new Map();
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         return base.map(pc => ({
           id: pc.id,
           nome_cliente: pc.nome_cliente,
+          email_cliente: pc.email_cliente,
+          telefone_cliente: pc.telefone_cliente,
           empresa_cliente: pc.empresa_cliente,
           cpf_cnpj: pc.cpf_cnpj,
+<<<<<<< HEAD
           representante_nome: repMap.get(pc.id)?.nome_completo || null,
           representante_cpf: repMap.get(pc.id)?.cpf || null,
           representante_validado: repMap.get(pc.id)?.validado || false,
+=======
+          responsavel_proposta: pc.responsavel_proposta,
+          representante_nome: pc.representante_cliente || null,
+          melhor_dia_pagamento: (pc.melhor_dia_pagamento ?? melhorDiaMap.get(pc.id) ?? null),
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           servico_social_midia: pc.servico_social_midia,
           servico_trafego_pago: pc.servico_trafego_pago,
           valor_social_midia: pc.valor_social_midia,
@@ -261,7 +432,9 @@
           valor_total: pc.valor_total,
           recorrencia: pc.recorrencia,
           forma_pagamento: pc.forma_pagamento,
-          status: pc.status,
+          recorrencia_assinada: pc.recorrencia_assinada || null,
+          forma_pagamento_assinada: pc.forma_pagamento_assinada || null,
+          status: (pc.status === 'aceita' || pc.aceita_em || pc.assinado_em) ? 'aceita' : pc.status,
           criada_em: pc.criada_em,
           atualizada_em: pc.atualizada_em,
           expira_em: pc.expira_em,
@@ -269,9 +442,10 @@
           assinado_em: pc.assinado_em,
           assinado_por: pc.assinado_por,
           hash_assinatura: pc.hash_assinatura,
-          proposta_aceita_id: mapProp.get(pc.id) || null,
-          contrato_pdf_url: contratosMap.get(mapProp.get(pc.id)) || null,
-          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false
+          proposta_aceita_id: null,
+          contrato_pdf_url: (contratosNormMap.get(pc.id) ?? null),
+          expirada: pc.expira_em ? (new Date(pc.expira_em) < new Date() && pc.status==='pendente') : false,
+          itens_catalogo: itensMap.get(pc.id) || []
         }));
       }
     }
@@ -295,8 +469,42 @@
       if (r.investimento_midia) {
         parts.push(`💰 Mídia: ${r.investimento_midia}`);
       }
+
+      // Itens de Catálogo (proposta_itens)
+      const itens = Array.isArray(r.itens_catalogo) ? r.itens_catalogo : [];
+      if (itens.length) {
+        const max = 3;
+        const mostrar = itens.slice(0, max);
+        mostrar.forEach(it => {
+          const nome = (it.nome_servico || 'Catálogo');
+          const desc = it.descricao ? ` ${String(it.descricao).toUpperCase()}` : '';
+          const valor = typeof it.total === 'number' && it.total > 0 ? it.total : (typeof it.preco_unitario === 'number' ? it.preco_unitario : 0);
+          const valorTxt = valor ? ` (${fmtMoeda(valor)})` : '';
+          const ic = nome.toLowerCase().includes('cat') ? '🧩' : '🧾';
+          parts.push(`${ic} ${String(nome)}${desc}${valorTxt}`);
+        });
+        if (itens.length > max) {
+          parts.push(`<span class="muted">+${itens.length - max} item(ns)</span>`);
+        }
+      }
       
       return parts.join('<br>') || '<span class="muted">—</span>';
+    }
+
+    // Calcula valor final mensal e total do período com descontos aplicados
+    function calcularValorFinal(r){
+      const base = (Number(r.valor_social_midia)||0) + (Number(r.valor_trafego_pago)||0);
+      if (!base) return { mensal: 0, total: 0, meses: 0 };
+      const recStr = (r.recorrencia_assinada || r.recorrencia || '').toString().toLowerCase();
+      let meses = 0;
+      if (recStr.includes('12')) meses = 12; else if (recStr.includes('6')) meses = 6; else if (recStr.includes('3')) meses = 3; else if (recStr.includes('mensal') || recStr.includes('1')) meses = 1;
+      const forma = (r.forma_pagamento_assinada || r.forma_pagamento || '').toString().toLowerCase();
+      const descRec = meses===12 ? 0.15 : meses===6 ? 0.10 : meses===3 ? 0.05 : 0;
+      const descCond = 0.05; // sempre aplicado
+      const descPag = forma.includes('vista') ? 0.10 : (forma.includes('50') || forma.includes('parcel')) ? 0.05 : 0;
+      const mensal = base * (1 - descRec - descCond - descPag);
+      const total = meses>0 ? mensal * meses : 0;
+      return { mensal, total, meses };
     }
 
     function renderTabela(rows){
@@ -311,12 +519,13 @@
       atualizarEstatisticas(rows);
       
       if (!rows || rows.length===0){
-        tb.innerHTML = `<tr><td colspan="15" class="muted">Nenhuma proposta encontrada.</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="9" class="muted">Nenhuma proposta encontrada.</td></tr>`;
         document.getElementById('resumoQtd').textContent = '0 propostas';
         return;
       }
       document.getElementById('resumoQtd').textContent = `${rows.length} proposta(s)`;
       for (const r of rows){
+<<<<<<< HEAD
   const url = `${window.location.origin}/proposta-visualizacao.html?id=${r.id}`;
         
         // Mostrar recorrência e pagamento para propostas aceitas (com ou sem valores)
@@ -327,8 +536,15 @@
           ? (r.forma_pagamento || '<span class="muted">—</span>')
           : '<span class="muted">—</span>';
         
+=======
+        try { console.log('[Admin] Render linha', { id: r.id, itens_catalogo: (r.itens_catalogo||[]).length }); } catch(_) {}
+        const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(r.id || '')}`;
+        const cnpj = r.cpf_cnpj || '—';
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         const tr = document.createElement('tr');
+        const vf = r.status === 'aceita' ? calcularValorFinal(r) : { mensal: Number(r.valor_mensal)||0, total: Number(r.valor_total)||0, meses: 0 };
         tr.innerHTML = `
+<<<<<<< HEAD
           <td class="nowrap">${r.criada_em ? new Date(r.criada_em).toLocaleString('pt-BR') : '—'}</td>
           <td>${r.nome_cliente || '—'}</td>
           <td>${r.empresa_cliente || '—'}</td>
@@ -337,20 +553,29 @@
             ${r.representante_nome ? `<div>${r.representante_nome}</div>` : '<span class="muted">—</span>'}
             ${r.representante_cpf ? `<div class="muted" style="font-size:.85rem">CPF: ${r.representante_cpf}</div>` : ''}
             ${r.representante_validado ? '<span class="chip" style="margin-top:6px;background:#0bd47e14;border-color:#0bd47e33;color:#0bd47e">✅ Validado</span>' : ''}
+=======
+          <td class="cliente-col">
+            <div class="cliente-nome"><strong>${r.nome_cliente || '—'}</strong></div>
+            <div class="contato-sub">${r.telefone_cliente || '—'} • ${r.email_cliente || '—'}</div>
+          </td>
+          <td>
+            <div>${r.empresa_cliente || '—'}</div>
+            <div class="muted">${cnpj}</div>
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           </td>
           <td>${linhaServico(r)}</td>
           <td>${formatarModeloCobranca(r)}</td>
           <td class="right">
-            <div><strong>${fmtMoeda(r.valor_mensal)}/mês</strong></div>
-            <div class="muted" style="font-size:.85rem">Total: ${fmtMoeda(r.valor_total)}</div>
+            <div class="valor-destaque">${fmtMoeda(vf.mensal)}/mês</div>
+            <div class="muted" style="font-size:.85rem">Total${vf.meses?` (${vf.meses}m)`:''}: ${fmtMoeda(vf.total)}</div>
           </td>
-          <td class="nowrap">${recorrenciaFinal}</td>
-          <td class="nowrap">${pagamentoFinal}</td>
           <td>${statusChip(r.status, r.expirada)}</td>
+          <td>${r.responsavel_proposta || '<span class="muted">—</span>'}</td>
           <td class="nowrap">
             <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
             ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
           </td>
+<<<<<<< HEAD
           <td>
             <a class="link" href="${url}" target="_blank">Abrir</a>
           </td>
@@ -360,9 +585,42 @@
               <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')" title="Editar proposta">✏️</button>
               <button class="btn-action btn-delete" onclick="confirmarExclusao('${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Excluir proposta">🗑️</button>
             </div>
+=======
+          <td class="nowrap">
+            <details class="details-panel" data-id="${r.id}">
+              <summary>+ Detalhes</summary>
+              <div class="details-content">
+                <div><strong>Representante:</strong> ${r.representante_nome || r.representante_cliente || '—'}</div>
+                <div><strong>Melhor dia pagamento:</strong> ${(r.melhor_dia_pagamento ?? '—')}</div>
+                <div><strong>Email:</strong> ${r.email_cliente || '—'}</div>
+                <div><strong>Telefone:</strong> ${r.telefone_cliente || '—'}</div>
+                <div><strong>CPF/CNPJ:</strong> ${r.cpf_cnpj || '—'}</div>
+                <div><strong>Serviço(s):</strong> ${linhaServico(r)}</div>
+                ${(r.recorrencia_assinada || r.forma_pagamento_assinada) ? `<div><strong>Assinado:</strong> ${(r.recorrencia_assinada || '—')} • ${(r.forma_pagamento_assinada || '—')}</div>` : ''}
+                ${r.assinado_em ? `<div><strong>Assinado em:</strong> ${formatarDataHora(r.assinado_em)}</div>` : ''}
+                ${r.contrato_pdf_url ? `<div><a class="link" href="${r.contrato_pdf_url}" target="_blank">📄 Contrato</a></div>` : ''}
+              </div>
+            </details>
+          </td>
+          <td class="actions">
+            <a class="link" href="${url}" target="_blank" rel="noopener" onclick="return abrirProposta('${r.id}')">Abrir</a>
+            <details class="actions-menu">
+              <summary title="Mais ações">•••</summary>
+              <div class="actions-dropdown">
+                <button class="btn-action btn-edit" onclick="editarProposta('${r.id}')">✏️ Editar</button>
+                <button type="button" class="btn-action btn-delete" onclick="return confirmarExclusao(event, '${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')">🗑️ Excluir</button>
+                ${r.contrato_pdf_url ? `<a class="btn-action" href="${r.contrato_pdf_url}" target="_blank">📄 PDF</a>` : ''}
+                ${r.status === 'aceita' && r.contrato_pdf_url ? `<button type="button" class="btn-action" onclick="enviarContratoPorEmailAdmin('${r.id}')">✉️ Enviar contrato</button>` : ''}
+              </div>
+            </details>
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           </td>
         `;
         tb.appendChild(tr);
+        try {
+          const det = tr.querySelector('details.details-panel');
+          if (det) det.addEventListener('toggle', () => { console.log('[Admin] Detalhes', { id: r.id, open: det.open }); });
+        } catch(_) {}
       }
     }
 
@@ -388,6 +646,15 @@
       btn.disabled = true; btn.textContent = 'Buscando…';
       try{
         client = window.supabaseConfig.initSupabase();
+        // Gate: exigir sessão para acessar Admin
+        try {
+          const { data: { session } } = await client.auth.getSession();
+          if (!session || !session.user) {
+            const tb = document.getElementById('tbodyPropostas');
+        tb.innerHTML = '<tr><td colspan="9" class="muted">Faça login para acessar o painel.</td></tr>';
+            return;
+          }
+        } catch(_){ /* fallback: se falhar, continua mas sem dados */ }
         const filtros = {
           termoNome: document.getElementById('filtroNome').value.trim(),
           termoCPF: document.getElementById('filtroCPF').value.trim(),
@@ -404,10 +671,19 @@
         }
         
         renderTabela(rows);
+        // Abrir proposta automaticamente se parâmetro estiver presente
+        try {
+          const params = new URLSearchParams(location.search);
+          const pid = params.get('proposta');
+          if (pid && !window.__openedByParam) {
+            window.__openedByParam = true;
+            abrirProposta(pid);
+          }
+        } catch(_) { /* ignora */ }
       }catch(e){
         console.error(e);
         const tb = document.getElementById('tbodyPropostas');
-        tb.innerHTML = `<tr><td colspan="15" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="9" class="muted">Erro ao carregar: ${e.message}</td></tr>`;
       }finally{
         btn.disabled = false; btn.textContent = 'Buscar';
       }
@@ -418,11 +694,113 @@
     document.addEventListener('keydown', (e)=>{
       if(e.key==='Enter') carregar();
     });
+    // ===== Autenticação e Papéis =====
+    async function initAuthUI(){
+      client = client || window.supabaseConfig.initSupabase();
+      const { data: { session } } = await client.auth.getSession();
+      const authStatus = document.getElementById('authStatus');
+      const btnLogin = document.getElementById('btnLogin');
+      const btnLogout = document.getElementById('btnLogout');
+      const emailInput = document.getElementById('authEmail');
+      const passInput = document.getElementById('authPassword');
+      const statsEl = document.getElementById('statsContainer');
+      const filtersEl = document.getElementById('filtersContainer');
+      const tableEl = document.getElementById('tableContainer');
+      const footerEl = document.getElementById('footerContainer');
+      const usuariosEl = document.getElementById('usuariosSection');
+
+      if (session && session.user) {
+        window.usuarioAtual = session.user;
+        // Obter papel do usuário na tabela usuarios
+        let papel = 'viewer';
+        try {
+          const { data: usr } = await client
+            .from('usuarios')
+            .select('papel,email,nome,user_id')
+            .eq('user_id', session.user.id)
+            .limit(1)
+            .maybeSingle();
+          papel = usr?.papel || (session.user.user_metadata?.papel) || 'viewer';
+        } catch(_) { /* mantém viewer */ }
+        window.usuarioPapel = papel;
+        authStatus.textContent = `${session.user.email || 'Usuário'} · ${papel}`;
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = '';
+        emailInput.style.display = 'none';
+        passInput.style.display = 'none';
+        // Mostrar conteúdo do Admin
+        statsEl?.classList.remove('hidden');
+        filtersEl?.classList.remove('hidden');
+        tableEl?.classList.remove('hidden');
+        footerEl?.classList.remove('hidden');
+        // Carregar dados com contexto de sessão
+        await carregar();
+        // Se for admin, carregar gestão de usuários
+        if (papel === 'admin') {
+          usuariosEl?.classList.remove('hidden');
+          carregarUsuarios();
+        } else {
+          usuariosEl?.classList.add('hidden');
+        }
+      } else {
+        window.usuarioAtual = null;
+        window.usuarioPapel = 'viewer';
+        authStatus.textContent = 'Não autenticado';
+        btnLogin.style.display = 'none';
+        btnLogout.style.display = 'none';
+        emailInput.style.display = 'none';
+        passInput.style.display = 'none';
+        // Redirecionar para página de login (sempre na raiz)
+        window.location.href = baseLink() + 'login.html?redirect=admin.html';
+      }
+    }
+
+    async function login(){
+      client = client || window.supabaseConfig.initSupabase();
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      if (!email || !password) { alert('Informe email e senha.'); return; }
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) { alert('Falha no login: ' + error.message); return; }
+      await initAuthUI();
+    }
+
+    async function logout(){
+      client = client || window.supabaseConfig.initSupabase();
+      try {
+        await client.auth.signOut();
+      } catch(e) {
+        console.warn('Falha ao efetuar signOut no Supabase. Prosseguindo com limpeza local.', e);
+      }
+      // Limpeza defensiva de tokens locais do Supabase (prefixo sb-)
+      try {
+        Object.keys(localStorage).forEach(k => { if (k.startsWith('sb-')) localStorage.removeItem(k); });
+      } catch(_) { /* ignora */ }
+      // Redirecionar imediatamente para login na raiz, garantindo saída visual
+      window.location.href = baseLink() + 'login.html?redirect=admin.html';
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', login);
+    document.getElementById('btnLogout').addEventListener('click', logout);
+
     window.addEventListener('DOMContentLoaded', () => {
-      carregar();
-      // Iniciar monitoramento em tempo real após carregar os dados iniciais
+      initAuthUI();
+      // Iniciar monitoramento em tempo real após estado inicial
       setTimeout(iniciarMonitoramentoRealtime, 2000);
     });
+
+    // Garantir abertura da proposta com ID preservado
+    function abrirProposta(id) {
+      try {
+        if (!id) { alert('ID da proposta ausente.'); return false; }
+        const url = `${baseLink()}proposta-visualizacao.html?id=${encodeURIComponent(id)}`;
+        window.open(url, '_blank', 'noopener');
+        return false; // impedir navegação padrão do <a>
+      } catch (e) {
+        console.error('Falha ao abrir proposta:', e);
+        return true; // fallback: permitir navegação padrão
+      }
+    }
 
     function editarProposta(id) {
       // Buscar a proposta na lista de dados carregados
@@ -440,6 +818,7 @@
       window.location.href = `proposta-gerador.html?edit=${id}`;
     }
 
+<<<<<<< HEAD
     async function confirmarExclusao(id, nomeCliente) {
       // Buscar a proposta na lista de dados carregados
       const proposta = window.ultimasPropostas?.find(p => p.id === id);
@@ -453,14 +832,108 @@
       }
       
       const confirmacao = confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
+=======
+    // Estado de autenticação e permissões
+    let usuarioAtual = null;
+
+    function isAdmin(){ return window.usuarioPapel === 'admin'; }
+
+    // Extrair caminho do arquivo do Storage a partir de uma URL pública
+    function extrairCaminhoStorage(url){
+      try{
+        if (!url) return null;
+        const idx = url.indexOf('/object/public/contratos/');
+        if (idx === -1) return null;
+        return url.substring(idx + '/object/public/contratos/'.length);
+      }catch(_){ return null; }
+    }
+
+    async function confirmarExclusao(evt, id, nomeCliente) {
+      try { if (evt) { evt.preventDefault(); evt.stopPropagation(); } } catch(_) {}
+      if (!isAdmin()) {
+        alert('🚫 Apenas administradores podem excluir propostas.');
+        return false;
+      }
+      // Buscar a proposta na lista de dados carregados (pode estar aceita)
+      const proposta = window.ultimasPropostas?.find(p => p.id === id);
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
       
-      if (!confirmacao) return;
+      let confirmacao = false;
+      try {
+        confirmacao = window.confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nIsto irá remover registros relacionados (proposta assinada, contrato e PDF no Storage). Esta ação não pode ser desfeita.`);
+      } catch(_) { confirmacao = false; }
+      if (confirmacao !== true) { console.debug('Exclusão cancelada pelo usuário'); return false; }
+      try { window.__deletingPropostaIds = window.__deletingPropostaIds || new Set(); } catch(_) {}
+      if (window.__deletingPropostaIds && window.__deletingPropostaIds.has(id)) { console.warn('Exclusão já em progresso', { id }); return false; }
+      try { window.__deletingPropostaIds.add(id); } catch(_) {}
+      try { if (evt?.currentTarget) { evt.currentTarget.disabled = true; evt.currentTarget.textContent = 'Excluindo…'; } } catch(_){}
+      console.log('🗑️ Iniciando exclusão', { id, nomeCliente });
       
       try {
         client = client || window.supabaseConfig.initSupabase();
+<<<<<<< HEAD
         
         // Excluir proposta
         const { data, error } = await client
+=======
+
+        // 1) Apagar contratos normalizados e seus PDFs
+        console.debug('[Excluir] Buscando contratos normalizados para proposta', id);
+        const { data: contratosNorm } = await client
+          .from('proposta_contratos')
+          .select('id,contrato_url')
+          .eq('proposta_criada_id', id);
+        if (Array.isArray(contratosNorm)){
+          for (const c of contratosNorm){
+            const caminho = extrairCaminhoStorage(c.contrato_url);
+            if (caminho){
+              try{
+                await client.storage.from('contratos').remove([caminho]);
+              }catch(e){
+                console.warn('Falha ao remover arquivo do Storage (normalized):', e?.message || e);
+              }
+            }
+          }
+          console.debug('[Excluir] Removendo registros em proposta_contratos…');
+          await client.from('proposta_contratos').delete().eq('proposta_criada_id', id);
+        }
+
+        // 1.1) Limpeza opcional de legados (se existirem), engolindo erros
+        try {
+          const { data: propAssinada } = await client
+            .from('propostas')
+            .select('id')
+            .eq('proposta_criada_id', id)
+            .limit(1)
+            .maybeSingle();
+          const propId = propAssinada?.id;
+          if (propId){
+            const { data: contratosLegado } = await client
+              .from('contratos')
+              .select('id,pdf_url')
+              .eq('proposta_id', propId);
+            if (Array.isArray(contratosLegado)){
+              for (const c of contratosLegado){
+                const caminho = extrairCaminhoStorage(c.pdf_url);
+                if (caminho){
+                  try{ await client.storage.from('contratos').remove([caminho]); }catch(e){ /* ignora */ }
+                }
+              }
+            }
+            try { await client.from('contratos').delete().eq('proposta_id', propId); } catch (_) {}
+            try { await client.from('propostas').delete().eq('id', propId); } catch (_) {}
+          }
+        } catch (_) { /* tolerante se tabelas não existirem */ }
+
+        // 2) Remover representantes vinculados (LEGADO)
+        // Removido: tabela representantes_proposta foi descontinuada.
+        // Caso ainda exista no seu projeto, você pode habilitar a linha abaixo temporariamente.
+        // try { await client.from('representantes_proposta').delete().eq('proposta_criada_id', id); } catch (_) {}
+
+        // 3) Remover proposta criada (independente do status)
+        console.debug('[Excluir] Removendo proposta_criadas id', id);
+        const { error } = await client
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
           .from('propostas_criadas')
           .delete()
           .eq('id', id)
@@ -469,19 +942,34 @@
         if (error) {
           console.error('Erro ao excluir proposta:', error);
           alert('❌ Erro ao excluir proposta: ' + error.message);
-          return;
+          try { window.__deletingPropostaIds.delete(id); } catch(_) {}
+          return false;
         }
+<<<<<<< HEAD
         if (!data || data.length === 0) {
           console.warn('Exclusão não retornou registros. Verifique políticas RLS.');
           alert('❌ Proposta não foi excluída. Verifique permissões de DELETE (RLS).');
           return;
         }
+=======
+        // Remover da lista local e atualizar UI imediatamente
+        try {
+          window.ultimasPropostas = (window.ultimasPropostas || []).filter(p => p.id !== id);
+          renderTabela(window.ultimasPropostas);
+        } catch(_) { /* ignora: render falhar não impede recarregar */ }
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         
-        alert('✅ Proposta excluída com sucesso!');
+        alert('✅ Proposta e registros relacionados excluídos com sucesso!');
+        console.log('✅ Exclusão concluída', { id });
+        try { window.__deletingPropostaIds.delete(id); } catch(_) {}
         carregar(); // Recarregar lista
+        return true;
       } catch (e) {
-        console.error('Erro ao excluir:', e);
-        alert('❌ Erro ao excluir proposta. Tente novamente.');
+        console.error('Erro ao excluir em cascata:', e);
+        const msg = e?.message || e?.error_description || e?.hint || 'Erro desconhecido (verifique políticas de DELETE e Storage)';
+        alert('❌ Erro ao excluir: ' + msg);
+        try { window.__deletingPropostaIds.delete(id); } catch(_) {}
+        return false;
       }
     }
 
@@ -547,6 +1035,60 @@
       }
     }
 
+    // Enviar contrato assinado por e-mail a partir do Admin
+    async function enviarContratoPorEmailAdmin(id){
+      try{
+        client = client || window.supabaseConfig.initSupabase();
+        const r = (window.ultimasPropostas || []).find(p => p.id === id);
+        if (!r) { alert('Proposta não encontrada na lista.'); return; }
+        if (r.status !== 'aceita') { alert('Somente propostas assinadas podem ser enviadas.'); return; }
+        if (!r.contrato_pdf_url) { alert('Contrato PDF não disponível para esta proposta.'); return; }
+
+        const nomeCliente = r.nome_cliente || '';
+        const empresaCliente = r.empresa_cliente || '';
+        let emailCliente = r.email_cliente || '';
+        const extra = window.prompt('Informe e-mails adicionais separados por vírgula (opcional):', '');
+        const destinatarios = [emailCliente].concat((extra || '').split(',')).map(s => s.trim()).filter(Boolean);
+        if (!destinatarios.length) { alert('Nenhum e-mail informado.'); return; }
+
+        const pdfUrl = r.contrato_pdf_url;
+        const htmlBody = `Contrato assinado por ${nomeCliente || 'Cliente'}${empresaCliente ? ' (' + empresaCliente + ')' : ''}. ` +
+          `Link para download: <a href="${pdfUrl}" target="_blank">${pdfUrl}</a>`;
+
+        if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+          window.supabaseConfig.initSupabase();
+        }
+        if (!window.supabase || !window.supabase.functions) {
+          alert('Supabase Functions não disponível no cliente.');
+          return;
+        }
+
+        const { data, error } = await window.supabase.functions.invoke('send-contract-email', {
+          body: {
+            pdfUrl,
+            to: destinatarios.join(','),
+            nomeCliente,
+            empresaCliente,
+            subject: 'Contrato assinado - Heat Digital',
+            htmlBody
+          }
+        });
+
+        if (error) {
+          // Tentar exibir detalhes retornados pela função
+          const detalhe = (data && data.error) || (error?.context && (error.context.error || error.context.body)) || '';
+          const msg = detalhe ? `Detalhe: ${typeof detalhe === 'string' ? detalhe : JSON.stringify(detalhe)}` : '';
+          throw new Error(`Edge Function retornou erro. ${msg}`);
+        }
+        alert('✅ E-mail enviado com sucesso.');
+        return data || { status: 'ok' };
+      }catch(e){
+        console.error('Falha ao enviar contrato por e-mail:', e);
+        const msg = e?.message || e?.error_description || 'Erro desconhecido';
+        alert('❌ Não foi possível enviar o e-mail: ' + msg);
+      }
+    }
+
     // Monitorar mudanças em tempo real
     function iniciarMonitoramentoRealtime() {
       try {
@@ -570,6 +1112,64 @@
         console.error('Erro ao iniciar monitoramento:', e);
       }
     }
+
+    // ===== Gestão de Usuários (somente admin) =====
+    async function carregarUsuarios(){
+      if (window.usuarioPapel !== 'admin') return;
+      client = client || window.supabaseConfig.initSupabase();
+      const tb = document.getElementById('tbodyUsuarios');
+      if (!tb) return;
+      tb.innerHTML = '<tr><td colspan="4" class="muted">Carregando…</td></tr>';
+      try{
+        const { data, error } = await client
+          .from('usuarios')
+          .select('email,nome,papel,user_id')
+          .order('email', { ascending: true });
+        if (error) throw error;
+        if (!data || data.length === 0){
+          tb.innerHTML = '<tr><td colspan="4" class="muted">Nenhum usuário cadastrado.</td></tr>';
+          return;
+        }
+        tb.innerHTML = '';
+        for (const u of data){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${u.email || '—'}</td>
+            <td>${u.nome || '—'}</td>
+            <td><span class="chip">${u.papel || 'viewer'}</span></td>
+            <td class="muted">${u.user_id || '—'}</td>
+          `;
+          tb.appendChild(tr);
+        }
+      }catch(e){
+        tb.innerHTML = `<tr><td colspan="4" class="muted">Erro ao carregar usuários: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function salvarUsuario(){
+      if (window.usuarioPapel !== 'admin') { alert('Apenas admin pode gerenciar usuários.'); return; }
+      client = client || window.supabaseConfig.initSupabase();
+      const emailEl = document.getElementById('novoUsuarioEmail');
+      const nomeEl = document.getElementById('novoUsuarioNome');
+      const papelEl = document.getElementById('novoUsuarioPapel');
+      if (!emailEl || !papelEl) return;
+      const email = emailEl.value.trim();
+      const nome = nomeEl.value.trim();
+      const papel = papelEl.value;
+      if (!email) { alert('Informe o email.'); return; }
+      try{
+        const { error } = await client
+          .from('usuarios')
+          .upsert({ email, nome: nome || null, papel }, { onConflict: 'email' });
+        if (error) throw error;
+        alert('✅ Usuário salvo/atualizado.');
+        carregarUsuarios();
+      }catch(e){
+        alert('❌ Erro ao salvar usuário: ' + e.message);
+      }
+    }
+
+    document.getElementById('btnSalvarUsuario')?.addEventListener('click', salvarUsuario);
   </script>
   
 </body>

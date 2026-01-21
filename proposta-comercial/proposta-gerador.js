@@ -118,8 +118,8 @@ const planosTrafegoPago = {
                 'Script de vendas',
                 'Análise de concorrência',
                 'Definição de ICP (público ideal)',
-                'Landing Page de alta conversão',
                 'Configuração inicial de BM + Tags (Meta/Google)',
+                'Landing Page de alta conversão',
                 'Consultoria estratégica de crescimento',
                 'Ajustes contínuos de LP e otimização de conversão (CRO)'
             ],
@@ -146,26 +146,13 @@ function obterDescontoRecorrencia(meses) {
 function calcularValores() {
     let total = 0;
     
-    const socialMedia = document.getElementById('servicoSocialMidia').value;
-    const trafegoPago = document.getElementById('servicoTrafegoPago').value;
-    
-    if (socialMedia !== 'nao-se-aplica') {
-        total += planosSocialMedia[socialMedia].valor;
-    }
-    
-    if (trafegoPago !== 'nao-se-aplica') {
-        const modeloCobranca = document.getElementById('modeloCobranca').value;
-        
-        if (modeloCobranca === 'fixo') {
-            // Valor fixo do plano
-            total += planosTrafegoPago[trafegoPago].valor;
-        } else if (modeloCobranca === 'comissao') {
-            // Apenas comissão - não adiciona valor fixo (será explicado na proposta)
-            // total += 0;
-        } else if (modeloCobranca === 'hibrido') {
-            // Fixo customizado
-            const valorFixo = parseFloat(document.getElementById('valorFixoTrafego').value) || 0;
-            total += valorFixo;
+    // Somar apenas o plano selecionado do Catálogo
+    const planoSelect = document.getElementById('catalogoPlanoSelect');
+    const optPlano = planoSelect?.selectedOptions?.[0] || null;
+    if (optPlano) {
+        const valor = parseFloat(optPlano.dataset?.valor || '0');
+        if (!Number.isNaN(valor) && valor > 0) {
+            total += valor;
         }
     }
     
@@ -211,12 +198,12 @@ function atualizarSimulador(valorBase, descontoCustomizado = 0) {
     periodos.forEach(meses => {
         const descontoRecorrencia = valorBase * obterDescontoRecorrencia(meses);
         const totalAposRecorrencia = valorBase - descontoRecorrencia;
-        const descontoAdicional = totalAposRecorrencia * 0.05;
-        const valorFinalMensal = totalAposRecorrencia - descontoAdicional;
+        // Não incluir 5% condicional na simulação (apenas recorrência + eventual customizado)
+        const valorFinalMensal = totalAposRecorrencia; 
         const valorTotalPeriodo = valorFinalMensal * meses;
         
-        // Calcular economia total (desconto customizado + recorrência + adicional) por período
-        const economiaTotal = (descontoCustomizado + descontoRecorrencia + descontoAdicional) * meses;
+        // Economia total: desconto customizado + recorrência (sem adicional condicional)
+        const economiaTotal = (descontoCustomizado + descontoRecorrencia) * meses;
         
         document.getElementById(`sim${meses}Mensal`).textContent = formatarMoeda(valorFinalMensal) + '/mês';
         document.getElementById(`sim${meses}Total`).textContent = 'Total: ' + formatarMoeda(valorTotalPeriodo);
@@ -229,10 +216,232 @@ function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Garantir acesso somente com login
+async function ensureLoggedIn() {
+    if (!window.supabaseConfig) {
+        throw new Error('supabase-config.js não foi carregado.');
+    }
+    const client = await window.supabaseConfig.initSupabase();
+    const { data: { session } } = await client.auth.getSession();
+    if (!session || !session.user) {
+        const redirect = 'proposta-gerador.html' + (window.location.search || '');
+        window.location.href = window.location.origin + '/login.html?redirect=' + encodeURIComponent(redirect);
+        return null;
+    }
+    window.supabaseClient = client;
+    return client;
+}
+
+// Obter papel do usuário logado
+async function getUserRole(client) {
+    try {
+        const { data: { session } } = await client.auth.getSession();
+        let papel = 'viewer';
+        if (session?.user?.email) {
+            const { data: rows, error } = await client
+                .from('usuarios')
+                .select('papel,email,nome,user_id')
+                .eq('email', session.user.email)
+                .limit(1);
+            if (!error && rows && rows.length) {
+                papel = rows[0]?.papel || papel;
+            }
+        }
+        papel = papel || (session?.user?.user_metadata?.papel) || 'viewer';
+        window.usuarioPapel = papel;
+        return papel;
+    } catch (e) {
+        console.warn('Falha ao obter papel do usuário:', e);
+        window.usuarioPapel = 'viewer';
+        return 'viewer';
+    }
+}
+
+// Garantir que somente admin/editor possam usar o gerador
+async function ensureEditorOrAdmin() {
+    const client = await ensureLoggedIn();
+    if (!client) return null; // já redirecionado
+    const papel = await getUserRole(client);
+    if (papel !== 'admin' && papel !== 'editor') {
+        alert('Apenas usuários com papel admin ou editor podem usar o gerador.');
+        window.location.href = window.location.origin + '/admin.html';
+        return null;
+    }
+    return client;
+}
+
+// Definir responsável da proposta como usuário logado
+async function popularResponsavelDropdown() {
+    const selectEl = document.getElementById('responsavelProposta');
+    if (!selectEl) return;
+    selectEl.innerHTML = '<option value="">Definindo usuário…</option>';
+
+    try {
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+        const client = await window.supabaseConfig.initSupabase();
+        const { data: { session } } = await client.auth.getSession();
+        const email = session?.user?.email || '';
+        let nomeFinal = email;
+
+        if (email) {
+            const { data: rows, error } = await client
+                .from('usuarios')
+                .select('nome,email')
+                .eq('email', email)
+                .limit(1);
+            if (!error && rows && rows.length) {
+                const nomeDB = (rows[0]?.nome || '').trim();
+                nomeFinal = nomeDB || email;
+            }
+        }
+
+        selectEl.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = nomeFinal;
+        opt.textContent = nomeFinal;
+        selectEl.appendChild(opt);
+        selectEl.value = nomeFinal;
+        selectEl.disabled = true; // fixar responsável
+    } catch (e) {
+        console.error('Erro ao definir responsável:', e);
+        selectEl.innerHTML = '<option value="">Usuário não identificado</option>';
+        selectEl.disabled = true;
+    }
+}
+
+// Carregar clientes cadastrados para o dropdown e permitir auto-preenchimento
+async function popularClientesDropdown() {
+    const selectEl = document.getElementById('clienteSelecionado');
+    if (!selectEl) return;
+    selectEl.innerHTML = '<option value="">Carregando clientes…</option>';
+    try {
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+        const client = await window.supabaseConfig.initSupabase();
+        const { data, error } = await client
+            .from('clientes')
+            .select('id, tipo_documento, documento, nome, empresa, endereco, email, telefone')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        const opts = (data || []).map(c => {
+            const doc = (c.documento || '').replace(/\D/g, '');
+            const labelBase = c.tipo_documento === 'cpf' ? (c.nome || 'Cliente') : (c.empresa || 'Empresa');
+            const tipo = c.tipo_documento?.toUpperCase() || 'DOC';
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${labelBase} · ${tipo}: ${doc}`;
+            opt.dataset.tipo = c.tipo_documento;
+            opt.dataset.documento = doc;
+            opt.dataset.nome = c.nome || '';
+            opt.dataset.empresa = c.empresa || '';
+            opt.dataset.endereco = c.endereco || '';
+            opt.dataset.email = c.email || '';
+            opt.dataset.telefone = c.telefone || '';
+            return opt;
+        });
+        selectEl.innerHTML = '<option value="">Selecione um cliente</option>';
+        opts.forEach(o => selectEl.appendChild(o));
+        selectEl.onchange = function(){
+            const opt = selectEl.selectedOptions[0];
+            if (!opt || !opt.value) return;
+            const tipo = opt.dataset.tipo;
+            const doc = opt.dataset.documento;
+            const nome = opt.dataset.nome;
+            const empresa = opt.dataset.empresa;
+            const endereco = opt.dataset.endereco;
+            const cpfCnpjEl = document.getElementById('cpfCnpjCliente');
+            const empresaEl = document.getElementById('empresaCliente');
+            const enderecoEl = document.getElementById('enderecoCliente');
+            // Guardar email/telefone em campos ocultos/data attributes, se desejado
+            // (neste fluxo, usaremos os datasets ao salvar)
+            // Preencher documento formatado
+            if (cpfCnpjEl) {
+                let fmt = doc;
+                if (window.validacaoCPFCNPJ) {
+                    if (tipo === 'cpf' && window.validacaoCPFCNPJ.formatarCPF) {
+                        fmt = window.validacaoCPFCNPJ.formatarCPF(doc);
+                    } else if (window.validacaoCPFCNPJ.formatarCNPJ) {
+                        fmt = window.validacaoCPFCNPJ.formatarCNPJ(doc);
+                    }
+                }
+                cpfCnpjEl.value = fmt;
+            }
+            // Nome/Empresa: para CPF usar nome, para CNPJ usar empresa
+            if (empresaEl) empresaEl.value = (tipo === 'cpf' ? (nome || empresa) : (empresa || nome)) || '';
+            if (enderecoEl) enderecoEl.value = endereco || '';
+        };
+        // Se já houver um cliente selecionado (edição), disparar preenchimento
+        const sel = selectEl.selectedOptions?.[0];
+        if (sel && sel.value) {
+            try { selectEl.onchange(); } catch (_) { /* ignore */ }
+        }
+    } catch (e) {
+        console.error('Erro ao carregar clientes:', e);
+        selectEl.innerHTML = '<option value="">Não foi possível carregar clientes</option>';
+    }
+}
+
 // ==================== INICIALIZAÇÃO ====================
 // Aguardar DOM carregar antes de adicionar event listeners
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOM carregado - Inicializando event listeners');
+    // Permitir que qualquer usuário logado carregue os serviços (catálogo)
+    const client = await ensureLoggedIn();
+    if (!client) return; // redirecionado para login
+    const papel = await getUserRole(client);
+    // Atualizar UI de sessão e habilitar Sair
+    try {
+        const { data: { session } } = await client.auth.getSession();
+        const authEl = document.getElementById('authStatusGerador');
+        const btnLogout = document.getElementById('btnLogoutGerador');
+        if (authEl) authEl.textContent = `${(session?.user?.email) || 'Usuário'} · ${papel}`;
+        if (btnLogout) {
+            btnLogout.style.display = '';
+            btnLogout.onclick = async () => {
+                try {
+                    await client.auth.signOut();
+                } catch (e) {
+                    console.warn('Falha no signOut, limpando sessão local', e);
+                }
+                // Limpeza defensiva das chaves de sessão supabase (sb-*) para garantir logout cruzado
+                try {
+                    Object.keys(localStorage).forEach(k => { if (k.startsWith('sb-')) localStorage.removeItem(k); });
+                } catch (_) { /* ignora */ }
+                const redirect = 'proposta-gerador.html' + (window.location.search || '');
+                window.location.href = window.location.origin + '/login.html?redirect=' + encodeURIComponent(redirect);
+            };
+        }
+    } catch (_) { /* ignore */ }
+    // Popular dropdown de responsáveis e clientes somente para admin/editor
+    if (papel === 'admin' || papel === 'editor') {
+        await popularResponsavelDropdown();
+        await popularClientesDropdown();
+    } else {
+        // Em viewers, esconder/neutralizar campos sensíveis
+        const respEl = document.getElementById('responsavelProposta');
+        if (respEl) { respEl.innerHTML = '<option value="">—</option>'; respEl.disabled = true; }
+        const clienteEl = document.getElementById('clienteSelecionado');
+        if (clienteEl) { clienteEl.innerHTML = '<option value="">Disponível para admin/editor</option>'; clienteEl.disabled = true; }
+    }
+
+    // Popular serviços cadastrados a partir do Supabase
+    try { await popularServicosCadastrados(); } catch (e) { console.warn('Falha ao carregar serviços do banco:', e); }
+    try { inicializarCatalogoServicos(); } catch (e) { console.warn('Falha ao inicializar catálogo de serviços:', e); }
+
+    // Modal: cadastro rápido de cliente
+    try {
+        const abrirBtn = document.getElementById('btnNovoCliente');
+        const modal = document.getElementById('modalNovoCliente');
+        const fecharBtn = document.getElementById('fecharModalNovoCliente');
+        const salvarBtn = document.getElementById('btnSalvarNovoCliente');
+        if (abrirBtn && modal && fecharBtn && salvarBtn) {
+            abrirBtn.onclick = () => { modal.style.display = 'block'; };
+            fecharBtn.onclick = () => { modal.style.display = 'none'; };
+            window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+            salvarBtn.onclick = async () => { await salvarNovoCliente(); };
+        }
+    } catch (e) {
+        console.warn('Falha ao iniciar modal de cliente:', e);
+    }
     
     // Verificar se está em modo de edição
     const urlParams = new URLSearchParams(window.location.search);
@@ -323,7 +532,9 @@ if (servicoTrafegoPago) {
             html += `<div style="margin-bottom: 8px;"><strong style="color: #1E5942; font-size: 0.9rem;">${secaoNome}:</strong></div>`;
             html += '<ul style="margin-left: 15px; margin-bottom: 8px;">';
             dados.secoes[secaoNome].forEach(item => {
-                html += `<li style="font-size: 0.85rem; margin-bottom: 3px;">✅ ${item}</li>`;
+                const isLP = /LP de alta conversão/i.test(item);
+                const itemTexto = isLP ? `${item} (exclusivo para plano de 12 meses de recorrência)` : item;
+                html += `<li style="font-size: 0.85rem; margin-bottom: 3px;">✅ ${itemTexto}</li>`;
             });
             html += '</ul>';
         });
@@ -332,8 +543,362 @@ if (servicoTrafegoPago) {
     }
     
     atualizarValores();
+    // Inserir destaque discreto no card de 12 meses do simulador
+    const bonusEl = document.getElementById('bonus12');
+    if (!bonusEl) {
+        const total12 = document.getElementById('sim12Total');
+        if (total12) {
+            const div = document.createElement('div');
+            div.id = 'bonus12';
+            div.className = 'bonus-12m';
+            div.textContent = '🎁 Bônus 12 meses: Você ganha 1 site (LP de alta conversão)';
+            total12.insertAdjacentElement('afterend', div);
+        }
+    }
     atualizarBadgeComissao();
 });
+
+}
+
+// ==================== CARREGAR SERVIÇOS (PRODUTOS/PLANOS) DO SUPABASE ====================
+function normalizarTexto(s) {
+    return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function mapPlanoKeyFromNome(produtoNome, planoNome) {
+    const p = normalizarTexto(produtoNome);
+    const n = normalizarTexto(planoNome);
+    if (p.includes('trafego') && p.includes('pago')) {
+        if (n.startsWith('foco')) return 'foco';
+        if (n.startsWith('aceleracao')) return 'aceleracao';
+        if (n.startsWith('destaque') || n.startsWith('heat')) return 'heat';
+    }
+    if (p.includes('social') && p.includes('media')) {
+        if (n.startsWith('start')) return 'start';
+        if (n.startsWith('scale')) return 'scale';
+        if (n.startsWith('heat') || n.startsWith('destaque')) return 'heat';
+    }
+    return null;
+}
+
+async function popularServicosCadastrados() {
+    if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+    const client = await window.supabaseConfig.initSupabase();
+
+    const selSocial = document.getElementById('servicoSocialMidia');
+    const selTrafego = document.getElementById('servicoTrafegoPago');
+    if (selSocial) { selSocial.disabled = true; }
+    if (selTrafego) { selTrafego.disabled = true; }
+
+    try {
+        const { data, error } = await client
+            .from('produtos')
+            .select('id, nome, tipo, produto_planos(id, nome, valor, info, sessoes, addons)')
+            .order('nome', { ascending: true });
+        if (error) throw error;
+        const produtos = data || [];
+        // Disponibilizar no escopo global para o card de catálogo
+        window.produtosCatalogo = produtos;
+
+        const getByNome = (alvo) => produtos.find(p => normalizarTexto(p.nome) === normalizarTexto(alvo));
+        const produtoSocial = produtos.find(p => normalizarTexto(p.nome).includes('social') && normalizarTexto(p.nome).includes('media')) || getByNome('Social Media');
+        const produtoTrafego = produtos.find(p => normalizarTexto(p.nome).includes('trafego') && normalizarTexto(p.nome).includes('pago')) || getByNome('Tráfego Pago');
+
+        function fillOptions(selectEl, produto, fallbackOpts) {
+            if (!selectEl) return;
+            const preserveFirst = selectEl.querySelector('option[value="nao-se-aplica"]');
+            selectEl.innerHTML = '';
+            const baseOpt = document.createElement('option');
+            baseOpt.value = 'nao-se-aplica';
+            baseOpt.textContent = 'Não se aplica';
+            selectEl.appendChild(baseOpt);
+            const planos = produto?.produto_planos || [];
+            if (planos.length) {
+                planos.forEach(pl => {
+                    const key = mapPlanoKeyFromNome(produto.nome, pl.nome);
+                    if (!key) return;
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = `${(pl.nome || '').toUpperCase()} - ${formatarMoeda(parseFloat(pl.valor) || 0)}`;
+                    selectEl.appendChild(opt);
+                });
+            } else {
+                (fallbackOpts || []).forEach(o => {
+                    const opt = document.createElement('option');
+                    opt.value = o.value;
+                    opt.textContent = `${o.label} - ${formatarMoeda(o.valor)}`;
+                    selectEl.appendChild(opt);
+                });
+            }
+        }
+
+        // Sincronizar valores nos objetos locais (para cálculos e exibição de entregáveis)
+        if (produtoTrafego && Array.isArray(produtoTrafego.produto_planos)) {
+            produtoTrafego.produto_planos.forEach(pl => {
+                const key = mapPlanoKeyFromNome(produtoTrafego.nome, pl.nome);
+                if (key && planosTrafegoPago[key]) {
+                    const v = parseFloat(pl.valor);
+                    if (!Number.isNaN(v)) planosTrafegoPago[key].valor = v;
+                }
+            });
+        }
+        if (produtoSocial && Array.isArray(produtoSocial.produto_planos)) {
+            produtoSocial.produto_planos.forEach(pl => {
+                const key = mapPlanoKeyFromNome(produtoSocial.nome, pl.nome);
+                if (key && planosSocialMedia[key]) {
+                    const v = parseFloat(pl.valor);
+                    if (!Number.isNaN(v)) planosSocialMedia[key].valor = v;
+                }
+            });
+        }
+
+        // Popular selects com dados do banco ou fallback
+        fillOptions(selTrafego, produtoTrafego, [
+            { value: 'foco', label: 'FOCO', valor: planosTrafegoPago['foco'].valor },
+            { value: 'aceleracao', label: 'ACELERAÇÃO', valor: planosTrafegoPago['aceleracao'].valor },
+            { value: 'heat', label: 'DESTAQUE', valor: planosTrafegoPago['heat'].valor }
+        ]);
+        fillOptions(selSocial, produtoSocial, [
+            { value: 'start', label: 'START', valor: planosSocialMedia['start'].valor },
+            { value: 'scale', label: 'SCALE', valor: planosSocialMedia['scale'].valor },
+            { value: 'heat', label: 'HEAT', valor: planosSocialMedia['heat'].valor }
+        ]);
+
+    } catch (e) {
+        console.warn('Supabase: erro ao carregar produtos/planos para o gerador.', e);
+        // Fallback mínimo caso falhe totalmente
+        if (selTrafego && selTrafego.options.length <= 1) {
+            ['foco','aceleracao','heat'].forEach(k => {
+                const opt = document.createElement('option');
+                const label = planosTrafegoPago[k].nome;
+                opt.value = k;
+                opt.textContent = `${label} - ${formatarMoeda(planosTrafegoPago[k].valor)}`;
+                selTrafego.appendChild(opt);
+            });
+        }
+        if (selSocial && selSocial.options.length <= 1) {
+            ['start','scale','heat'].forEach(k => {
+                const opt = document.createElement('option');
+                const label = planosSocialMedia[k].nome;
+                opt.value = k;
+                opt.textContent = `${label} - ${formatarMoeda(planosSocialMedia[k].valor)}`;
+                selSocial.appendChild(opt);
+            });
+        }
+    } finally {
+        if (selSocial) { selSocial.disabled = false; }
+        if (selTrafego) { selTrafego.disabled = false; }
+    }
+}
+
+// Catálogo genérico de serviços: produtos e planos
+function inicializarCatalogoServicos() {
+    const produtoSelect = document.getElementById('catalogoProdutoSelect');
+    const planoWrapper = document.getElementById('catalogoPlanoWrapper');
+    const planoSelect = document.getElementById('catalogoPlanoSelect');
+    const toggleBtn = document.getElementById('toggleCatalogo');
+    const infoContainer = document.getElementById('infoCatalogo');
+    const entregaveisContainer = document.getElementById('entregaveisCatalogo');
+
+    if (!produtoSelect) return; // Card não existe
+
+    const produtos = Array.isArray(window.produtosCatalogo) ? window.produtosCatalogo : [];
+
+    // Popular lista de produtos
+    produtoSelect.innerHTML = '';
+    const optBase = document.createElement('option');
+    optBase.value = '';
+    optBase.textContent = produtos.length ? 'Selecione um serviço' : 'Nenhum serviço cadastrado';
+    produtoSelect.appendChild(optBase);
+    produtos.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        produtoSelect.appendChild(opt);
+    });
+
+    // Reset UI auxiliar
+    planoWrapper.style.display = 'none';
+    toggleBtn.style.display = 'none';
+    entregaveisContainer.style.display = 'none';
+    infoContainer.innerHTML = '';
+
+    produtoSelect.onchange = function() {
+        const produtoId = this.value;
+        infoContainer.innerHTML = '';
+        entregaveisContainer.style.display = 'none';
+        toggleBtn.style.display = 'none';
+
+        planoSelect.innerHTML = '';
+        const optPlano = document.createElement('option');
+        optPlano.value = '';
+        optPlano.textContent = 'Selecione um plano';
+        planoSelect.appendChild(optPlano);
+        planoWrapper.style.display = 'none';
+
+        if (!produtoId) return;
+        const produto = produtos.find(p => p.id === produtoId);
+        const planos = produto?.produto_planos || [];
+
+        if (Array.isArray(planos) && planos.length) {
+            planoWrapper.style.display = '';
+            planos.forEach(pl => {
+                const opt = document.createElement('option');
+                opt.value = pl.id;
+                const vNum = pl.valor != null ? parseFloat(pl.valor) : NaN;
+                const vTxt = Number.isFinite(vNum) ? formatarMoeda(vNum) : '—';
+                opt.textContent = `${(pl.nome || '').toString()} - ${vTxt}`;
+                opt.dataset.valor = Number.isFinite(vNum) ? vNum : '';
+                opt.dataset.info = pl.info || '';
+                try { opt.dataset.sessoes = pl.secoes ? JSON.stringify(pl.secoes) : ''; } catch(_) { opt.dataset.sessoes = ''; }
+                try { opt.dataset.addons = pl.addons ? JSON.stringify(pl.addons) : ''; } catch(_) { opt.dataset.addons = ''; }
+                planoSelect.appendChild(opt);
+            });
+            toggleBtn.style.display = '';
+        } else {
+            // Sem planos: exibir apenas entregáveis/descrição se houver
+            planoWrapper.style.display = 'none';
+            const html = renderInfoSessoes(produto?.info, produto?.sessoes, null);
+            if (html) {
+                infoContainer.innerHTML = html;
+                entregaveisContainer.style.display = 'block';
+                toggleBtn.style.display = '';
+            }
+        }
+    };
+
+    planoSelect.onchange = function() {
+        const opt = this.selectedOptions?.[0];
+        if (!opt) { infoContainer.innerHTML = ''; entregaveisContainer.style.display = 'none'; return; }
+        const valor = opt.dataset.valor;
+        const info = opt.dataset.info || '';
+        let sessoes = null;
+        try { sessoes = opt.dataset.sessoes ? JSON.parse(opt.dataset.sessoes) : null; } catch(_) { sessoes = null; }
+        let addons = null;
+        try { addons = opt.dataset.addons ? JSON.parse(opt.dataset.addons) : null; } catch(_) { addons = null; }
+        infoContainer.innerHTML = renderInfoSessoes(info, sessoes, valor, addons);
+        entregaveisContainer.style.display = 'block';
+        toggleBtn.style.display = '';
+        try { calcularValores(); } catch(_) {}
+    };
+}
+
+function renderInfoSessoes(info, sessoes, valorNum, addons) {
+    let html = '';
+    if (valorNum !== undefined && valorNum !== null && valorNum !== '' && !Number.isNaN(Number(valorNum))) {
+        try { html += `<p><strong>Preço do plano:</strong> ${formatarMoeda(Number(valorNum))}</p>`; } catch(_) { /* ignore */ }
+    }
+    if (info) html += `<p>${info}</p>`;
+    if (Array.isArray(sessoes)) {
+        try {
+            sessoes.forEach(sec => {
+                const titulo = (sec && (sec.titulo || sec.nome || 'Seção'));
+                const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                const toText = (i) => {
+                    if (typeof i === 'string') return i;
+                    if (i && typeof i === 'object') {
+                        const base = i.nome || i.titulo || i.label || i.descricao || i.texto || i.item || '';
+                        return base || (() => { try { return JSON.stringify(i); } catch(_) { return String(i); } })();
+                    }
+                    return String(i ?? '');
+                };
+                html += `<div class="entregaveis-section"><strong>${titulo}</strong><ul>${itens.map(i => `<li>${toText(i)}</li>`).join('')}</ul></div>`;
+            });
+        } catch(_) { /* ignore */ }
+    } else if (sessoes && typeof sessoes === 'object') {
+        try {
+            Object.entries(sessoes).forEach(([sec, itens]) => {
+                const lista = Array.isArray(itens) ? itens : [];
+                const toText = (i) => {
+                    if (typeof i === 'string') return i;
+                    if (i && typeof i === 'object') {
+                        const base = i.nome || i.titulo || i.label || i.descricao || i.texto || i.item || '';
+                        return base || (() => { try { return JSON.stringify(i); } catch(_) { return String(i); } })();
+                    }
+                    return String(i ?? '');
+                };
+                html += `<div class="entregaveis-section"><strong>${sec}</strong><ul>${lista.map(i => `<li>${toText(i)}</li>`).join('')}</ul></div>`;
+            });
+        } catch(_) { /* ignore */ }
+    }
+    // Se houver add-ons selecionados no produto (fluxo composição), listar
+    if (Array.isArray(addons) && addons.length) {
+        const selecionados = addons.filter(a => a && a.selecionado);
+        if (selecionados.length) {
+            const itens = selecionados.map(a => {
+                const label = (a.nome || '').toString();
+                const desc = (a.descricao || '').toString();
+                return desc ? `${label} — ${desc}` : label;
+            });
+            html += `<div class="entregaveis-section"><strong>Add-ons</strong><ul>${itens.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+        }
+    }
+    return html || '<p>Nenhuma informação de entregáveis disponível.</p>';
+}
+
+// Inserir novo cliente via modal e selecionar no dropdown
+async function salvarNovoCliente() {
+    try {
+        if (!window.supabaseConfig) throw new Error('supabase-config.js não foi carregado.');
+        const client = await ensureLoggedIn();
+        if (!client) return;
+
+        const tipo = (document.getElementById('novoTipoDocumento')?.value || 'cnpj').toLowerCase();
+        let doc = (document.getElementById('novoDocumento')?.value || '').replace(/\D/g, '');
+        const nome = (document.getElementById('novoNome')?.value || '').trim();
+        const empresa = (document.getElementById('novaEmpresa')?.value || '').trim();
+        const endereco = (document.getElementById('novoEndereco')?.value || '').trim();
+        const email = (document.getElementById('novoEmail')?.value || '').trim();
+        const telefone = (document.getElementById('novoTelefone')?.value || '').trim();
+
+        const feedbackEl = document.getElementById('novoClienteFeedback');
+        const modal = document.getElementById('modalNovoCliente');
+
+        // Validações básicas
+        if (!doc) { alert('Informe o CPF/CNPJ.'); return; }
+        if (tipo === 'cnpj' && !empresa) { alert('Informe o nome da empresa.'); return; }
+        if (tipo === 'cpf' && !nome) { alert('Informe o nome do cliente.'); return; }
+
+        const payload = {
+            tipo_documento: tipo,
+            documento: doc,
+            nome: tipo === 'cpf' ? nome : null,
+            empresa: tipo === 'cnpj' ? empresa : null,
+            endereco: endereco || null,
+            email: email || null,
+            telefone: telefone || null
+        };
+
+        const { data, error } = await client
+            .from('clientes')
+            .insert(payload)
+            .select('id,tipo_documento,documento,nome,empresa,endereco')
+            .single();
+
+        if (error) {
+            console.error('Erro ao inserir cliente:', error);
+            alert('Não foi possível cadastrar o cliente: ' + (error.message || 'erro desconhecido'));
+            return;
+        }
+
+        // Atualiza dropdown e seleciona o novo cliente
+        await popularClientesDropdown();
+        const selectEl = document.getElementById('clienteSelecionado');
+        if (selectEl && data?.id) {
+            selectEl.value = data.id;
+            selectEl.dispatchEvent(new Event('change'));
+        }
+
+        if (feedbackEl) {
+            feedbackEl.style.display = '';
+            feedbackEl.textContent = 'Cliente cadastrado com sucesso!';
+        }
+        if (modal) modal.style.display = 'none';
+
+    } catch (e) {
+        console.error('Falha no cadastro de cliente:', e);
+        alert('Erro inesperado ao cadastrar cliente.');
+    }
 }
 
     // Event listener para modelo de cobrança
@@ -475,6 +1040,30 @@ window.previewProposta = function() {
         
         // Criar URL com parâmetros
         const params = new URLSearchParams(dadosVisualizacao);
+        // Normalizar modelo para visualização (nomes esperados na página de preview)
+        try {
+            const catalogoValorNum = parseFloat(dadosVisualizacao.catalogoValor || '0') || 0;
+            const modeloCatalogo = (dadosVisualizacao.modeloCatalogo || 'base').toLowerCase();
+            const overrideTxt = String(dadosVisualizacao.valorCatalogoOverride || '').replace(/\./g,'').replace(',','.');
+            const overrideNum = parseFloat(overrideTxt || '0') || 0;
+            const pctNum = parseFloat(String(dadosVisualizacao.percentualCatalogo || '0')) || 0;
+            let valorMensal = catalogoValorNum;
+            let modeloNorm = modeloCatalogo;
+            if (modeloCatalogo === 'base') {
+                if (overrideNum > 0) modeloNorm = 'alterado';
+                valorMensal = catalogoValorNum;
+            } else if (modeloCatalogo === 'comissao') {
+                valorMensal = 0;
+            } else if (modeloCatalogo === 'alterado') {
+                valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            } else if (modeloCatalogo === 'hibrido') {
+                valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            }
+            try { console.log('[Gerador][Preview]', { servico: dadosVisualizacao.catalogoProdutoNome, plano: dadosVisualizacao.catalogoPlanoNome, modelo: modeloNorm, percentual: pctNum, valorFixo: valorMensal }); } catch(_) {}
+            params.set('modeloCobranca', modeloNorm);
+            params.set('percentualComissao', String(pctNum || ''));
+            params.set('valorFixoTrafego', String(valorMensal || ''));
+        } catch(_) {}
         const urlVisualizacao = `proposta-visualizacao.html?${params.toString()}`;
         
         // Abrir diretamente (sem salvar)
@@ -491,43 +1080,19 @@ window.gerarLinkProposta = async function() {
         const dadosVisualizacao = coletarDadosFormulario();
         if (!dadosVisualizacao) return;
         
-        // Calcular valores
-        let valorMensal = 0;
-        const socialMedia = dadosVisualizacao.servicoSocialMidia;
-        const trafegoPago = dadosVisualizacao.servicoTrafegoPago;
-        
-        if (socialMedia !== 'nao-se-aplica') valorMensal += planosSocialMedia[socialMedia].valor;
-        
-        // Calcular valores separados e considerar modelo de cobrança
+        // Calcular valores usando o Catálogo (com modelo escolhido)
+        const catalogoValorNum = parseFloat(dadosVisualizacao.catalogoValor || '0') || 0;
+        const modeloCatalogo = (dadosVisualizacao.modeloCatalogo || 'base').toLowerCase();
+        const overrideTxt = String(dadosVisualizacao.valorCatalogoOverride || '').replace(/\./g,'').replace(',','.');
+        const overrideNum = parseFloat(overrideTxt || '0') || 0;
+        const pctNum = parseFloat(String(dadosVisualizacao.percentualCatalogo || '0')) || 0;
+        let valorMensal = catalogoValorNum;
+        // Zerar campos legados
         let valorSocialMidia = 0;
         let valorTrafegoPago = 0;
         let temComissaoVendas = false;
         let percentualComissao = 0;
         let valorFixoTrafego = 0;
-        
-        if (socialMedia !== 'nao-se-aplica' && planosSocialMedia[socialMedia]) {
-            valorSocialMidia = planosSocialMedia[socialMedia].valor;
-        }
-        
-        if (trafegoPago !== 'nao-se-aplica') {
-            const modeloCobranca = dadosVisualizacao.modeloCobranca || 'fixo';
-            
-            if (modeloCobranca === 'fixo') {
-                valorTrafegoPago = planosTrafegoPago[trafegoPago].valor;
-                valorMensal += valorTrafegoPago;
-            } else if (modeloCobranca === 'comissao') {
-                temComissaoVendas = true;
-                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
-                valorTrafegoPago = 0;
-                // Não adiciona ao valor mensal fixo
-            } else if (modeloCobranca === 'hibrido') {
-                temComissaoVendas = true;
-                percentualComissao = parseFloat(dadosVisualizacao.percentualComissao) || 0;
-                valorFixoTrafego = parseFloat(dadosVisualizacao.valorFixoTrafego) || 0;
-                valorTrafegoPago = valorFixoTrafego;
-                valorMensal += valorFixoTrafego;
-            }
-        }
         
         // Aplicar desconto customizado se houver
         const descontoDescricao = document.getElementById('descontoDescricao').value.trim();
@@ -546,8 +1111,29 @@ window.gerarLinkProposta = async function() {
             }
         }
         
-        const valorMensalFinal = valorMensal - descontoCustomizado;
-        const valorTotal = valorMensalFinal; // Por enquanto sem recorrência
+        // Aplicar modelo de cobrança (normalizado independentemente do dropdown)
+        const modeloNormalizado = (function(){
+            const temPct = pctNum > 0;
+            const temOverride = overrideNum > 0;
+            if (temPct && temOverride) return 'hibrido';
+            if (temPct) return 'comissao';
+            if (temOverride) return 'alterado';
+            return (modeloCatalogo || 'base');
+        })();
+        if (modeloNormalizado === 'comissao') {
+            valorMensal = 0; temComissaoVendas = true; percentualComissao = pctNum;
+        } else if (modeloNormalizado === 'alterado') {
+            valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            temComissaoVendas = false; percentualComissao = 0;
+        } else if (modeloNormalizado === 'hibrido') {
+            valorMensal = overrideNum > 0 ? overrideNum : catalogoValorNum;
+            temComissaoVendas = true; percentualComissao = pctNum;
+        } else {
+            valorMensal = catalogoValorNum; temComissaoVendas = false; percentualComissao = 0;
+        }
+        valorFixoTrafego = valorMensal; // reutilizado como fixo mensal do catálogo
+        const valorMensalFinal = Math.max(0, valorMensal - descontoCustomizado);
+        const valorTotal = valorMensalFinal; // recorrência aplicada na visualização
         
         // Inicializar Supabase
         if (!window.supabaseConfig) {
@@ -555,20 +1141,27 @@ window.gerarLinkProposta = async function() {
         }
         
         const supabase = window.supabaseConfig.initSupabase();
+        const { data: { session } } = await supabase.auth.getSession();
+        const responsavelUid = session?.user?.id || null;
         
         // Calcular data de expiração
         const dataExpiracao = new Date();
         dataExpiracao.setDate(dataExpiracao.getDate() + parseInt(dadosVisualizacao.diasValidade));
         
         // Preparar dados para inserção/atualização
+        const socialKey = dadosVisualizacao.servicoSocialMidia || 'nao-se-aplica';
+        const trafegoKey = dadosVisualizacao.servicoTrafegoPago || 'nao-se-aplica';
+
         const dadosInsercao = {
+            cliente_id: dadosVisualizacao.clienteId || null,
             nome_cliente: dadosVisualizacao.nomeCliente,
             empresa_cliente: dadosVisualizacao.empresaCliente,
             email_cliente: dadosVisualizacao.emailCliente || 'sem-email@proposta.com',
             telefone_cliente: dadosVisualizacao.telefoneCliente || 'Não informado',
             cpf_cnpj: dadosVisualizacao.cpfCnpj || null,
-            servico_social_midia: socialMedia !== 'nao-se-aplica' ? planosSocialMedia[socialMedia].nome : null,
-            servico_trafego_pago: trafegoPago !== 'nao-se-aplica' ? planosTrafegoPago[trafegoPago].nome : null,
+            // Mapear nomes de plano com segurança usando as chaves do formulário
+            servico_social_midia: (socialKey && socialKey !== 'nao-se-aplica' && planosSocialMedia[socialKey]) ? (planosSocialMedia[socialKey].nome || socialKey) : null,
+            servico_trafego_pago: (trafegoKey && trafegoKey !== 'nao-se-aplica' && planosTrafegoPago[trafegoKey]) ? (planosTrafegoPago[trafegoKey].nome || trafegoKey) : null,
             valor_social_midia: valorSocialMidia,
             valor_trafego_pago: valorTrafegoPago,
             tem_comissao_vendas: temComissaoVendas,
@@ -585,11 +1178,37 @@ window.gerarLinkProposta = async function() {
             recorrencia: null, // Será preenchido quando o cliente aceitar
             forma_pagamento: null, // Será preenchido quando o cliente aceitar
             responsavel_proposta: dadosVisualizacao.responsavelProposta,
+            responsavel_user_id: responsavelUid,
             dias_validade: parseInt(dadosVisualizacao.diasValidade),
             expira_em: dataExpiracao.toISOString(),
             observacoes: descontoDescricao || null,
-            status: 'pendente'
+            status: 'pendente',
+            // Persistir dados do Catálogo diretamente na proposta (metadata jsonb)
+            metadata: (() => {
+                const safeParse = (str) => {
+                    try { return str ? JSON.parse(str) : null; } catch(_) { return null; }
+                };
+                const sessoes = safeParse(dadosVisualizacao.catalogoSessoes || '') || [];
+                const addons = safeParse(dadosVisualizacao.catalogoAddons || '') || [];
+                const valorCat = parseFloat(String(dadosVisualizacao.catalogoValor || '0').replace(',', '.')) || 0;
+                const cat = {
+                    origem: 'catalogo',
+                    produto_id: dadosVisualizacao.catalogoProdutoId || null,
+                    plano_id: dadosVisualizacao.catalogoPlanoId || null,
+                    produto_nome: dadosVisualizacao.catalogoProdutoNome || null,
+                    plano_nome: dadosVisualizacao.catalogoPlanoNome || null,
+                    valor: valorMensalFinal || valorCat || 0,
+                    sessoes: Array.isArray(sessoes) ? sessoes : [],
+                    addons: Array.isArray(addons) ? addons : [],
+                    modelo: modeloNormalizado,
+                    percentual: percentualComissao,
+                    valor_override: overrideNum || null
+                };
+                return { catalogo: cat };
+            })()
         };
+
+        try { console.log('[Gerador][Salvar]', { modelo: modeloNormalizado, percentual: percentualComissao, valorFixo: valorFixoTrafego, valorMensalFinal }); } catch(_) {}
         
         let propostaId;
         
@@ -663,10 +1282,47 @@ window.gerarLinkProposta = async function() {
             
             propostaId = data.id;
         }
-        
+
+        // Persistir item de Catálogo imediatamente (para aparecer no Admin), se houver
+        try {
+            const nomeCat = (dadosVisualizacao.catalogoProdutoNome || '').trim();
+            const planoCat = (dadosVisualizacao.catalogoPlanoNome || '').trim();
+            const valorCat = parseFloat(String(dadosVisualizacao.catalogoValor || '0').replace(',', '.')) || 0;
+
+            if (valorCat > 0 || (nomeCat && planoCat)) {
+                const item = {
+                    proposta_criada_id: propostaId,
+                    nome_servico: nomeCat || 'Catálogo',
+                    descricao: planoCat || null,
+                    quantidade: 1,
+                    preco_unitario: valorCat || 0,
+                    desconto_percentual: 0,
+                    total: valorCat || 0,
+                    metadata: { origem: 'pre_geracao' }
+                };
+                const { error: itensErr } = await supabase
+                    .from('proposta_itens')
+                    .insert([item]);
+                if (itensErr) {
+                    console.warn('Falha ao inserir item de catálogo pré-geração:', itensErr);
+                } else {
+                    console.log('Item de catálogo pré-geração persistido para a proposta', propostaId);
+                }
+            }
+        } catch (e) {
+            console.warn('Erro ao persistir item de catálogo pré-geração:', e);
+        }
+
         // Gerar link com UUID
-        const baseUrl = window.location.origin + window.location.pathname.replace('proposta-gerador.html', '');
-        const linkProposta = `${baseUrl}proposta-visualizacao.html?id=${propostaId}`;
+        const baseUrl = (() => {
+            const { origin, pathname } = window.location;
+            const idx = pathname.lastIndexOf('/');
+            const basePath = idx >= 0 ? pathname.slice(0, idx + 1) : '/';
+            return origin + basePath;
+        })();
+        // Montar link apenas com o ID (resto será lido da metadata)
+        const extraParams = new URLSearchParams({ id: String(propostaId) });
+        const linkProposta = `${baseUrl}proposta-visualizacao.html?${extraParams.toString()}`;
         
         // Mostrar modal com o link
         document.getElementById('linkGerado').value = linkProposta;
@@ -686,6 +1342,13 @@ let timestampPropostaAtual = null;
 
 // Função auxiliar para coletar dados do formulário
 function coletarDadosFormulario() {
+    // Coletar cliente selecionado (id, email, telefone) do dropdown
+    const clienteSelect = document.getElementById('clienteSelecionado');
+    const clienteOpt = clienteSelect?.selectedOptions?.[0] || null;
+    const clienteId = clienteOpt?.value || null;
+    const clienteEmail = clienteOpt?.dataset?.email || '';
+    const clienteTelefone = clienteOpt?.dataset?.telefone || '';
+
     // Validar campos obrigatórios
     const empresaClienteEl = document.getElementById('empresaCliente');
     const responsavelPropostaEl = document.getElementById('responsavelProposta');
@@ -697,13 +1360,79 @@ function coletarDadosFormulario() {
         return null;
     }
     
-    const empresaCliente = empresaClienteEl.value.trim();
-    const responsavelProposta = responsavelPropostaEl.value.trim();
-    const enderecoCliente = enderecoClienteEl.value.trim();
+    // Valores atuais dos inputs
+    let empresaCliente = (empresaClienteEl.value || '').trim();
+    let responsavelProposta = (responsavelPropostaEl.value || '').trim();
+    let enderecoCliente = (enderecoClienteEl.value || '').trim();
+
+    // Fallback defensivo: preencher a partir do cliente selecionado e sessão
+    // Empresa/Nome
+    if (!empresaCliente && clienteOpt) {
+        const tipo = clienteOpt.dataset?.tipo;
+        const nome = (clienteOpt.dataset?.nome || '').trim();
+        const empresaDs = (clienteOpt.dataset?.empresa || '').trim();
+        empresaCliente = (tipo === 'cpf' ? (nome || empresaDs) : (empresaDs || nome)) || '';
+        if (empresaClienteEl) empresaClienteEl.value = empresaCliente;
+    }
+    // Endereço
+    if (!enderecoCliente && clienteOpt) {
+        enderecoCliente = (clienteOpt.dataset?.endereco || '').trim();
+        if (enderecoClienteEl) enderecoClienteEl.value = enderecoCliente;
+    }
+    // Responsável: se ainda vazio, buscar sessão atual
+    // (popularResponsavelDropdown já tenta isso, mas garantimos aqui)
+    if (!responsavelProposta) {
+        // Fallback rápido: usar texto do authStatusGerador
+        const authText = (document.getElementById('authStatusGerador')?.textContent || '').trim();
+        const authEmailGuess = authText ? authText.split(' · ')[0] : '';
+        if (authEmailGuess && authEmailGuess.includes('@')) {
+            responsavelProposta = authEmailGuess;
+            if (responsavelPropostaEl) {
+                responsavelPropostaEl.innerHTML = '';
+                const opt = document.createElement('option');
+                opt.value = authEmailGuess;
+                opt.textContent = authEmailGuess;
+                responsavelPropostaEl.appendChild(opt);
+                responsavelPropostaEl.value = authEmailGuess;
+                responsavelPropostaEl.disabled = true;
+            }
+        }
+        if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+            // Nota: chamada não bloqueia se falhar; apenas tenta obter email
+            const clientTmp = window.supabaseConfig.initSupabase?.();
+            if (clientTmp && typeof clientTmp.then === 'function') {
+                // Se for Promise, aguardamos rapidamente
+                // (coletarDadosFormulario é síncrona por design, então não await total)
+            }
+        }
+        try {
+            if (window.supabaseConfig && typeof window.supabaseConfig.initSupabase === 'function') {
+                // Executa de forma síncrona com await em IIFE
+                // eslint-disable-next-line no-new-func
+                const obterEmail = new Function('return (async () => { const c = await window.supabaseConfig.initSupabase(); const { data: { session } } = await c.auth.getSession(); return session?.user?.email || ""; })()');
+                // Tentativa rápida
+                // eslint-disable-next-line no-undef
+                obterEmail().then(email => {
+                    if (!responsavelProposta && email) {
+                        responsavelProposta = email;
+                        if (responsavelPropostaEl) {
+                            responsavelPropostaEl.innerHTML = '';
+                            const opt = document.createElement('option');
+                            opt.value = email;
+                            opt.textContent = email;
+                            responsavelPropostaEl.appendChild(opt);
+                            responsavelPropostaEl.value = email;
+                            responsavelPropostaEl.disabled = true;
+                        }
+                    }
+                }).catch(() => {});
+            }
+        } catch (_) { /* ignora */ }
+    }
     const diasValidade = diasValidadeEl.value;
     
     if (!empresaCliente || !responsavelProposta || !enderecoCliente) {
-        alert('Por favor, preencha todos os campos obrigatórios (Empresa, Responsável e Endereço).');
+        alert('Por favor, selecione um cliente para preencher Empresa e Endereço e garanta que está logado para definir o Responsável.');
         return null;
     }
     
@@ -714,7 +1443,21 @@ function coletarDadosFormulario() {
         return null;
     }
     
-    const cpfCnpjCliente = cpfCnpjClienteEl.value.trim();
+    let cpfCnpjCliente = (cpfCnpjClienteEl.value || '').trim();
+    if (!cpfCnpjCliente && clienteOpt) {
+        // Preencher a partir do dataset do cliente
+        let doc = (clienteOpt.dataset?.documento || '').trim();
+        if (window.validacaoCPFCNPJ) {
+            const tipo = clienteOpt.dataset?.tipo;
+            if (tipo === 'cpf' && window.validacaoCPFCNPJ.formatarCPF) {
+                doc = window.validacaoCPFCNPJ.formatarCPF(doc);
+            } else if (window.validacaoCPFCNPJ.formatarCNPJ) {
+                doc = window.validacaoCPFCNPJ.formatarCNPJ(doc);
+            }
+        }
+        cpfCnpjCliente = doc;
+        cpfCnpjClienteEl.value = cpfCnpjCliente;
+    }
     if (!cpfCnpjCliente) {
         alert('Por favor, preencha o CPF/CNPJ do cliente.');
         return null;
@@ -728,20 +1471,21 @@ function coletarDadosFormulario() {
         }
     }
     
-    // Verificar se pelo menos um serviço foi selecionado
-    const servicoSocialMidiaEl = document.getElementById('servicoSocialMidia');
-    const servicoTrafegoPagoEl = document.getElementById('servicoTrafegoPago');
-    
-    if (!servicoSocialMidiaEl || !servicoTrafegoPagoEl) {
-        alert('Erro: Campos de serviço não encontrados.');
+    // Exigir apenas seleção do Catálogo
+    const catalogoProdutoEl = document.getElementById('catalogoProdutoSelect');
+    const catalogoPlanoEl = document.getElementById('catalogoPlanoSelect');
+    const produtoIdSel = catalogoProdutoEl?.value || '';
+    const produtoOptSel = catalogoProdutoEl?.selectedOptions?.[0] || null;
+    const planoOptSel = catalogoPlanoEl?.selectedOptions?.[0] || null;
+    if (!produtoIdSel) {
+        alert('Por favor, selecione o serviço do Catálogo.');
         return null;
     }
-    
-    const socialMedia = servicoSocialMidiaEl.value;
-    const trafegoPago = servicoTrafegoPagoEl.value;
-    
-    if (socialMedia === 'nao-se-aplica' && trafegoPago === 'nao-se-aplica') {
-        alert('Por favor, selecione pelo menos um serviço (Social Media ou Tráfego Pago).');
+    // Quando existir wrapper de plano e houver opções, exigir plano
+    const planoWrapper = document.getElementById('catalogoPlanoWrapper');
+    const precisaPlano = !!planoWrapper && planoWrapper.style.display !== 'none' && (catalogoPlanoEl?.options?.length || 0) > 1;
+    if (precisaPlano && !planoOptSel) {
+        alert('Por favor, selecione o plano do serviço do Catálogo.');
         return null;
     }
     
@@ -752,23 +1496,36 @@ function coletarDadosFormulario() {
     }
     
     return {
+        clienteId: clienteId,
         nomeCliente: empresaCliente, // Usar empresa como nome do cliente
         empresaCliente: empresaCliente,
-        emailCliente: 'sem-email@proposta.com', // Email placeholder (campo não está no formulário)
+        emailCliente: clienteEmail || 'sem-email@proposta.com',
         cpfCnpj: cpfCnpjCliente,
-        telefoneCliente: 'Não informado', // Campo não está no formulário
+        telefoneCliente: clienteTelefone || 'Não informado',
         enderecoCliente: enderecoCliente,
         representanteLegalCliente: '', // Será capturado no aceite
         responsavelProposta: responsavelProposta,
         diasValidade: diasValidade,
-        servicoSocialMidia: socialMedia,
-        servicoTrafegoPago: trafegoPago,
+        // Forçar serviços antigos como não aplicáveis
+        servicoSocialMidia: 'nao-se-aplica',
+        servicoTrafegoPago: 'nao-se-aplica',
         modeloCobranca: document.getElementById('modeloCobranca')?.value || 'fixo',
         percentualComissao: document.getElementById('percentualComissao')?.value || '0',
         valorFixoTrafego: document.getElementById('valorFixoTrafego')?.value || '0',
         tipoComissaoHibrido: document.getElementById('tipoComissaoHibrido')?.value || 'percentual',
         valorComissaoFixa: document.getElementById('valorComissaoFixa')?.value || '0',
         investimentoMidia: (document.getElementById('investimentoMidia')?.value || '').trim(),
+        // Parâmetros do Catálogo no preview
+        catalogoProdutoId: produtoIdSel || '',
+        catalogoProdutoNome: produtoOptSel?.textContent || '',
+        catalogoPlanoId: planoOptSel?.value || '',
+        catalogoPlanoNome: planoOptSel?.textContent || '',
+        catalogoValor: planoOptSel?.dataset?.valor || '',
+        catalogoSessoes: planoOptSel?.dataset?.sessoes || '',
+        catalogoAddons: planoOptSel?.dataset?.addons || '',
+        modeloCatalogo: (document.querySelector('input[name="modeloCatalogo"]:checked')?.value || 'base'),
+        valorCatalogoOverride: (document.getElementById('valorCatalogoOverride')?.value || '').trim(),
+        percentualCatalogo: (document.getElementById('percentualCatalogo')?.value || '').trim(),
         timestampCriacao: timestampPropostaAtual
     };
 }
@@ -857,6 +1614,19 @@ async function carregarPropostaParaEdicao(propostaId) {
         setIfExists('empresaCliente', proposta.empresa_cliente || '');
         setIfExists('enderecoCliente', proposta.endereco_cliente || '');
         setIfExists('responsavelProposta', proposta.responsavel_proposta || '');
+        // Garantir que o valor salvo exista como opção no select
+        const respSelect = document.getElementById('responsavelProposta');
+        if (respSelect && proposta.responsavel_proposta) {
+            const atual = String(proposta.responsavel_proposta);
+            const existe = Array.from(respSelect.options).some(o => o.value === atual);
+            if (!existe) {
+                const opt = document.createElement('option');
+                opt.value = atual;
+                opt.textContent = `${atual} · registro antigo`;
+                respSelect.appendChild(opt);
+            }
+            respSelect.value = atual;
+        }
         setIfExists('diasValidade', proposta.dias_validade || 7);
         // IDs que podem não existir no gerador atual
         setIfExists('emailCliente', proposta.email_cliente || '');
@@ -918,3 +1688,36 @@ async function carregarPropostaParaEdicao(propostaId) {
         alert('❌ Erro ao carregar proposta: ' + error.message);
     }
 }
+    const clienteSelect = document.getElementById('clienteSelecionado');
+    const clienteOpt = clienteSelect?.selectedOptions?.[0] || null;
+    const clienteId = clienteOpt?.value || null;
+    const clienteEmail = clienteOpt?.dataset?.email || '';
+    const clienteTelefone = clienteOpt?.dataset?.telefone || '';
+    // Modelo de cobrança: mostrar/ocultar campos conforme seleção
+    try {
+        const sel = document.getElementById('modeloCatalogoSelect');
+        const campos = document.getElementById('catalogoModeloFields');
+        const valorInput = document.getElementById('valorCatalogoOverride');
+        const pctInput = document.getElementById('percentualCatalogo');
+        const updateFields = () => {
+            const v = (sel?.value || 'base');
+            if (!campos || !valorInput || !pctInput) return;
+            if (v === 'base') {
+                campos.style.display = 'none';
+            } else if (v === 'comissao') {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = 'none';
+                pctInput.parentElement.style.display = '';
+            } else if (v === 'alterado') {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = '';
+                pctInput.parentElement.style.display = 'none';
+            } else {
+                campos.style.display = 'grid';
+                valorInput.parentElement.style.display = '';
+                pctInput.parentElement.style.display = '';
+            }
+        };
+        sel?.addEventListener('change', updateFields);
+        updateFields();
+    } catch(_) {}

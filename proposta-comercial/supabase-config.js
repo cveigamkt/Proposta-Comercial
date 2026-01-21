@@ -11,19 +11,37 @@ function initSupabase() {
         throw err;
     }
     if (typeof supabase === 'undefined' || supabase === null) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        window.supabase = supabase; // Expor globalmente também
-        console.log('✅ Supabase inicializado');
+        // Decidir persistência de sessão conforme a página atual
+        const path = (window.location && window.location.pathname || '').toLowerCase();
+        const isAuthPage = (
+            path.endsWith('/admin') || path.endsWith('/admin.html') ||
+            path.endsWith('/login') || path.endsWith('/login.html') ||
+            path.endsWith('/proposta-gerador') || path.endsWith('/proposta-gerador.html') ||
+            path.endsWith('/clientes') || path.endsWith('/clientes.html') ||
+            path.endsWith('/produtos') || path.endsWith('/produtos.html') ||
+            path.endsWith('/produto-cadastro') || path.endsWith('/produto-cadastro.html') ||
+            path.endsWith('/proposta-rapida') || path.endsWith('/proposta-rapida.html') ||
+            path.endsWith('/index') || path.endsWith('/index.html')
+        );
+        const authOptions = { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false };
+
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
+        // Expor o CLIENTE globalmente (o projeto usa window.supabase como client)
+        window.supabase = supabase;
+        console.log('✅ DB conectado (Supabase)');
     }
     return supabase;
 }
+// Expor namespace para outros módulos (ex.: auth-guard)
+window.supabaseConfig = window.supabaseConfig || {};
+window.supabaseConfig.initSupabase = initSupabase;
 // Função para salvar proposta aceita no Supabase
 async function salvarPropostaAceita(dadosProposta) {
     try {
         const supabase = initSupabase();
         const urlParamsSafe = (function(){ try { return new URLSearchParams(window.location.search); } catch(e) { return null; } })();
         const propostaCriadaId = (dadosProposta && dadosProposta.propostaCriadaId) || (urlParamsSafe && urlParamsSafe.get('id')) || null;
-        
+
         // Obter IP do cliente (via API pública)
         let ip = '0.0.0.0';
         try {
@@ -35,42 +53,37 @@ async function salvarPropostaAceita(dadosProposta) {
         } catch (e) {
             console.warn('Não foi possível obter IP público. Prosseguindo sem IP.', e);
         }
-        
-        const { data, error } = await supabase
-            .from('propostas')
-            .insert({
-                nome_cliente: dadosProposta.nomeCliente,
-                empresa_cliente: dadosProposta.empresaCliente,
-                email_cliente: dadosProposta.emailCliente,
-                telefone_cliente: dadosProposta.telefoneCliente || '',
-                cpf_cnpj: dadosProposta.cpfCnpj,
-                servico_social_midia: dadosProposta.servicoSocialMidia,
-                servico_trafego_pago: dadosProposta.servicoTrafegoPago,
-                valor_social_midia: parseFloat(dadosProposta.valorSocialMidia || 0),
-                valor_trafego_pago: parseFloat(dadosProposta.valorTrafegoPago || 0),
-                tem_comissao_vendas: !!dadosProposta.temComissaoVendas,
-                percentual_comissao: parseFloat(dadosProposta.percentualComissao || 0),
-                valor_fixo_trafego: parseFloat(dadosProposta.valorFixoTrafego || 0),
-                investimento_midia: dadosProposta.investimentoMidia || '',
-                recorrencia: dadosProposta.recorrencia,
-                forma_pagamento: dadosProposta.formaPagamento,
-                valor_mensal: parseFloat(dadosProposta.valorMensal),
-                valor_total: parseFloat(dadosProposta.valorTotal),
-                desconto_aplicado: parseFloat(dadosProposta.descontoAplicado || 0),
-                observacoes: dadosProposta.observacoes || '',
+
+        // Atualiza somente a origem: a proposta criada vira "aceita"
+        if (propostaCriadaId) {
+            const { data: updData, error: updError } = await supabase
+              .from('propostas_criadas')
+              .update({
                 status: 'aceita',
                 aceita_em: new Date().toISOString(),
-                ip_cliente: ip,
-                user_agent: navigator.userAgent,
-                proposta_criada_id: propostaCriadaId,
+                recorrencia: dadosProposta.recorrencia,
+                forma_pagamento: dadosProposta.formaPagamento,
+                email_cliente: dadosProposta.emailCliente || null,
+                telefone_cliente: dadosProposta.telefoneCliente || null,
+                melhor_dia_pagamento: dadosProposta.melhorDiaPagamento || null,
+                representante_cliente: dadosProposta.representanteLegalCliente || '',
                 endereco_cliente: dadosProposta.enderecoCliente || '',
-                representante_cliente: dadosProposta.representanteLegalCliente || ''
-            })
-            // Seleciona apenas o id para minimizar necessidade de SELECT amplo
-            .select('id')
-            .single();
-        // Atualizar a proposta de origem como aceita (status, recorrência e forma de pagamento)
+                ip_criacao: ip,
+                user_agent: navigator.userAgent
+              })
+              .eq('id', propostaCriadaId)
+              .select('id, status, recorrencia, forma_pagamento, melhor_dia_pagamento')
+              .maybeSingle();
+            if (updError) {
+                console.error('❌ Aceite: falha ao atualizar propostas_criadas', updError);
+                throw updError;
+            }
+            console.log('✅ Aceite salvo', { id: updData?.id });
+        }
+
+        // Inserir itens selecioandos (se houver) e registrar status 'itens_preenchidos'
         try {
+<<<<<<< HEAD
             if (propostaCriadaId) {
                 await supabase
                   .from('propostas_criadas')
@@ -81,25 +94,90 @@ async function salvarPropostaAceita(dadosProposta) {
                     forma_pagamento: dadosProposta.formaPagamento
                   })
                   .eq('id', propostaCriadaId);
+=======
+            const servicos = Array.isArray(dadosProposta?.servicosContratados)
+              ? dadosProposta.servicosContratados
+              : (Array.isArray(window.servicosContratados) ? window.servicosContratados : []);
+            if (propostaCriadaId && servicos.length > 0) {
+                const descontoPorForma = (forma) => {
+                    const f = (forma || '').toLowerCase();
+                    if (f.includes('vista')) return 10; // À Vista
+                    if (f.includes('parcel')) return 5; // Parcelado
+                    return 0; // Mensal / outros
+                };
+                const descontoPct = descontoPorForma(dadosProposta.formaPagamento || '');
+                const itensDetalhados = servicos.map((s) => {
+                    const preco = typeof s.valor === 'number'
+                      ? s.valor
+                      : parseFloat(String(s.valor).replace(/[^\d.,-]/g, '').replace('.', '').replace(',', '.')) || 0;
+                    const total = +(preco * (1 - (descontoPct/100))).toFixed(2);
+                    const planoKey = s.tipo === 'Social Mídia'
+                      ? (window.propostaCarregada?.servico_social_midia_key || 'nao-se-aplica')
+                      : (window.propostaCarregada?.servico_trafego_pago_key || 'nao-se-aplica');
+                    return {
+                        proposta_criada_id: propostaCriadaId,
+                        nome_servico: s.tipo,
+                        descricao: s.plano || null,
+                        quantidade: 1,
+                        preco_unitario: preco,
+                        desconto_percentual: descontoPct,
+                        total: total,
+                        metadata: {
+                            plano_key: planoKey,
+                            recorrencia: dadosProposta.recorrencia || null,
+                            origem: 'cliente'
+                        }
+                    };
+                });
+                const { error: itensError } = await supabase
+                  .from('proposta_itens')
+                  .insert(itensDetalhados);
+                if (itensError) {
+                    console.error('❌ Itens: falha ao inserir seleção do cliente', itensError);
+                } else {
+                    const { error: statusItensError } = await supabase
+                      .from('proposta_status_history')
+                      .insert({
+                        proposta_criada_id: propostaCriadaId,
+                        status: 'itens_preenchidos',
+                        observacao: `Cliente selecionou ${itensDetalhados.length} item(ns).`,
+                        created_by: null
+                      });
+                    if (statusItensError) {
+                        console.error('❌ Histórico: falha ao registrar itens_preenchidos', statusItensError);
+                    }
+                }
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             }
         } catch (e) {
-            console.warn('Falha ao atualizar propostas_criadas no aceite (seguindo):', e);
+            console.error('❌ Itens: erro ao persistir seleção', e);
         }
-        
-        if (error) {
-            console.error('❌ Erro ao salvar proposta:', error);
-            throw error;
+
+        // Registra no histórico
+        if (propostaCriadaId) {
+            const { error: histError } = await supabase
+              .from('proposta_status_history')
+              .insert({
+                proposta_criada_id: propostaCriadaId,
+                status: 'aceita',
+                observacao: 'Aceite registrado via fluxo público.',
+                created_by: null
+              });
+            if (histError) {
+                console.error('❌ Histórico: falha ao registrar aceite', histError);
+            }
         }
-        
-    console.log('✅ Proposta salva com sucesso:', data);
-    return data; // já é single()
+
+        // Retorna o id da proposta criada para ser usado como chave única
+        console.log('✅ Aceite concluído');
+        return { id: propostaCriadaId };
     } catch (error) {
         console.error('❌ Erro ao salvar proposta:', error);
         throw error;
     }
 }
 // Função para gerar e armazenar contrato em PDF no Supabase Storage
-async function gerarEArmazenarContrato(propostaId, dadosContrato) {
+async function gerarEArmazenarContrato(propostaCriadaId, dadosContrato) {
     try {
         // Inicializar cliente para garantir acesso a storage e DB
         const client = initSupabase();
@@ -108,7 +186,7 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         const pdfBlob = await gerarPDFContrato(dadosContrato);
         
         // Nome único para o arquivo
-        const nomeArquivo = `contrato-${propostaId}-${Date.now()}.pdf`;
+        const nomeArquivo = `contrato-${propostaCriadaId}-${Date.now()}.pdf`;
         
         // Upload para Supabase Storage
         const { data: uploadData, error: uploadError } = await client.storage
@@ -120,7 +198,7 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
             });
         
         if (uploadError) {
-            console.error('❌ Erro ao fazer upload do PDF:', uploadError);
+            console.error('❌ Contrato: falha no upload PDF', uploadError);
             throw uploadError;
         }
         
@@ -131,28 +209,32 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         
         // Salvar registro do contrato na tabela
         const { data: contratoData, error: contratoError } = await client
+<<<<<<< HEAD
             .from('contratos')
+=======
+            .from('proposta_contratos')
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             .insert({
-                proposta_id: propostaId,
-                pdf_url: urlData.publicUrl,
-                assinatura_digital: gerarHashAssinatura(dadosContrato),
+                proposta_criada_id: propostaCriadaId,
+                contrato_url: urlData.publicUrl,
+                contrato_sha256: gerarHashAssinatura(dadosContrato),
                 ip_assinatura: dadosContrato.ipAssinatura,
-                timestamp_assinatura: new Date().toISOString()
+                // 'created_at' é preenchido automaticamente pelo banco; não definir manualmente
             })
             .select();
         
         if (contratoError) {
-            console.error('❌ Erro ao salvar contrato:', contratoError);
+            console.error('❌ Contrato: falha ao salvar registro', contratoError);
             throw contratoError;
         }
         
-        console.log('✅ Contrato gerado e armazenado:', contratoData);
+        console.log('✅ Contrato gerado', { url: urlData.publicUrl });
         return {
             contratoId: contratoData[0].id,
             pdfUrl: urlData.publicUrl
         };
     } catch (error) {
-        console.error('❌ Erro ao gerar e armazenar contrato:', error);
+        console.error('❌ Contrato: erro geral', error);
         throw error;
     }
 }
@@ -346,6 +428,50 @@ Suporte:
             if (servicoTrafego && servicoTrafego !== 'nao-se-aplica' && entregaveisTrafegoPago[servicoTrafego]) {
                 textoEntregaveisTrafego = entregaveisTrafegoPago[servicoTrafego];
             }
+            // Regra de exclusividade da Landing Page: somente em contratos com recorrência de 12 meses
+            const recorrenciaTexto = (dadosContrato.recorrencia || '').toLowerCase();
+            const planoDozeMeses = recorrenciaTexto.includes('12');
+            if (textoEntregaveisTrafego) {
+                if (!planoDozeMeses) {
+                    // Remover linhas relacionadas à Landing Page e LP quando não é 12 meses
+                    textoEntregaveisTrafego = textoEntregaveisTrafego
+                        .split('\n')
+                        .filter(l => !/landing\s*page/i.test(l) && !/\bLP\b/i.test(l))
+                        .join('\n');
+                    textoEntregaveisTrafego += '\nObservação: A Landing Page de alta conversão é exclusiva para contratos com recorrência de 12 meses.';
+                } else {
+                    // Tornar explícito no texto que a LP é exclusiva para 12 meses
+                    textoEntregaveisTrafego = textoEntregaveisTrafego.replace(/(Landing\s*Page[^\n]*)/i, '$1 (exclusivo para 12 meses)');
+                }
+            }
+            // Detalhes de pagamento e formatação condicional
+            const formaPag = (dadosContrato.formaPagamento || '').toLowerCase();
+            const valorMensalNum = parseFloat(dadosContrato.valorMensal || '0') || 0;
+            const valorTotalNum = parseFloat(dadosContrato.valorTotal || '0') || 0;
+            const assinaturaDate = new Date(dadosContrato.timestamp);
+            function formatBR(v) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2 }); }
+            function addDays(d, days) { const nd = new Date(d); nd.setDate(nd.getDate() + days); return nd; }
+            function fmtDate(d) { return d.toLocaleDateString('pt-BR'); }
+
+            const valorMensalFmt = (formaPag.includes('vista') || formaPag.includes('50'))
+                ? 'Não se aplica'
+                : formatBR(valorMensalNum);
+
+            const detalhePagamento = (() => {
+                if (formaPag.includes('50')) {
+                    const primeira = (valorTotalNum / 2);
+                    const segunda = (valorTotalNum - primeira);
+                    const venc1 = fmtDate(addDays(assinaturaDate, 2));
+                    const venc2 = fmtDate(addDays(assinaturaDate, 30));
+                    return `1ª parcela: R$ ${formatBR(primeira)} (vencimento em ${venc1}) | 2ª parcela: R$ ${formatBR(segunda)} (vencimento em ${venc2}).`;
+                }
+                if (formaPag.includes('vista')) {
+                    return `Pagamento único de R$ ${formatBR(valorTotalNum)}.`;
+                }
+                // Recorrentes: mantém valor mensal como referência
+                return `Mensalidade de R$ ${formatBR(valorMensalNum)} totalizando R$ ${formatBR(valorTotalNum)} no período.`;
+            })();
+
             const mapa = {
                 '{{NOME_CLIENTE}}': dadosContrato.nomeCliente || '',
                 '{{EMPRESA_CLIENTE}}': dadosContrato.empresaCliente || '',
@@ -365,7 +491,7 @@ Suporte:
                 '{{INVESTIMENTO_MIDIA}}': dadosContrato.investimentoMidia || '',
                 '{{RECORRENCIA}}': dadosContrato.recorrencia || '',
                 '{{FORMA_PAGAMENTO}}': dadosContrato.formaPagamento || '',
-                '{{VALOR_MENSAL}}': parseFloat(dadosContrato.valorMensal || '0').toLocaleString('pt-BR', {minimumFractionDigits: 2}),
+                '{{VALOR_MENSAL}}': valorMensalFmt,
                 '{{VALOR_TOTAL}}': parseFloat(dadosContrato.valorTotal || '0').toLocaleString('pt-BR', {minimumFractionDigits: 2}),
                 '{{DATA_ASSINATURA}}': new Date(dadosContrato.timestamp).toLocaleString('pt-BR'),
                 '{{HASH_ASSINATURA}}': dadosContrato.hashAssinatura || '',
@@ -391,7 +517,8 @@ Suporte:
                     if (!temComissao || pct <= 0) return '';
                     return `Para o serviço de Tráfego Pago, as partes acordam a remuneração adicional de ${pct}% (por cento) sobre as vendas líquidas atribuídas às campanhas e esforços de mídia geridos pela CONTRATADA. Consideram-se vendas líquidas aquelas efetivamente faturadas, deduzidos cancelamentos, devoluções, estornos e tributos incidentes. O repasse da comissão ocorrerá até o dia 05 (cinco) do mês subsequente ao de competência, mediante relatório de vendas enviado pela CONTRATANTE e conferência da CONTRATADA. A CONTRATADA poderá solicitar evidências razoáveis para auditoria dos números reportados, respeitando-se a confidencialidade dos dados e o acesso limitado às informações estritamente necessárias. ${fixo > 0 ? `Esta comissão é devida cumulativamente ao valor fixo mensal de R$ ${fixo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}.` : ''}`;
                 })(),
-                '{{MELHOR_DIA_PAGAMENTO}}': (dadosContrato.melhorDiaPagamento || '').toString()
+                '{{MELHOR_DIA_PAGAMENTO}}': (formaPag.includes('50') ? '' : (dadosContrato.melhorDiaPagamento || '').toString()),
+                '{{DETALHE_PAGAMENTO}}': detalhePagamento
             };
             let texto = textoTemplate;
             Object.keys(mapa).forEach(k => { texto = texto.replaceAll(k, mapa[k]); });
@@ -414,11 +541,130 @@ Suporte:
                     paragrafo(t);
                 }
             });
+                // Seção de Add-ons selecionados (quando existirem)
+                try {
+                    const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+                    const addonsSel = [];
+                    servicosPDF.forEach(s => {
+                        const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                        arr.forEach(a => {
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const unit = a.tipoPreco === 'unitario';
+                            const hasPreco = (a.valorUnitario != null) || (a.valor != null);
+                            const precoUnit = hasPreco ? (unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0)) : null;
+                            const total = hasPreco ? (unit ? (precoUnit * qtd) : precoUnit) : null;
+                            addonsSel.push({ nome: a.nome, qtd, precoUnit, total, descricao: a.descricao || '' });
+                        });
+                    });
+                    if (addonsSel.length) {
+                        doc.setFontSize(12); doc.setFont('helvetica','bold');
+                        if (y > 250) { doc.addPage(); y = 20; }
+                        doc.text('ANEXO — ADD-ONS SELECIONADOS', margemEsq, y); y += 8;
+                        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                        addonsSel.forEach(a => {
+                            if (a.precoUnit != null && a.total != null) {
+                                paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
+                            } else {
+                                paragrafo(`• ${a.nome}${a.descricao ? ' — ' + a.descricao : ''}${a.qtd ? ' (' + a.qtd + 'x)' : ''}`);
+                            }
+                        });
+                    }
+                } catch (_) { /* silencioso */ }
             usouTemplate = true;
         }
     } catch (e) {
         console.warn('Não foi possível carregar contrato-template.md, usando fallback. Erro:', e);
     }
+    // Inserir seção de Catálogo quando existir (mesmo com template)
+    try {
+        // Preferir dados vindos do contrato (evita depender de window)
+        let catalogo = null;
+        const fromDados = dadosContrato && (dadosContrato.catalogoSessoes || dadosContrato.catalogoEntregaveis || dadosContrato.catalogoPlanoNome || dadosContrato.catalogoProdutoNome);
+        if (fromDados) {
+            catalogo = {
+                plano: dadosContrato.catalogoPlanoNome || 'Plano',
+                secoes: dadosContrato.catalogoSessoes || null,
+                entregaveis: dadosContrato.catalogoEntregaveis || null,
+                addOnsContratados: Array.isArray(dadosContrato.catalogoAddons) ? dadosContrato.catalogoAddons : []
+            };
+        } else {
+            const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+            catalogo = servicosPDF.find(s => (s?.tipo || '').toLowerCase() === 'catálogo');
+        }
+        if (catalogo) {
+            const titulo = `SERVIÇO DO CATÁLOGO — ${String(catalogo.plano || catalogo.produto || 'Plano').toUpperCase()}`;
+            const montarLista = () => {
+                let linhas = [];
+                if (catalogo.secoes) {
+                    if (Array.isArray(catalogo.secoes)) {
+                        catalogo.secoes.forEach(sec => {
+                            const nome = (sec && (sec.titulo || sec.nome || 'Seção'));
+                            const itens = Array.isArray(sec?.itens) ? sec.itens : [];
+                            linhas.push(`${nome}:`);
+                            itens.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                        });
+                    } else if (typeof catalogo.secoes === 'object') {
+                        Object.keys(catalogo.secoes).forEach(nome => {
+                            const lista = catalogo.secoes[nome];
+                            const itens = Array.isArray(lista) ? lista : (Array.isArray(lista?.itens) ? lista.itens : []);
+                            linhas.push(`${nome}:`);
+                            itens.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                        });
+                    }
+                } else {
+                    const base = Array.isArray(catalogo.entregaveis) ? catalogo.entregaveis : [];
+                    base.forEach(i => { linhas.push(`• ${typeof i === 'string' ? i : (i?.nome || i?.titulo || i?.label || i?.descricao || i?.texto || String(i||''))}`); });
+                }
+                return linhas;
+            };
+            const linhas = montarLista();
+            if (linhas.length) {
+                doc.setFontSize(12); doc.setFont('helvetica','bold');
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.text(titulo, margemEsq, y); y += 8;
+                // Modelo de cobrança
+                try {
+                    const pctNum = parseFloat(dadosContrato.percentualComissao || dadosContrato.percentual_comissao || 0) || 0;
+                    const valorFixo = parseFloat(dadosContrato.valorFixoTrafego || dadosContrato.valor_fixo_trafego || dadosContrato.valorMensal || 0) || 0;
+                    const modeloTxt = (function(){
+                        const m = (dadosContrato.catalogoModelo || '').toLowerCase();
+                        if (m === 'comissao' && pctNum > 0) return `Modelo de cobrança: Comissão ${pctNum}% sobre vendas`;
+                        if (m === 'hibrido' && valorFixo > 0 && pctNum > 0) return `Modelo de cobrança: Híbrido — Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })} + ${pctNum}%`;
+                        if (m === 'alterado' && valorFixo > 0) return `Modelo de cobrança: Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })}/mês`;
+                        if (valorFixo > 0) return `Modelo de cobrança: Fixo R$ ${valorFixo.toLocaleString('pt-BR', { minimumFractionDigits:2 })}/mês`;
+                        return '';
+                    })();
+                    if (modeloTxt) { doc.setFont('helvetica','normal'); doc.setFontSize(10); paragrafo(modeloTxt); }
+                } catch(_) {}
+                doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                linhas.forEach(l => { paragrafo(l); });
+                // Add-ons selecionados
+                try {
+                    const addons = Array.isArray(catalogo.addOnsContratados)
+                      ? catalogo.addOnsContratados.filter(a => a && (a.selecionado === undefined || !!a.selecionado))
+                      : [];
+                    if (addons.length) {
+                        doc.setFontSize(11); doc.setFont('helvetica','bold');
+                        if (y > 250) { doc.addPage(); y = 20; }
+                        doc.text('ADD-ONS SELECIONADOS', margemEsq, y); y += 6;
+                        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                        addons.forEach(a => {
+                            const unit = (a.tipoPreco === 'unitario');
+                            const qtd = Math.max(1, a.qtdSelecionada || 1);
+                            const hasPreco = (a.valorUnitario != null) || (a.valor != null);
+                            if (hasPreco) {
+                                const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                                const total = unit ? (precoUnit * qtd) : precoUnit;
+                                paragrafo(`• ${a.nome} — ${unit ? `${qtd}× R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : `R$ ${precoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Total R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`);
+                            } else {
+                                paragrafo(`• ${a.nome}${a.descricao ? ' — ' + a.descricao : ''}${qtd ? ' (' + qtd + 'x)' : ''}`);
+                            }
+                        });
+                    }
+                } catch(_) {}
+            }
+        }
+    } catch(_) { /* silencioso */ }
     if (!usouTemplate) {
         // Fallback: renderiza cabeçalho, partes e cláusulas resumidas
         doc.setFontSize(20);
@@ -500,9 +746,34 @@ Suporte:
         if (dadosContrato.servicoTrafegoPago && dadosContrato.servicoTrafegoPago !== 'nao-se-aplica') paragrafo(`• Tráfego Pago — Plano ${dadosContrato.servicoTrafegoPago.toUpperCase()}`);
         paragrafo(`Recorrência: ${dadosContrato.recorrencia} | Pagamento: ${dadosContrato.formaPagamento}`);
         paragrafo(`Valores: Mensal ${parseFloat(dadosContrato.valorMensal).toLocaleString('pt-BR', {minimumFractionDigits: 2})} | Total ${parseFloat(dadosContrato.valorTotal).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`);
+        // Listar Add-ons selecionados
+        try {
+            const servicosPDF = Array.isArray(window.servicosContratados) ? window.servicosContratados : [];
+            const addonsSel = [];
+            servicosPDF.forEach(s => {
+                const arr = Array.isArray(s.addOnsContratados) ? s.addOnsContratados : [];
+                arr.forEach(a => {
+                    const qtd = Math.max(1, a.qtdSelecionada || 1);
+                    const unit = a.tipoPreco === 'unitario';
+                    const precoUnit = unit ? (parseFloat(a.valorUnitario || 0) || 0) : (parseFloat(a.valor || 0) || 0);
+                    const total = unit ? (precoUnit * qtd) : precoUnit;
+                    addonsSel.push({ nome: a.nome, qtd, precoUnit, total });
+                });
+            });
+            if (addonsSel.length) {
+                doc.setFont('helvetica','bold'); doc.setFontSize(12);
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.text('ADD-ONS SELECIONADOS:', margemEsq, y); y += 7;
+                doc.setFont('helvetica','normal'); doc.setFontSize(10);
+                addonsSel.forEach(a => {
+                    paragrafo(`• ${a.nome} — ${a.qtd}x R$ ${formatBR(a.precoUnit)} (Total R$ ${formatBR(a.total)})`);
+                });
+            }
+        } catch (_) { /* silencioso */ }
     }
     return doc.output('blob');
 }
+<<<<<<< HEAD
 // Salvar dados do representante vinculados à proposta criada
 async function salvarDadosRepresentante(dados) {
     const client = initSupabase();
@@ -532,6 +803,41 @@ async function salvarDadosRepresentante(dados) {
         throw error;
     }
     return { ok: true, id: data?.id };
+=======
+// Salvar dados do representante diretamente em propostas_criadas.representante_cliente
+async function salvarDadosRepresentante(dados) {
+    const client = initSupabase();
+    let propostaCriadaId = dados.propostaCriadaId || null;
+    try {
+        if (!propostaCriadaId && typeof window !== 'undefined' && window.location) {
+            const params = new URLSearchParams(window.location.search);
+            propostaCriadaId = params.get('id') || null;
+        }
+    } catch (_) { /* ignora parse de URL */ }
+    if (!propostaCriadaId) {
+        const err = new Error('ID da proposta criada ausente. Abra a visualização com ?id=<proposta_criada_id> ou forneça propostaCriadaId.');
+        console.error('Erro ao salvar representante:', err);
+        throw err;
+    }
+
+    const nome = (dados.nome || '').trim();
+    const sobrenome = (dados.sobrenome || '').trim();
+    const nomeCompleto = [nome, sobrenome].filter(Boolean).join(' ').trim();
+
+    const { data, error } = await client
+        .from('propostas_criadas')
+        .update({ representante_cliente: nomeCompleto || null })
+        .eq('id', propostaCriadaId)
+        .select('id, representante_cliente')
+        .maybeSingle();
+
+    if (error) {
+        console.error('Erro ao salvar representante em propostas_criadas:', error);
+        throw error;
+    }
+    console.log('✅ Representante atualizado em propostas_criadas:', data);
+    return { ok: true, id: data?.id, representante: data?.representante_cliente || null };
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
 }
 
 // Checa se a proposta já foi assinada para bloquear reassinatura
@@ -566,6 +872,7 @@ async function checarBloqueioReassinatura(propostaCriadaId) {
         return { bloqueada: true, status };
     }
 
+<<<<<<< HEAD
     // Verificação adicional: existe proposta assinada vinculada?
     // Se houver qualquer registro em `propostas` com `proposta_criada_id`, bloquear.
     const { count, error: countError } = await client
@@ -585,6 +892,15 @@ async function checarBloqueioReassinatura(propostaCriadaId) {
         }
     }
     if ((count || 0) > 0) {
+=======
+    // Verificação adicional: contrato já gerado?
+    // Se houver qualquer registro em `proposta_contratos` com `proposta_criada_id`, bloquear reassinatura.
+    const { count, error: countError } = await client
+        .from('proposta_contratos')
+        .select('id', { count: 'exact', head: true })
+        .eq('proposta_criada_id', propostaCriadaId);
+    if ((count || 0) > 0 && !countError) {
+>>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         return { bloqueada: true, status: 'aceita' };
     }
 

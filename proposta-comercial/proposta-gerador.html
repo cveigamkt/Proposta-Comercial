@@ -6,6 +6,7 @@
   <title>Gerador de Proposta Comercial - Heat Digital</title>
   <link rel="stylesheet" href="./proposta-styles.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="menu-lateral.js"></script>
   <style>
     /* Layout básico da página */
     * { box-sizing: border-box; }
@@ -17,16 +18,18 @@
     .form-section { margin-bottom: 40px; padding: 30px; background: #252525; border-radius: 15px; }
     .form-section h2 { color: #1E5942; margin-bottom: 20px; font-size: 1.5rem; }
     .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #E0E0E0; font-size: 0.95rem; white-space: nowrap; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 1rem; }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #1E5942; outline: none; }
 
-    /* Grid 3x2 para Informações do Cliente */
-    .cliente-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    /* Grid 2 colunas equilibradas para Informações do Cliente */
+    .cliente-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 
     /* Cards dos serviços e simulador */
     .servicos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
     .servico-card { background: #1a1a1a; border: 2px solid #333; border-radius: 12px; padding: 18px; }
+    .servico-card--full { grid-column: 1 / -1; }
+    .catalogo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 
     .simulador-periodos h4 { color: #1E5942; font-size: 1.2rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
     .simulador-subtitle { color: #888; font-size: 0.9rem; margin-bottom: 16px; }
@@ -39,6 +42,7 @@
     .periodo-mensal { font-size: 1.1rem; font-weight: 800; color: #1E5942; margin-bottom: 6px; }
     .periodo-total { color: #bbb; font-size: 0.9rem; }
     .badge-recomendado { position: absolute; top: -8px; right: 8px; background: #FFD700; color: #000; padding: 3px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; }
+    .bonus-12m { margin-top: 6px; color: #9aa0a6; font-size: 0.8rem; font-weight: 500; opacity: 0.85; }
 
     /* Desconto customizado */
     .desconto-customizado-group { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 20px; }
@@ -58,6 +62,28 @@
     .btn-preview:hover { background: #777; }
     .btn-generate:hover { background: #267356; }
 
+    /* Novos estilos de botões para melhor UI/UX */
+    .btn { display:inline-flex; align-items:center; gap:8px; border-radius:10px; font-weight:600; cursor:pointer; transition: all .2s ease; text-decoration:none; }
+    .btn-sm { padding:8px 12px; font-size:0.9rem; }
+    .btn-primary { background:#1E5942; color:#fff; border:1px solid #1E5942; }
+    .btn-primary:hover { background:#267356; border-color:#267356; }
+    .btn-secondary { background:transparent; color:#E0E0E0; border:1px solid #444; }
+    .btn-secondary:hover { background:#2a2a2a; border-color:#1E5942; color:#fff; }
+    .btn:focus-visible { outline: 2px solid #1E5942; outline-offset: 2px; }
+
+    /* Botões discretos (ghost) para ações auxiliares */
+    .btn-ghost { background: transparent; color: #bbb; border: 1px solid #3a3a3a; }
+    .btn-ghost:hover { background: #222; color: #fff; border-color: #555; }
+    .btn-xs { padding: 6px 10px; font-size: 10px; }
+
+    /* Labels da seção cliente ocupam 90% da coluna */
+    .cliente-grid .form-group label { max-width: 90%; }
+
+    /* Container da seleção de cliente com ações abaixo */
+    .select-client-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .select-client-wrap > label { margin-bottom: 0; }
+    .client-actions { display: flex; gap: 8px; }
+
     /* Modal */
     .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,0.8); }
     .modal-content { background: #1a1a1a; margin: 10% auto; padding: 24px; border-radius: 14px; width: 90%; max-width: 640px; }
@@ -65,11 +91,12 @@
     .link-container { display: flex; gap: 10px; margin: 20px 0; }
 
     /* Responsivo */
-    @media (max-width: 900px) { .servicos-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .servicos-grid { grid-template-columns: 1fr; } .catalogo-row { grid-template-columns: 1fr; } }
     @media (max-width: 768px) {
       .cliente-grid { grid-template-columns: 1fr; }
       .periodos-grid { grid-template-columns: 1fr; gap: 12px; }
       .desconto-controls { grid-template-columns: 1fr; gap: 10px; }
+      .form-group label { white-space: normal; }
     }
   </style>
 </head>
@@ -78,6 +105,10 @@
     <header class="gerador-header">
       <h1>🧾 Gerador de Proposta Comercial</h1>
       <p>Configure todos os parâmetros da proposta para o cliente</p>
+      <div class="auth-controls" style="margin-top:10px; display:flex; gap:10px; justify-content:center; align-items:center; font-size:0.9rem;">
+        <span id="authStatusGerador" class="muted" style="color:#bbb;">Verificando sessão…</span>
+        <button type="button" id="btnLogoutGerador" class="btn-preview" style="padding:8px 12px; font-size:0.85rem; display:none;">Sair</button>
+      </div>
     </header>
 
     <form id="propostaForm" class="proposta-form">
@@ -85,39 +116,43 @@
       <section class="form-section">
         <h2>📋 Informações do Cliente</h2>
         <div class="cliente-grid">
-          <div class="form-group fg-cpfcnpj">
+          <div class="form-group fg-selecionar">
+            <div class="select-client-wrap">
+              <label for="clienteSelecionado">Selecionar clientes cadastrados</label>
+              <select id="clienteSelecionado" name="clienteSelecionado">
+                <option value="">Carregando clientes…</option>
+              </select>
+              <div class="client-actions">
+                <button type="button" id="btnNovoCliente" class="btn btn-xs btn-ghost">Cadastrar novos clientes</button>
+                <a href="clientes" class="btn btn-xs btn-ghost">gerenciar clientes</a>
+              </div>
+            </div>
+            <small style="font-size:0.75rem; color:#888;">Os dados do cliente serão usados automaticamente.</small>
+          </div>
+          <div class="form-group fg-cpfcnpj" style="display:none;">
             <label for="cpfCnpjCliente">CPF/CNPJ do Cliente *</label>
-            <input type="text" id="cpfCnpjCliente" name="cpfCnpjCliente" required placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18" />
+            <input type="text" id="cpfCnpjCliente" name="cpfCnpjCliente" required placeholder="Selecionado automaticamente" maxlength="18" readonly />
             <small id="feedbackCpfCnpj" style="display:none; margin-top:5px; font-weight:600;"></small>
-            <div class="cnpj-actions" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-              <button type="button" id="btnBuscarCNPJ" class="btn-preview" style="padding:8px 14px; font-size:0.75rem;">🔎 Pesquisar CNPJ</button>
-              <span id="cnpjLoading" style="display:none; color:#bbb; font-size:0.75rem;">Carregando…</span>
-            </div>
-            <div id="cnpjResultado" class="info-box" style="display:none; margin-top:10px; font-size:0.75rem; line-height:1.4;">
-              <div><strong>Razão Social:</strong> <span id="cnpjRazao">—</span></div>
-              <div><strong>Nome Fantasia:</strong> <span id="cnpjFantasia" style="color:#9ad5bd;">—</span></div>
-              <div><strong>Sede:</strong> <span id="cnpjSedeTipo">—</span></div>
-              <div><strong>Endereço:</strong> <span id="cnpjEndereco">—</span></div>
-              <div><strong>Telefone:</strong> <span id="cnpjTelefone">—</span></div>
-              <div><strong>E-mail:</strong> <span id="cnpjEmail">—</span></div>
-            </div>
           </div>
-          <div class="form-group fg-empresa">
+          <div class="form-group fg-empresa" style="display:none;">
             <label for="empresaCliente">Nome da Empresa *</label>
-            <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Ex: Silva Comércio Ltda" />
-            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+            <input type="text" id="empresaCliente" name="empresaCliente" required placeholder="Selecionado automaticamente" readonly />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente pela seleção do cliente</small>
           </div>
-          <div class="form-group fg-responsavel">
+          <div class="form-group fg-responsavel" style="display:none;">
             <label for="responsavelProposta">Responsável pela Proposta (Heat Digital) *</label>
-            <input type="text" id="responsavelProposta" name="responsavelProposta" required placeholder="Ex: João Silva - Heat Digital" />
+            <select id="responsavelProposta" name="responsavelProposta" required>
+              <option value="">Definindo usuário…</option>
+            </select>
+            <small style="font-size:0.75rem; color:#888;">Definido automaticamente para o usuário logado</small>
           </div>
-          <div class="form-group fg-endereco">
+          <div class="form-group fg-endereco" style="display:none;">
             <label for="enderecoCliente">Endereço Completo *</label>
-            <input type="text" id="enderecoCliente" name="enderecoCliente" required placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
-            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente via CNPJ</small>
+            <input type="text" id="enderecoCliente" name="enderecoCliente" required placeholder="Selecionado automaticamente" readonly />
+            <small style="font-size:0.75rem; color:#888;">Preenchido automaticamente pela seleção do cliente</small>
           </div>
           <div class="form-group fg-validade">
-            <label for="diasValidade">Dias de Validade da Proposta *</label>
+            <label for="diasValidade">Dias de validade da proposta *</label>
             <select id="diasValidade" name="diasValidade" required>
               <option value="3">3 dias</option>
               <option value="5">5 dias</option>
@@ -134,95 +169,52 @@
       <section class="form-section">
         <h2>🎯 Serviços Contratados</h2>
         <div class="servicos-grid">
-          <!-- Social Media -->
-          <div class="servico-card">
-            <h3>🧑💻 Social Media</h3>
-            <div class="form-group">
-              <label for="servicoSocialMidia">Selecione o Plano</label>
-              <select id="servicoSocialMidia" name="servicoSocialMidia">
-                <option value="nao-se-aplica">Não se aplica</option>
-                <option value="start">START - R$ 1.500,00</option>
-                <option value="scale">SCALE - R$ 2.200,00</option>
-                <option value="heat">HEAT - R$ 3.200,00</option>
-              </select>
-            </div>
-            <button type="button" class="btn-toggle-entregaveis" id="toggleSocialMedia" onclick="toggleEntregaveis('SocialMedia')" style="display: none;">📋 Ver Entregáveis</button>
-            <div class="form-group entregaveis-container" id="entregaveisSocialMedia" style="display: none;">
-              <div class="entregaveis-info" id="infoSocialMedia"></div>
-            </div>
-          </div>
+          <!-- Social Media e Tráfego Pago removidos: fluxo Catálogo-only -->
 
-          <!-- Tráfego Pago -->
-          <div class="servico-card">
-            <h3>🎯 Tráfego Pago</h3>
-            <div class="form-group">
-              <label for="servicoTrafegoPago">Selecione o Plano</label>
-              <select id="servicoTrafegoPago" name="servicoTrafegoPago">
-                <option value="nao-se-aplica">Não se aplica</option>
-                <option value="foco">FOCO - R$ 2.400,00</option>
-                <option value="aceleracao">ACELERAÇÃO - R$ 2.800,00</option>
-                <option value="heat">DESTAQUE - R$ 3.500,00</option>
-              </select>
+          <!-- Serviço do Catálogo (genérico) -->
+          <div class="servico-card servico-card--full">
+            <h3>📦 Serviço do Catálogo</h3>
+            <div class="catalogo-row">
+              <div>
+                <div class="form-group">
+                  <label for="catalogoProdutoSelect">Selecione o Serviço</label>
+                  <select id="catalogoProdutoSelect" name="catalogoProdutoSelect">
+                    <option value="">Carregando serviços...</option>
+                  </select>
+                </div>
+                <div class="form-group" id="catalogoPlanoWrapper" style="display:none;">
+                  <label for="catalogoPlanoSelect">Selecione o Plano (quando aplicável)</label>
+                  <select id="catalogoPlanoSelect" name="catalogoPlanoSelect">
+                    <option value="">Selecione um serviço primeiro</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <div class="form-group" id="catalogoModeloWrapper" style="margin-top:0;">
+                  <label for="modeloCatalogoSelect">💳 Modelo de Cobrança</label>
+                  <select id="modeloCatalogoSelect" name="modeloCatalogoSelect">
+                    <option value="base" selected>Valor baseado no plano</option>
+                    <option value="comissao">% sobre vendas</option>
+                    <option value="alterado">Valor fixo alterado</option>
+                    <option value="hibrido">Valor alterado + % sobre vendas</option>
+                  </select>
+                  <div id="catalogoModeloFields" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:8px;">
+                    <div>
+                      <label for="valorCatalogoOverride">Valor fixo (R$)</label>
+                      <input id="valorCatalogoOverride" type="text" placeholder="Ex: 2500,00" />
+                    </div>
+                    <div>
+                      <label for="percentualCatalogo">Percentual de vendas (%)</label>
+                      <input id="percentualCatalogo" type="number" min="0" step="0.1" placeholder="Ex: 5" />
+                    </div>
+                  </div>
+                  <small style="color:#9aa0a6">Selecione o modelo; os campos aparecem conforme a escolha.</small>
+                </div>
+              </div>
             </div>
-            <!-- Badge dinâmica para comissão -->
-            <div class="form-group" id="badgeComissaoWrapper" style="display:none; margin-top:-6px;">
-              <span id="badgeComissaoGenerator" style="display:inline-block; background:#1E5942; color:#fff; padding:6px 12px; border-radius:14px; font-weight:700; font-size:0.85rem;">+ 0% sobre vendas</span>
-            </div>
-            
-            <!-- Modelo de Cobrança -->
-            <div class="form-group" id="modeloCobrancaContainer" style="display: none;">
-              <label for="modeloCobranca">💳 Modelo de Cobrança</label>
-              <select id="modeloCobranca" name="modeloCobranca">
-                <option value="fixo">Valor Fixo Mensal</option>
-                <option value="comissao">Comissão sobre Vendas (%)</option>
-                <option value="hibrido">Fixo + Comissão (Híbrido)</option>
-              </select>
-              <small class="info-investimento">
-                <strong>Fixo:</strong> Valor mensal fixo do plano<br>
-                <strong>Comissão:</strong> Apenas % sobre vendas realizadas<br>
-                <strong>Híbrido:</strong> Fixo reduzido + % ou valor fixo sobre vendas
-              </small>
-            </div>
-            
-            <!-- Tipo de Comissão no Híbrido -->
-            <div class="form-group" id="tipoComissaoHibridoContainer" style="display: none;">
-              <label for="tipoComissaoHibrido">📋 Tipo de Comissão sobre Vendas (Híbrido)</label>
-              <select id="tipoComissaoHibrido" name="tipoComissaoHibrido">
-                <option value="percentual">Percentual (%)</option>
-                <option value="fixo">Valor Fixo (R$)</option>
-              </select>
-              <small class="info-investimento">Escolha se a comissão será percentual ou valor fixo por venda</small>
-            </div>
-            
-            <!-- Campos de Comissão -->
-            <div class="form-group" id="percentualComissaoContainer" style="display: none;">
-              <label for="percentualComissao">📊 Percentual de Comissão sobre Vendas</label>
-              <input type="number" id="percentualComissao" name="percentualComissao" min="0" max="100" step="0.1" placeholder="Ex: 5" />
-              <small class="info-investimento">Percentual que será cobrado sobre cada venda realizada</small>
-            </div>
-            
-            <div class="form-group" id="valorComissaoFixaContainer" style="display: none;">
-              <label for="valorComissaoFixa">💵 Valor Fixo por Venda (Híbrido)</label>
-              <input type="number" id="valorComissaoFixa" name="valorComissaoFixa" min="0" step="10" placeholder="Ex: 50" />
-              <small class="info-investimento">Valor fixo que será cobrado por cada venda realizada</small>
-            </div>
-            
-            <div class="form-group" id="valorFixoTrafegoContainer" style="display: none;">
-              <label for="valorFixoTrafego">💰 Valor Fixo Mensal (Híbrido)</label>
-              <input type="number" id="valorFixoTrafego" name="valorFixoTrafego" min="0" step="100" placeholder="Ex: 1500" />
-              <small class="info-investimento">Valor fixo mensal reduzido (complementado pela comissão)</small>
-            </div>
-            
-            <button type="button" class="btn-toggle-entregaveis" id="toggleTrafegoPago" onclick="toggleEntregaveis('TrafegoPago')" style="display: none;">📋 Ver Entregáveis</button>
-            <div class="form-group entregaveis-container" id="entregaveisTrafegoPago" style="display: none;">
-              <div class="entregaveis-info" id="infoTrafegoPago"></div>
-            </div>
-            <div class="form-group" id="investimentoMidiaContainer" style="display: none;">
-              <label for="investimentoMidia">💵 Investimento em Mídia *</label>
-              <input type="text" id="investimentoMidia" name="investimentoMidia" placeholder="Ex: R$ 5.000,00" />
-              <small id="limiteInvestimento" class="info-investimento"><strong>⚠️ Importante:</strong> Valor que o cliente investirá em anúncios (não inclui nossa gestão).</small>
-              <div id="erroInvestimento" class="erro-investimento" style="display: none;"></div>
-              <div id="avisoPlanoAlterado" class="aviso-plano-alterado" style="display: none;"></div>
+            <button type="button" class="btn-toggle-entregaveis" id="toggleCatalogo" onclick="toggleEntregaveis('Catalogo')" style="display: none;">📋 Ver Entregáveis</button>
+            <div class="form-group entregaveis-container" id="entregaveisCatalogo" style="display: none;">
+              <div class="entregaveis-info" id="infoCatalogo"></div>
             </div>
           </div>
         </div>
@@ -252,35 +244,35 @@
           <div class="periodos-grid">
             <div class="periodo-card">
               <div class="periodo-header">1 mês</div>
-              <div class="periodo-desconto">Apenas 5% condicional</div>
+              <div class="periodo-desconto">Sem desconto</div>
               <div class="periodo-economia" id="sim1Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim1Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim1Total">Total: R$ 0,00</div>
             </div>
             <div class="periodo-card">
               <div class="periodo-header">3 meses</div>
-              <div class="periodo-desconto">10% total (5% + 5%)</div>
+              <div class="periodo-desconto">5% desconto</div>
               <div class="periodo-economia" id="sim3Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim3Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim3Total">Total: R$ 0,00</div>
             </div>
             <div class="periodo-card destaque">
               <div class="periodo-header">6 meses</div>
-              <div class="periodo-desconto">15% total (5% + 10%)</div>
+              <div class="periodo-desconto">10% desconto</div>
               <div class="periodo-economia" id="sim6Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim6Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim6Total">Total: R$ 0,00</div>
-              <span class="badge-recomendado">⭐ RECOMENDADO</span>
             </div>
             <div class="periodo-card">
               <div class="periodo-header">12 meses</div>
-              <div class="periodo-desconto">20% total (5% + 15%)</div>
+              <div class="periodo-desconto">15% desconto</div>
               <div class="periodo-economia" id="sim12Economia">Economia: R$ 0,00</div>
               <div class="periodo-mensal" id="sim12Mensal">R$ 0,00/mês</div>
               <div class="periodo-total" id="sim12Total">Total: R$ 0,00</div>
             </div>
           </div>
         </div>
+
 
         <div class="form-group">
           <label for="observacoes">Observações Adicionais</label>
@@ -292,8 +284,8 @@
           <p>O cliente escolherá a forma de pagamento ao aceitar a proposta. Opções disponíveis:</p>
           <ul>
             <li>À vista (Pix/Boleto)</li>
-            <li>50% agora + 50% em 30 dias</li>
-            <li>Mensalidade recorrente</li>
+            <li>50% agora (Pix/Boleto) + 50% em 30 dias</li>
+            <li>Mensalidade recorrente (Pix/Boleto)</li>
           </ul>
         </div>
       </section>
@@ -328,7 +320,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=3"></script>
   <script src="validacao-cpf-cnpj.js?v=2"></script>
-  <script src="proposta-gerador.js?v=2"></script>
+  <script src="proposta-gerador.js?v=5"></script>
   <script>
     // Validação de CPF/CNPJ em tempo real no gerador
     document.addEventListener('DOMContentLoaded', function() {
@@ -438,5 +430,50 @@
       window.open(urlRelativa, '_blank');
     }
   </script>
+  
+  <!-- Modal: Cadastro Rápido de Cliente -->
+  <div id="modalNovoCliente" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <span id="fecharModalNovoCliente" class="close">&times;</span>
+      <h3 style="margin-top:0; color:#1E5942">Cadastrar novo cliente</h3>
+      <div class="form-group">
+        <label for="novoTipoDocumento">Tipo de Documento</label>
+        <select id="novoTipoDocumento">
+          <option value="cnpj" selected>CNPJ</option>
+          <option value="cpf">CPF</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="novoDocumento">CPF/CNPJ</label>
+        <input type="text" id="novoDocumento" placeholder="Apenas dígitos" maxlength="18" />
+      </div>
+      <div class="form-group">
+        <label for="novoNome">Nome (se CPF)</label>
+        <input type="text" id="novoNome" placeholder="Ex: João Silva" />
+      </div>
+      <div class="form-group">
+        <label for="novaEmpresa">Empresa (se CNPJ)</label>
+        <input type="text" id="novaEmpresa" placeholder="Ex: Silva Comércio Ltda" />
+      </div>
+      <div class="form-group">
+        <label for="novoEndereco">Endereço</label>
+        <input type="text" id="novoEndereco" placeholder="Rua, Número, Bairro, Cidade - UF, CEP" />
+      </div>
+      <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <label for="novoEmail">E-mail</label>
+          <input type="email" id="novoEmail" placeholder="email@cliente.com" />
+        </div>
+        <div>
+          <label for="novoTelefone">Telefone</label>
+          <input type="text" id="novoTelefone" placeholder="(00) 00000-0000" />
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" id="btnSalvarNovoCliente" class="btn-generate">Salvar cliente</button>
+      </div>
+      <small id="novoClienteFeedback" style="display:none; margin-top:10px; font-weight:600;"></small>
+    </div>
+  </div>
 </body>
 </html>
