@@ -1589,6 +1589,18 @@
                 window.propostaCarregada = data; // Disponível globalmente
                 console.log('Proposta carregada:', data);
 
+                // Bloquear ações de aceite se já estiver aceita
+                try {
+                    const btnPrincipal = document.getElementById('btnAceitarPrincipal');
+                    const btnFlutuante = document.getElementById('btnAceitarFlutuante');
+                    const avisoSelecao = document.getElementById('avisoSelecao');
+                    if (data.status === 'aceita' || data.aceita_em || data.assinada_em) {
+                        if (btnPrincipal) { btnPrincipal.disabled = true; btnPrincipal.textContent = '✅ Proposta já assinada'; }
+                        if (btnFlutuante) { btnFlutuante.disabled = true; btnFlutuante.innerHTML = '<span class="btn-icon">✅</span><span class="btn-text">Assinada</span>'; }
+                        if (avisoSelecao) { avisoSelecao.style.display = 'block'; avisoSelecao.textContent = '⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.'; }
+                    }
+                } catch (e) { console.warn('Falha ao aplicar bloqueio de UI:', e); }
+
                 // Cabeçalho
                 // Exibimos somente empresa no cabeçalho para evitar duplicação/confusão
                 document.getElementById('empresaCliente').textContent = data.nome_cliente || data.empresa_cliente || 'Cliente';
@@ -1934,25 +1946,25 @@
             });
             
             // Atualizar display
-            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR')},00<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
-            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR')},00`;
+            document.getElementById('valorBase').innerHTML = `R$ ${valorBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br><small style="font-size: 0.8rem; color: #888; line-height: 1.4; display:block; overflow-wrap:anywhere; word-break:break-word;">${detalhamentoServicos}</small>`;
+            document.getElementById('descontoCondicional').textContent = `- R$ ${descontoCondicional.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             
             if (descontoRecorrencia > 0) {
                 document.getElementById('descontoRecorrenciaRow').style.display = 'flex';
-                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR')},00`;
+                document.getElementById('descontoRecorrencia').textContent = `- R$ ${descontoRecorrencia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             } else {
                 document.getElementById('descontoRecorrenciaRow').style.display = 'none';
             }
             
             if (descontoPagamento > 0) {
                 document.getElementById('descontoPagamentoRow').style.display = 'flex';
-                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR')},00`;
+                document.getElementById('descontoPagamento').textContent = `- R$ ${descontoPagamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             } else {
                 document.getElementById('descontoPagamentoRow').style.display = 'none';
             }
             
-            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00`;
-            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00 (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
+            document.getElementById('valorFinalMensal').textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            document.getElementById('valorTotalPeriodo').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${recorrencia} ${recorrencia === 1 ? 'mês' : 'meses'})`;
             
             atualizarResumo();
             verificarSelecoes();
@@ -1980,10 +1992,10 @@
                 elResumoData.textContent = dataAtual;
             }
             if (elResumoValorFinal) {
-                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR')},00/mês`;
+                elResumoValorFinal.textContent = `R$ ${valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`;
             }
             if (elResumoValorTotal) {
-                elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR')},00`;
+                elResumoValorTotal.textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
             }
             
             // Atualizar recorrência e forma de pagamento
@@ -2101,6 +2113,11 @@
         }
 
         function aceitarProposta() {
+            // Bloqueio imediato se já assinada
+            if (window.propostaCarregada?.status === 'aceita' || window.propostaCarregada?.aceita_em || window.propostaCarregada?.assinada_em) {
+                alert('⚠️ Esta proposta já foi assinada e não pode ser aceita novamente.');
+                return;
+            }
             // Verificar se a proposta ainda é válida
             if (propostaExpirada) {
                 alert('❌ Esta proposta já expirou e não pode mais ser aceita.');
@@ -3303,6 +3320,40 @@
                     statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Falha ao inicializar Supabase: ${e.message}</p>`;
                     throw e;
                 }
+                // Bloquear reassinatura se já aceita
+                try {
+                    const check = await window.supabaseConfig.checarBloqueioReassinatura(dadosProposta.propostaCriadaId);
+                    if (check?.bloqueada) {
+                        statusDiv.innerHTML = `<p style="color:#FF6B6B;">⚠️ Esta proposta já foi assinada (status: ${check.status}). Reassinatura bloqueada.</p>`;
+                        return; // Interrompe o fluxo
+                    }
+                } catch (e) {
+                    console.warn('Não foi possível verificar bloqueio de reassinatura:', e);
+                }
+
+                // Salvar dados do representante
+                statusDiv.innerHTML = '<p style="color: #FFA500;">📝 Salvando dados do representante...</p>';
+                try {
+                    const repPayload = {
+                        propostaCriadaId: dadosProposta.propostaCriadaId,
+                        propostaId: null,
+                        nome: dadosAssinaturaTemp?.nome || nomeAssinatura,
+                        sobrenome: dadosAssinaturaTemp?.sobrenome || sobrenomeAssinatura,
+                        cpf: dadosAssinaturaTemp?.cpfRepresentante,
+                        dataNascimento: dadosAssinaturaTemp?.dataNascimentoRepresentante,
+                        email: dadosAssinaturaTemp?.email || emailAssinatura,
+                        telefone: dadosAssinaturaTemp?.telefone || telefoneAssinatura,
+                        melhorDiaPagamento: dadosAssinaturaTemp?.melhorDiaPagamento || null,
+                        ip: ipCliente,
+                        userAgent: navigator.userAgent
+                    };
+                    await window.supabaseConfig.salvarDadosRepresentante(repPayload);
+                } catch (e) {
+                    console.error('Falha ao salvar dados do representante:', e);
+                    const detalhes = e?.message || e?.error_description || e?.hint || 'Erro desconhecido';
+                    statusDiv.innerHTML = `<p style="color: #FF6B6B;">❌ Erro ao salvar dados do representante.<br><small>${detalhes}</small></p>`;
+                    throw e;
+                }
 
                 // Salvar proposta no Supabase
                 statusDiv.innerHTML = '<p style="color: #FFA500;">📊 Salvando proposta...</p>';
@@ -3766,8 +3817,13 @@
         
         // ETAPA 3: Assinatura final
         async function assinarContrato() {
+            // Bloqueio redundante de segurança
+            if (window.propostaCarregada?.status === 'aceita' || window.propostaCarregada?.aceita_em || window.propostaCarregada?.assinada_em) {
+                alert('⚠️ Esta proposta já foi assinada e não pode ser assinada novamente.');
+                return;
+            }
             const aceitoFinal = document.getElementById('aceitoTermosContratoFinal').checked;
-            
+
             if (!aceitoFinal) {
                 alert('Você precisa aceitar os termos do contrato para assinar.');
                 return;

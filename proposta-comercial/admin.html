@@ -124,6 +124,7 @@
             <th>Cliente</th>
             <th>Empresa</th>
             <th>CPF/CNPJ</th>
+            <th>Representante</th>
             <th>Serviços</th>
             <th>Modelo Cobrança</th>
             <th class="right">Valores</th>
@@ -131,7 +132,6 @@
             <th>Pagamento</th>
             <th>Status</th>
             <th>Última Atualização</th>
-            <th>Assinatura</th>
             <th>Proposta</th>
             <th>Contrato</th>
             <th>Ações</th>
@@ -235,11 +235,23 @@
           const { data: contratos } = await client.from('contratos').select('proposta_id, pdf_url').in('proposta_id', propIds);
           contratosMap = new Map((contratos||[]).map(c => [c.proposta_id, c.pdf_url]));
         }
+        // Buscar dados do representante vinculados à proposta criada
+        let repMap = new Map();
+        if (ids.length>0) {
+          const { data: reps } = await client
+            .from('representantes_proposta')
+            .select('proposta_criada_id, nome_completo, cpf, validado')
+            .in('proposta_criada_id', ids);
+          repMap = new Map((reps||[]).map(r => [r.proposta_criada_id, r]));
+        }
         return base.map(pc => ({
           id: pc.id,
           nome_cliente: pc.nome_cliente,
           empresa_cliente: pc.empresa_cliente,
           cpf_cnpj: pc.cpf_cnpj,
+          representante_nome: repMap.get(pc.id)?.nome_completo || null,
+          representante_cpf: repMap.get(pc.id)?.cpf || null,
+          representante_validado: repMap.get(pc.id)?.validado || false,
           servico_social_midia: pc.servico_social_midia,
           servico_trafego_pago: pc.servico_trafego_pago,
           valor_social_midia: pc.valor_social_midia,
@@ -292,6 +304,9 @@
       const estado = document.getElementById('estadoLista');
       tb.innerHTML = '';
       
+      // Armazenar propostas globalmente para verificações
+      window.ultimasPropostas = rows;
+      
       // Atualizar estatísticas
       atualizarEstatisticas(rows);
       
@@ -304,12 +319,12 @@
       for (const r of rows){
   const url = `${window.location.origin}/proposta-visualizacao.html?id=${r.id}`;
         
-        // Mostrar recorrência e pagamento apenas se o contrato foi assinado (status = aceita)
-        const recorrenciaFinal = (r.status === 'aceita' && r.recorrencia) 
-          ? r.recorrencia 
+        // Mostrar recorrência e pagamento para propostas aceitas (com ou sem valores)
+        const recorrenciaFinal = (r.status === 'aceita') 
+          ? (r.recorrencia || '<span class="muted">—</span>')
           : '<span class="muted">—</span>';
-        const pagamentoFinal = (r.status === 'aceita' && r.forma_pagamento) 
-          ? r.forma_pagamento 
+        const pagamentoFinal = (r.status === 'aceita') 
+          ? (r.forma_pagamento || '<span class="muted">—</span>')
           : '<span class="muted">—</span>';
         
         const tr = document.createElement('tr');
@@ -318,6 +333,11 @@
           <td>${r.nome_cliente || '—'}</td>
           <td>${r.empresa_cliente || '—'}</td>
           <td class="nowrap">${r.cpf_cnpj || '—'}</td>
+          <td>
+            ${r.representante_nome ? `<div>${r.representante_nome}</div>` : '<span class="muted">—</span>'}
+            ${r.representante_cpf ? `<div class="muted" style="font-size:.85rem">CPF: ${r.representante_cpf}</div>` : ''}
+            ${r.representante_validado ? '<span class="chip" style="margin-top:6px;background:#0bd47e14;border-color:#0bd47e33;color:#0bd47e">✅ Validado</span>' : ''}
+          </td>
           <td>${linhaServico(r)}</td>
           <td>${formatarModeloCobranca(r)}</td>
           <td class="right">
@@ -330,17 +350,6 @@
           <td class="nowrap">
             <div>${formatarDataHora(r.atualizada_em || r.criada_em)}</div>
             ${r.assinado_em ? `<div class="status-assinatura">✅ Assinado em ${formatarDataHora(r.assinado_em)}</div>` : ''}
-          </td>
-          <td>
-            ${(() => {
-              if (r.status === 'pendente' && !r.expirada) {
-                return `<button class="btn-assinar" onclick="assinarProposta('${r.id}', '${(r.nome_cliente || '').replace(/'/g, "&apos;")}')" title="Marcar como assinada">✍️ Assinar</button>`;
-              } else if (r.status === 'aceita') {
-                return `<span class="chip status-aceita">✅ Assinado</span>`;
-              } else {
-                return `<span class="muted">—</span>`;
-              }
-            })()}
           </td>
           <td>
             <a class="link" href="${url}" target="_blank">Abrir</a>
@@ -416,11 +425,33 @@
     });
 
     function editarProposta(id) {
+      // Buscar a proposta na lista de dados carregados
+      const proposta = window.ultimasPropostas?.find(p => p.id === id);
+      
+      if (proposta) {
+        // Verificar se está assinada (status = aceita ou tem assinado_em)
+        if (proposta.status === 'aceita' || proposta.assinado_em) {
+          alert('❌ Não é possível editar propostas que já foram assinadas.');
+          return;
+        }
+      }
+      
       // Redirecionar para o gerador com os dados da proposta para edição
       window.location.href = `proposta-gerador.html?edit=${id}`;
     }
 
     async function confirmarExclusao(id, nomeCliente) {
+      // Buscar a proposta na lista de dados carregados
+      const proposta = window.ultimasPropostas?.find(p => p.id === id);
+      
+      if (proposta) {
+        // Verificar se está assinada (status = aceita ou tem assinado_em)
+        if (proposta.status === 'aceita' || proposta.assinado_em) {
+          alert('❌ Não é possível excluir propostas que já foram assinadas.');
+          return;
+        }
+      }
+      
       const confirmacao = confirm(`⚠️ Tem certeza que deseja excluir a proposta de "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
       
       if (!confirmacao) return;
@@ -429,14 +460,20 @@
         client = client || window.supabaseConfig.initSupabase();
         
         // Excluir proposta
-        const { error } = await client
+        const { data, error } = await client
           .from('propostas_criadas')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .select('id');
         
         if (error) {
           console.error('Erro ao excluir proposta:', error);
           alert('❌ Erro ao excluir proposta: ' + error.message);
+          return;
+        }
+        if (!data || data.length === 0) {
+          console.warn('Exclusão não retornou registros. Verifique políticas RLS.');
+          alert('❌ Proposta não foi excluída. Verifique permissões de DELETE (RLS).');
           return;
         }
         

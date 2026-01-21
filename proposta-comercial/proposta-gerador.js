@@ -582,8 +582,8 @@ window.gerarLinkProposta = async function() {
             valor_mensal: valorMensalFinal,
             valor_total: valorTotal,
             desconto_aplicado: descontoCustomizado,
-            recorrencia: 'Mensal', // Padrão por enquanto
-            forma_pagamento: 'À Vista', // Padrão por enquanto
+            recorrencia: null, // Será preenchido quando o cliente aceitar
+            forma_pagamento: null, // Será preenchido quando o cliente aceitar
             responsavel_proposta: dadosVisualizacao.responsavelProposta,
             dias_validade: parseInt(dadosVisualizacao.diasValidade),
             expira_em: dataExpiracao.toISOString(),
@@ -824,6 +824,20 @@ async function carregarPropostaParaEdicao(propostaId) {
             .select('*')
             .eq('id', propostaId)
             .single();
+        
+        if (error || !proposta) {
+            console.error('Erro ao carregar proposta:', error);
+            alert('❌ Não foi possível carregar a proposta para edição.');
+            return;
+        }
+        
+        // Verificar se a proposta já foi assinada
+        if (proposta.status === 'aceita' || proposta.assinado_em) {
+            alert('❌ Não é possível editar propostas que já foram assinadas.');
+            // Redirecionar de volta para o admin
+            window.location.href = 'admin.html';
+            return;
+        }
         
         if (error || !proposta) {
             console.error('Erro ao carregar proposta:', error);

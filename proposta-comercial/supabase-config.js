@@ -1,4 +1,4 @@
-﻿// Configuração do Supabase
+// Configuração do Supabase
 // Substitua com suas credenciais do Supabase após criar o projeto
 const SUPABASE_URL = 'https://ndokpkkdziifydugyjie.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2twa2tkemlpZnlkdWd5amllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMjA5NTYsImV4cCI6MjA3Nzg5Njk1Nn0.k9brkGFdvZe_32ctC0zKpOW1y6icp3zacOOw-MYxECc';
@@ -77,8 +77,8 @@ async function salvarPropostaAceita(dadosProposta) {
                   .update({
                     status: 'aceita',
                     aceita_em: new Date().toISOString(),
-                    recorrencia: dadosProposta.recorrencia || 'Mensal',
-                    forma_pagamento: dadosProposta.formaPagamento || 'À Vista'
+                    recorrencia: dadosProposta.recorrencia,
+                    forma_pagamento: dadosProposta.formaPagamento
                   })
                   .eq('id', propostaCriadaId);
             }
@@ -101,7 +101,8 @@ async function salvarPropostaAceita(dadosProposta) {
 // Função para gerar e armazenar contrato em PDF no Supabase Storage
 async function gerarEArmazenarContrato(propostaId, dadosContrato) {
     try {
-        const propostaCriadaId = (dadosProposta && dadosProposta.propostaCriadaId) || (urlParamsSafe && urlParamsSafe.get('id')) || null;
+        // Inicializar cliente para garantir acesso a storage e DB
+        const client = initSupabase();
         
         // Gerar PDF do contrato
         const pdfBlob = await gerarPDFContrato(dadosContrato);
@@ -110,7 +111,7 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         const nomeArquivo = `contrato-${propostaId}-${Date.now()}.pdf`;
         
         // Upload para Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await client.storage
             .from('contratos')
             .upload(nomeArquivo, pdfBlob, {
                 contentType: 'application/pdf',
@@ -124,12 +125,12 @@ async function gerarEArmazenarContrato(propostaId, dadosContrato) {
         }
         
         // Obter URL pública do PDF
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = client.storage
             .from('contratos')
             .getPublicUrl(nomeArquivo);
         
         // Salvar registro do contrato na tabela
-        const { data: contratoData, error: contratoError } = await supabase
+        const { data: contratoData, error: contratoError } = await client
             .from('contratos')
             .insert({
                 proposta_id: propostaId,
@@ -502,11 +503,100 @@ Suporte:
     }
     return doc.output('blob');
 }
+// Salvar dados do representante vinculados à proposta criada
+async function salvarDadosRepresentante(dados) {
+    const client = initSupabase();
+    const payload = {
+        proposta_criada_id: dados.propostaCriadaId,
+        proposta_id: dados.propostaId || null,
+        nome: dados.nome,
+        sobrenome: dados.sobrenome,
+        cpf: dados.cpf,
+        data_nascimento: dados.dataNascimento,
+        email: dados.email,
+        telefone: dados.telefone,
+        melhor_dia_pagamento: dados.melhorDiaPagamento || null,
+        ip: dados.ip || null,
+        user_agent: dados.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : null),
+        observacoes: dados.observacoes || null
+    };
+
+    const { data, error } = await client
+        .from('representantes_proposta')
+        .insert(payload)
+        .select('id')
+        .maybeSingle();
+
+    if (error) {
+        console.error('Erro ao salvar representante:', error);
+        throw error;
+    }
+    return { ok: true, id: data?.id };
+}
+
+// Checa se a proposta já foi assinada para bloquear reassinatura
+async function checarBloqueioReassinatura(propostaCriadaId) {
+    const client = initSupabase();
+    // Fallback: tentar obter o ID da URL se não foi passado
+    if (!propostaCriadaId) {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            propostaCriadaId = params.get('id') || propostaCriadaId;
+        } catch (_) {
+            // Ignorar erros de URLSearchParams
+        }
+    }
+
+    // Se ainda não houver ID, não é possível bloquear com segurança
+    if (!propostaCriadaId) {
+        return { bloqueada: false, status: 'desconhecido' };
+    }
+
+    // Checar status em propostas_criadas
+    const { data, error } = await client
+        .from('propostas_criadas')
+        .select('id,status,aceita_em')
+        .eq('id', propostaCriadaId)
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
+    const status = data?.status || 'pendente';
+    const aceitaEm = data?.aceita_em || null;
+    if (status === 'aceita' || !!aceitaEm) {
+        return { bloqueada: true, status };
+    }
+
+    // Verificação adicional: existe proposta assinada vinculada?
+    // Se houver qualquer registro em `propostas` com `proposta_criada_id`, bloquear.
+    const { count, error: countError } = await client
+        .from('propostas')
+        .select('id', { count: 'exact', head: true })
+        .eq('proposta_criada_id', propostaCriadaId);
+    if (countError) {
+        // Fallback: tentar obter uma linha apenas
+        const { data: anyProposta } = await client
+            .from('propostas')
+            .select('id')
+            .eq('proposta_criada_id', propostaCriadaId)
+            .limit(1)
+            .maybeSingle();
+        if (anyProposta?.id) {
+            return { bloqueada: true, status: 'aceita' };
+        }
+    }
+    if ((count || 0) > 0) {
+        return { bloqueada: true, status: 'aceita' };
+    }
+
+    return { bloqueada: false, status };
+}
 // Exportar funções
 window.supabaseConfig = {
     initSupabase,
     salvarPropostaAceita,
     gerarEArmazenarContrato,
     gerarHashAssinatura,
-    gerarPDFContrato
+    gerarPDFContrato,
+    salvarDadosRepresentante,
+    checarBloqueioReassinatura
 };
