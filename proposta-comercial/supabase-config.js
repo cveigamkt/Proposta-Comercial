@@ -9,14 +9,15 @@ const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env && proc
                          (typeof window !== 'undefined' && window.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
                          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2twa2tkemlpZnlkdWd5amllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMjA5NTYsImV4cCI6MjA3Nzg5Njk1Nn0.k9brkGFdvZe_32ctC0zKpOW1y6icp3zacOOw-MYxECc';
 // Inicializar cliente Supabase (será carregado via CDN no HTML)
-let supabase = null;
+// Usamos window.supabaseInstance para evitar conflitos com a biblioteca global 'supabase'
 function initSupabase() {
     if (!window.supabase) {
         const err = new Error('Biblioteca supabase-js não carregada.');
         console.error('❌ initSupabase:', err);
         throw err;
     }
-    if (typeof supabase === 'undefined' || supabase === null) {
+    
+    if (!window.supabaseInstance) {
         // Decidir persistência de sessão conforme a página atual
         const path = (window.location && window.location.pathname || '').toLowerCase();
         const isAuthPage = (
@@ -31,12 +32,10 @@ function initSupabase() {
         );
         const authOptions = { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false };
 
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
-        // Expor o CLIENTE globalmente (o projeto usa window.supabase como client)
-        window.supabase = supabase;
+        window.supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: authOptions });
         console.log('✅ DB conectado (Supabase)');
     }
-    return supabase;
+    return window.supabaseInstance;
 }
 // Expor namespace para outros módulos (ex.: auth-guard)
 window.supabaseConfig = window.supabaseConfig || {};
