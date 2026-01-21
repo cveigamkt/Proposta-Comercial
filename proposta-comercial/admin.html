@@ -625,6 +625,10 @@ async function queryResumo(filtros){
     });
     // ===== Autenticação e Papéis =====
     async function initAuthUI(){
+      if (!window.supabaseConfig || typeof window.supabaseConfig.initSupabase !== 'function') {
+        console.error('Erro: supabase-config.js não carregado corretamente.');
+        return;
+      }
       client = client || window.supabaseConfig.initSupabase();
       const { data: { session } } = await client.auth.getSession();
       const authStatus = document.getElementById('authStatus');
@@ -685,6 +689,7 @@ async function queryResumo(filtros){
     }
 
     async function login(){
+      if (!window.supabaseConfig) return;
       client = client || window.supabaseConfig.initSupabase();
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
@@ -695,6 +700,7 @@ async function queryResumo(filtros){
     }
 
     async function logout(){
+      if (!window.supabaseConfig) return;
       client = client || window.supabaseConfig.initSupabase();
       try {
         await client.auth.signOut();
@@ -991,6 +997,7 @@ async function queryResumo(filtros){
     // Monitorar mudanças em tempo real
     function iniciarMonitoramentoRealtime() {
       try {
+        if (!window.supabaseConfig) return;
         client = client || window.supabaseConfig.initSupabase();
         
         // Monitorar mudanças na tabela propostas_criadas
@@ -1014,7 +1021,7 @@ async function queryResumo(filtros){
 
     // ===== Gestão de Usuários (somente admin) =====
     async function carregarUsuarios(){
-      if (window.usuarioPapel !== 'admin') return;
+      if (window.usuarioPapel !== 'admin' || !window.supabaseConfig) return;
       client = client || window.supabaseConfig.initSupabase();
       const tb = document.getElementById('tbodyUsuarios');
       if (!tb) return;
@@ -1046,7 +1053,7 @@ async function queryResumo(filtros){
     }
 
     async function salvarUsuario(){
-      if (window.usuarioPapel !== 'admin') { alert('Apenas admin pode gerenciar usuários.'); return; }
+      if (window.usuarioPapel !== 'admin' || !window.supabaseConfig) return;
       client = client || window.supabaseConfig.initSupabase();
       const emailEl = document.getElementById('novoUsuarioEmail');
       const nomeEl = document.getElementById('novoUsuarioNome');
