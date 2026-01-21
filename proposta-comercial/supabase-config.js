@@ -1,7 +1,13 @@
 // Configuração do Supabase
 // Substitua com suas credenciais do Supabase após criar o projeto
-const SUPABASE_URL = 'https://ndokpkkdziifydugyjie.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2twa2tkemlpZnlkdWd5amllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMjA5NTYsImV4cCI6MjA3Nzg5Njk1Nn0.k9brkGFdvZe_32ctC0zKpOW1y6icp3zacOOw-MYxECc';
+// Configuração do Supabase - Suporta variáveis de ambiente da Vercel ou fallback para chaves diretas
+const SUPABASE_URL = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_URL) || 
+                     (typeof window !== 'undefined' && window.NEXT_PUBLIC_SUPABASE_URL) ||
+                     'https://ndokpkkdziifydugyjie.supabase.co';
+
+const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || 
+                         (typeof window !== 'undefined' && window.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+                         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2twa2tkemlpZnlkdWd5amllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzMjA5NTYsImV4cCI6MjA3Nzg5Njk1Nn0.k9brkGFdvZe_32ctC0zKpOW1y6icp3zacOOw-MYxECc';
 // Inicializar cliente Supabase (será carregado via CDN no HTML)
 let supabase = null;
 function initSupabase() {
@@ -83,18 +89,6 @@ async function salvarPropostaAceita(dadosProposta) {
 
         // Inserir itens selecioandos (se houver) e registrar status 'itens_preenchidos'
         try {
-<<<<<<< HEAD
-            if (propostaCriadaId) {
-                await supabase
-                  .from('propostas_criadas')
-                  .update({
-                    status: 'aceita',
-                    aceita_em: new Date().toISOString(),
-                    recorrencia: dadosProposta.recorrencia,
-                    forma_pagamento: dadosProposta.formaPagamento
-                  })
-                  .eq('id', propostaCriadaId);
-=======
             const servicos = Array.isArray(dadosProposta?.servicosContratados)
               ? dadosProposta.servicosContratados
               : (Array.isArray(window.servicosContratados) ? window.servicosContratados : []);
@@ -147,7 +141,6 @@ async function salvarPropostaAceita(dadosProposta) {
                         console.error('❌ Histórico: falha ao registrar itens_preenchidos', statusItensError);
                     }
                 }
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             }
         } catch (e) {
             console.error('❌ Itens: erro ao persistir seleção', e);
@@ -209,11 +202,7 @@ async function gerarEArmazenarContrato(propostaCriadaId, dadosContrato) {
         
         // Salvar registro do contrato na tabela
         const { data: contratoData, error: contratoError } = await client
-<<<<<<< HEAD
-            .from('contratos')
-=======
             .from('proposta_contratos')
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
             .insert({
                 proposta_criada_id: propostaCriadaId,
                 contrato_url: urlData.publicUrl,
@@ -773,37 +762,6 @@ Suporte:
     }
     return doc.output('blob');
 }
-<<<<<<< HEAD
-// Salvar dados do representante vinculados à proposta criada
-async function salvarDadosRepresentante(dados) {
-    const client = initSupabase();
-    const payload = {
-        proposta_criada_id: dados.propostaCriadaId,
-        proposta_id: dados.propostaId || null,
-        nome: dados.nome,
-        sobrenome: dados.sobrenome,
-        cpf: dados.cpf,
-        data_nascimento: dados.dataNascimento,
-        email: dados.email,
-        telefone: dados.telefone,
-        melhor_dia_pagamento: dados.melhorDiaPagamento || null,
-        ip: dados.ip || null,
-        user_agent: dados.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : null),
-        observacoes: dados.observacoes || null
-    };
-
-    const { data, error } = await client
-        .from('representantes_proposta')
-        .insert(payload)
-        .select('id')
-        .maybeSingle();
-
-    if (error) {
-        console.error('Erro ao salvar representante:', error);
-        throw error;
-    }
-    return { ok: true, id: data?.id };
-=======
 // Salvar dados do representante diretamente em propostas_criadas.representante_cliente
 async function salvarDadosRepresentante(dados) {
     const client = initSupabase();
@@ -837,7 +795,6 @@ async function salvarDadosRepresentante(dados) {
     }
     console.log('✅ Representante atualizado em propostas_criadas:', data);
     return { ok: true, id: data?.id, representante: data?.representante_cliente || null };
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
 }
 
 // Checa se a proposta já foi assinada para bloquear reassinatura
@@ -872,27 +829,6 @@ async function checarBloqueioReassinatura(propostaCriadaId) {
         return { bloqueada: true, status };
     }
 
-<<<<<<< HEAD
-    // Verificação adicional: existe proposta assinada vinculada?
-    // Se houver qualquer registro em `propostas` com `proposta_criada_id`, bloquear.
-    const { count, error: countError } = await client
-        .from('propostas')
-        .select('id', { count: 'exact', head: true })
-        .eq('proposta_criada_id', propostaCriadaId);
-    if (countError) {
-        // Fallback: tentar obter uma linha apenas
-        const { data: anyProposta } = await client
-            .from('propostas')
-            .select('id')
-            .eq('proposta_criada_id', propostaCriadaId)
-            .limit(1)
-            .maybeSingle();
-        if (anyProposta?.id) {
-            return { bloqueada: true, status: 'aceita' };
-        }
-    }
-    if ((count || 0) > 0) {
-=======
     // Verificação adicional: contrato já gerado?
     // Se houver qualquer registro em `proposta_contratos` com `proposta_criada_id`, bloquear reassinatura.
     const { count, error: countError } = await client
@@ -900,7 +836,6 @@ async function checarBloqueioReassinatura(propostaCriadaId) {
         .select('id', { count: 'exact', head: true })
         .eq('proposta_criada_id', propostaCriadaId);
     if ((count || 0) > 0 && !countError) {
->>>>>>> 56b103a4ecc8ec2b83ca4b59aed4a6385536241a
         return { bloqueada: true, status: 'aceita' };
     }
 
